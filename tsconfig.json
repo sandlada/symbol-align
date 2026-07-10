@@ -1,8 +1,12 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
+    "target": "ESNext",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "rootDir": "./src",
+    "types": [
+        "node"
+    ],
     "outDir": "dist",
     "declaration": true,
     "declarationMap": true,
@@ -12,8 +16,9 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/__tests__/**"]
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/__tests__/**", "**/fixtures.ts"]
 }

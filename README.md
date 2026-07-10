@@ -3,6 +3,7 @@
 ![npm version](https://img.shields.io/npm/v/@sandlada/symbol-align?label=NPM%20Version&labelColor=%2300531f&color=%23a3f5aa)
 ![GitHub License](https://img.shields.io/github/license/sandlada/symbol-align?label=License&labelColor=%2300531f&color=%23a3f5aa)
 ![CI](https://img.shields.io/github/actions/workflow/status/sandlada/symbol-align/ci.yml?label=CI&labelColor=%2300531f&color=%23a3f5aa)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-%233178c6?labelColor=%232b2d2f)](https://www.typescriptlang.org/)
 
 Vertically align code symbols such as `=`, `:`, `=>`, `//`, `#` — via CLI or API.
 
@@ -16,30 +17,28 @@ npm install -D @sandlada/symbol-align
 
 ## Usage
 
-### CLI (stdin → stdout)
+### CLI
 
-Pipe code through the CLI to align symbols:
+Pipe code through the CLI or pass a file directly:
 
 ```bash
-# Align = signs (default)
+# Align = signs (default) — pipe mode
 cat file.ts | npx symbol-align
 
+# Align = signs — file mode
+npx symbol-align --file input.ts
+
 # Align : and = signs
-cat file.ts | npx symbol-align --symbols =,:
+npx symbol-align --file input.ts --symbols =,:
 
 # Align => arrows
 cat file.ts | npx symbol-align --symbols =>
 ```
 
-Input file (`input.ts`):
-
-```ts
-const foo        = 1;
-const foobar     = 2;
-const foobarbaz  = 3;
-```
-
 Any symbol can be aligned — just list it with `--symbols`.
+
+Use `--file` / `-f` for direct file input, or pipe via stdin for streaming use.
+Use `--output` / `-o` to write to a file instead of stdout.
 
 ### API
 
@@ -69,22 +68,22 @@ const code = [
 
 const { code: aligned } = align(code, { symbols: [':', '='] });
 // → const x : Type        = 1;
-//   const yy: AnotherType = 22;
+// → const yy: AnotherType = 22;
 ```
 
 ## Options
 
 ### `AlignOptions`
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
+| Option    | Type       | Default | Description                                           |
+| --------- | ---------- | ------- | ----------------------------------------------------- |
 | `symbols` | `string[]` | `['=']` | Symbols to align (e.g. `['=', ':', '=>', '//', '#']`) |
 
 ### `AlignResult`
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `code` | `string` | The aligned code |
+| Field     | Type     | Description              |
+| --------- | -------- | ------------------------ |
+| `code`    | `string` | The aligned code         |
 | `changes` | `number` | Number of lines modified |
 
 ## Rules
@@ -104,8 +103,8 @@ const { code: aligned } = align(code, { symbols: [':', '='] });
 <tr><td>
 
 ```ts
-const a   = 1;
-const bb  = 2;
+const a = 1;
+const bb = 2;
 const ccc = 3;
 ```
 
@@ -127,15 +126,15 @@ const ccc = 3;
 <tr><td>
 
 ```ts
-const a = 1;     // short
-const bb = 22;   // longer
+const a = 1; // short
+const bb = 22; // longer
 ```
 
 </td><td>
 
 ```ts
-const a = 1;     // short
-const bb = 22;   // longer
+const a = 1;   // short
+const bb = 22;  // longer
 ```
 
 </td></tr>
@@ -165,26 +164,30 @@ const yy: number;
 ## CLI Reference
 
 ```
-Usage: symbol-align [options] < input
+Usage: symbol-align [options] [< file]
+       symbol-align [options] --file <path>
 
-Vertically align symbols in code. Reads from stdin, writes to stdout.
+Vertically align symbols in code. Reads from stdin or a file, writes to stdout.
 
 Options:
-  -s, --symbols <list>  Comma-separated symbols to align (default: "=")
-  --help                Show this help
+  -f, --file <path>    Read from file instead of stdin
+  -o, --output <path>  Write to file instead of stdout
+  -s, --symbols <list> Comma-separated symbols to align (default: "=")
+  --help               Show this help
 
 Examples:
   echo "a = 1\nbb = 2" | symbol-align
   cat file.ts | symbol-align --symbols =,:
+  symbol-align --file input.ts
+  symbol-align -f input.ts --symbols =,:
+  symbol-align --file input.ts -o output.ts
 ```
 
 ## Limitations
 
 - Does **not** detect regex `/.../` — symbols inside regex may be aligned
-- Does **not** support file path arguments (stdin only)
 - Single-pass alignment per symbol group
 
 ## License
 
 MIT &mdash; see [LICENSE](LICENSE).
-[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-%233178c6?labelColor=%232b2d2f)](https://www.typescriptlang.org/)
