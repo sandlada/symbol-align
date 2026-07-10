@@ -2,7 +2,6 @@
 
 ![npm version](https://img.shields.io/npm/v/@sandlada/symbol-align?label=NPM%20Version&labelColor=%2300531f&color=%23a3f5aa)
 ![GitHub License](https://img.shields.io/github/license/sandlada/symbol-align?label=License&labelColor=%2300531f&color=%23a3f5aa)
-![CI](https://img.shields.io/github/actions/workflow/status/sandlada/symbol-align/ci.yml?label=CI&labelColor=%2300531f&color=%23a3f5aa)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-%233178c6?labelColor=%232b2d2f)](https://www.typescriptlang.org/)
 
 Vertically align code symbols such as `=`, `:`, `=>`, `//`, `#` — via CLI or API.
@@ -98,6 +97,8 @@ const { code: aligned } = align(code, { symbols: [':', '='] });
 
 ### Align `=` assignments
 
+symbols: `=`
+
 <table>
 <tr><th>Before</th><th>After</th></tr>
 <tr><td>
@@ -121,6 +122,8 @@ const ccc = 3;
 
 ### Align `//` comments
 
+symbols: `//`
+
 <table>
 <tr><th>Before</th><th>After</th></tr>
 <tr><td>
@@ -133,7 +136,7 @@ const bb = 22; // longer
 </td><td>
 
 ```ts
-const a = 1;   // short
+const a = 1;    // short
 const bb = 22;  // longer
 ```
 
@@ -141,6 +144,8 @@ const bb = 22;  // longer
 </table>
 
 ### Align `:` type annotations
+
+symbols: `:`
 
 <table>
 <tr><th>Before</th><th>After</th></tr>
