@@ -1,0 +1,55 @@
+{
+  "name": "@sandlada/symbol-align",
+  "version": "0.0.1",
+  "description": "Vertical alignment for code symbols (=, :, =>, //, # and more) — CLI & API",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "bin": {
+    "symbol-align": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "keywords": [
+    "align",
+    "alignment",
+    "code",
+    "format",
+    "vertical",
+    "symbol",
+    "equals",
+    "colon",
+    "arrow"
+  ],
+  "author": "Kai Orion",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sandlada/symbol-align.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sandlada/symbol-align/issues"
+  },
+  "homepage": "https://github.com/sandlada/symbol-align#readme",
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
