@@ -31,14 +31,14 @@ Notes:
 `);
 }
 
-interface CliArgs {
+export interface CliArgs {
   symbols: string[];
   help: boolean;
   file?: string;
   output?: string;
 }
 
-function parseArgs(argv: string[]): CliArgs {
+export function parseArgs(argv: string[]): CliArgs {
   const args: CliArgs = {
     symbols: ['='],
     help: false,
