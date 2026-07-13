@@ -121,4 +121,45 @@ describe('align', () => {
     expect(lines[1]).toBe('export const yy: Another = 22;');
     expect(result.changes).toBe(2);
   });
+
+  describe('idempotency', () => {
+    it('already-aligned = is stable', () => {
+      const input = 'const foo    = 1;\nconst foobar = 22;';
+      const first = align(input);
+      const second = align(first.code);
+      expect(second.changes).toBe(0);
+      expect(second.code).toBe(first.code);
+    });
+
+    it('single-symbol alignment converges in one pass', () => {
+      const input = 'const foo = 1\nconst foobar = 22';
+      const first = align(input);
+      const second = align(first.code);
+      expect(second.changes).toBe(0);
+      expect(second.code).toBe(first.code);
+    });
+
+    it('multi-symbol alignment converges in one pass', () => {
+      const input = 'export const x: Type = 1;\nexport const yy: Another = 22;';
+      const result1 = align(input, { symbols: [':', '='] });
+      const result2 = align(result1.code, { symbols: [':', '='] });
+      expect(result2.changes).toBe(0);
+      expect(result2.code).toBe(result1.code);
+    });
+
+    it('keyword padding is idempotent', () => {
+      const input = 'export const foo = 1;\nconst bar = 22;\nexport const baz = 333;';
+      const result1 = align(input, { symbols: ['export', '='] });
+      const result2 = align(result1.code, { symbols: ['export', '='] });
+      expect(result2.changes).toBe(0);
+      expect(result2.code).toBe(result1.code);
+    });
+
+    it('allPrefix word boundary prevents false matches', () => {
+      const input = 'exportedValue = 1;\nvalue = 2;';
+      const result = align(input, { symbols: ['export', '='] });
+      // "exportedValue" should NOT trigger keyword padding
+      expect(result.changes).toBe(1); // only = alignment
+    });
+  });
 });

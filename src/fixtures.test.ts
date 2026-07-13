@@ -9,3 +9,12 @@ describe('align with fixtures', () => {
     expect(result.changes).toBe(changes);
   });
 });
+
+describe('idempotency', () => {
+  it.each(allFixtures)('$name is idempotent (second pass produces 0 changes)', ({ input, symbols }) => {
+    const first = align(input, symbols ? { symbols } : undefined);
+    const second = align(first.code, symbols ? { symbols } : undefined);
+    expect(second.changes).toBe(0);
+    expect(second.code).toBe(first.code);
+  });
+});

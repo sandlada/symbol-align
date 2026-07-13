@@ -2,6 +2,12 @@ import { findSymbolPositions } from './finder.js';
 import type { AlignOptions, AlignResult } from './types.js';
 
 /**
+ * Checks if a character is a word character (letter, digit, or underscore).
+ */
+const isWordChar = (c: string | undefined): boolean =>
+  c !== undefined && /[a-zA-Z0-9_]/.test(c);
+
+/**
  * Vertically aligns target symbols in a block of code.
  *
  * For each symbol, finds its first meaningful position (outside strings/comments)
@@ -55,15 +61,30 @@ export function align(code: string, options?: AlignOptions): AlignResult {
     // If no line has this symbol at all, skip
     if (symPositions.every(p => p === null)) continue;
 
-    // Keyword padding: if this symbol acts as a prefix keyword on lines that have it,
-    // pad non-blank lines without it so their content starts at the column after the keyword.
-    // Only pads lines at the SAME indentation level as lines with the keyword.
+    // Pad lines whose symbol appears before maxCol (main alignment)
+    for (let i = 0; i < lines.length; i++) {
+      const pos = symPositions[i];
+      if (pos === null) continue;
+
+      const needed = maxCol - pos;
+      if (needed > 0) {
+        const line = lines[i];
+        lines[i] = line.slice(0, pos) + ' '.repeat(needed) + line.slice(pos);
+        changes++;
+      }
+    }
+
+    // Keyword padding: runs after main alignment so sameIndent sees normalized
+    // indentation. If this symbol acts as a prefix keyword on lines that have it,
+    // pad non-blank lines without it so their content starts at the column after
+    // the keyword. Only pads lines at the SAME indentation level as lines with it.
     const hasLineWith = symPositions.some(p => p !== null);
     const hasLineWithout = symPositions.some((p, i) => p === null && lines[i].trim().length > 0);
     if (hasLineWith && hasLineWithout) {
       const allPrefix = lines.every((line, i) => {
         if (symPositions[i] === null) return true;
-        return line.trimStart().startsWith(sym);
+        const trimmed = line.trimStart();
+        return trimmed.startsWith(sym) && (trimmed.length === sym.length || !isWordChar(trimmed[sym.length]));
       });
       // Find common leading whitespace of lines that have the symbol
       let symbolIndent = -1;
@@ -92,19 +113,6 @@ export function align(code: string, options?: AlignOptions): AlignResult {
             changes++;
           }
         }
-      }
-    }
-
-    // Pad lines whose symbol appears before maxCol
-    for (let i = 0; i < lines.length; i++) {
-      const pos = symPositions[i];
-      if (pos === null) continue;
-
-      const needed = maxCol - pos;
-      if (needed > 0) {
-        const line = lines[i];
-        lines[i] = line.slice(0, pos) + ' '.repeat(needed) + line.slice(pos);
-        changes++;
       }
     }
   }
