@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { parseArgs } from './cli.js';
+import { parseArgs, validatePath } from './cli.js';
+import { resolve } from 'node:path';
 
 describe('parseArgs', () => {
   it('returns default arguments when no flags are provided', () => {
@@ -104,5 +105,21 @@ describe('parseArgs', () => {
       symbols: [':', '='],
       help: false,
     });
+  });
+});
+
+describe('validatePath', () => {
+  it('allows paths within the current directory', () => {
+    const cwd = process.cwd();
+    expect(validatePath('input.ts')).toBe(resolve(cwd, 'input.ts'));
+    expect(validatePath('./input.ts')).toBe(resolve(cwd, './input.ts'));
+    expect(validatePath('foo/bar.ts')).toBe(resolve(cwd, 'foo/bar.ts'));
+    expect(validatePath(cwd)).toBe(cwd);
+  });
+
+  it('throws an error for path traversal attempts', () => {
+    expect(() => validatePath('../input.ts')).toThrow(/Path traversal detected/);
+    expect(() => validatePath('../../etc/passwd')).toThrow(/Path traversal detected/);
+    expect(() => validatePath('/etc/passwd')).toThrow(/Path traversal detected/);
   });
 });
