@@ -1,7 +1,18 @@
 #!/usr/bin/env node
 
 import { readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { align } from './aligner.js';
+
+function sanitizePath(filePath: string): string {
+  const baseDir = process.cwd();
+  const resolvedPath = path.resolve(baseDir, filePath);
+  const safeBase = baseDir.endsWith(path.sep) ? baseDir : baseDir + path.sep;
+  if (!resolvedPath.startsWith(safeBase) && resolvedPath !== baseDir) {
+    throw new Error('Invalid path: Directory traversal is not allowed.');
+  }
+  return resolvedPath;
+}
 
 function showHelp(): void {
   process.stdout.write(`
@@ -100,7 +111,15 @@ function readStdin(): Promise<string> {
 }
 
 async function readFileFromDisk(filePath: string): Promise<string> {
-  return await readFile(filePath, 'utf-8');
+  const safePath = sanitizePath(filePath);
+  try {
+    return await readFile(safePath, 'utf-8');
+  } catch (err: any) {
+    if (err.code === 'EISDIR') {
+      throw new Error(`Cannot read directory: ${safePath}`);
+    }
+    throw err;
+  }
 }
 
 async function main(): Promise<void> {
@@ -125,7 +144,15 @@ async function main(): Promise<void> {
     : result.code;
 
   if (args.output) {
-    await writeFile(args.output, output, 'utf-8');
+    const safeOutput = sanitizePath(args.output);
+    try {
+      await writeFile(safeOutput, output, 'utf-8');
+    } catch (err: any) {
+      if (err.code === 'EISDIR') {
+        throw new Error(`Cannot write to directory: ${safeOutput}`);
+      }
+      throw err;
+    }
   } else {
     process.stdout.write(output);
   }
