@@ -31,6 +31,7 @@ export function align(code: string, options?: AlignOptions): AlignResult {
         firstOccurrence.set(sym, cols[0]);
       }
     }
+    if (firstOccurrence.size === symbols.length) break;
   }
 
   // Sort symbols: first appearance order, then by length (stable for equal)
