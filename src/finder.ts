@@ -21,9 +21,7 @@ export function findSymbolPositions(line: string, symbols: string[]): Map<string
   }
 
   let i = 0;
-  let inSingleString = false;
-  let inDoubleString = false;
-  let inBacktickString = false;
+  let stringQuote: string | null = null;
   let inBlockComment = false;
   const len = line.length;
 
@@ -31,18 +29,8 @@ export function findSymbolPositions(line: string, symbols: string[]): Map<string
     const ch = line[i];
 
     // === Exit states for strings and comments ===
-    if (inSingleString) {
-      if (ch === "'" && (i === 0 || line[i - 1] !== '\\')) inSingleString = false;
-      i++;
-      continue;
-    }
-    if (inDoubleString) {
-      if (ch === '"' && (i === 0 || line[i - 1] !== '\\')) inDoubleString = false;
-      i++;
-      continue;
-    }
-    if (inBacktickString) {
-      if (ch === '`' && (i === 0 || line[i - 1] !== '\\')) inBacktickString = false;
+    if (stringQuote !== null) {
+      if (ch === stringQuote && (i === 0 || line[i - 1] !== '\\')) stringQuote = null;
       i++;
       continue;
     }
@@ -74,18 +62,8 @@ export function findSymbolPositions(line: string, symbols: string[]): Map<string
     }
 
     // String starts
-    if (ch === "'") {
-      inSingleString = true;
-      i++;
-      continue;
-    }
-    if (ch === '"') {
-      inDoubleString = true;
-      i++;
-      continue;
-    }
-    if (ch === '`') {
-      inBacktickString = true;
+    if (ch === "'" || ch === '"' || ch === '`') {
+      stringQuote = ch;
       i++;
       continue;
     }
