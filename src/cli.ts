@@ -48,28 +48,38 @@ export function parseArgs(argv: string[]): CliArgs {
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i];
 
+    const parseStringArg = (longName: string, shortName: string): string | undefined => {
+      if (arg === `--${longName}` || arg === `-${shortName}`) {
+        if (i + 1 < argv.length) {
+          return argv[++i];
+        }
+      } else if (arg.startsWith(`--${longName}=`)) {
+        return arg.slice(`--${longName}=`.length);
+      }
+      return undefined;
+    };
+
     if (arg === '--help') {
       args.help = true;
-    } else if (arg === '--symbols' || arg === '-s') {
-      if (i + 1 < argv.length) {
-        const raw = argv[++i];
-        args.symbols = raw.split(',').map((s) => s.trim()).filter(Boolean);
-      }
-    } else if (arg.startsWith('--symbols=')) {
-      const raw = arg.slice('--symbols='.length);
-      args.symbols = raw.split(',').map((s) => s.trim()).filter(Boolean);
-    } else if (arg === '--file' || arg === '-f') {
-      if (i + 1 < argv.length) {
-        args.file = argv[++i];
-      }
-    } else if (arg.startsWith('--file=')) {
-      args.file = arg.slice('--file='.length);
-    } else if (arg === '--output' || arg === '-o') {
-      if (i + 1 < argv.length) {
-        args.output = argv[++i];
-      }
-    } else if (arg.startsWith('--output=')) {
-      args.output = arg.slice('--output='.length);
+      continue;
+    }
+
+    const symbols = parseStringArg('symbols', 's');
+    if (symbols !== undefined) {
+      args.symbols = symbols.split(',').map((s) => s.trim()).filter(Boolean);
+      continue;
+    }
+
+    const file = parseStringArg('file', 'f');
+    if (file !== undefined) {
+      args.file = file;
+      continue;
+    }
+
+    const output = parseStringArg('output', 'o');
+    if (output !== undefined) {
+      args.output = output;
+      continue;
     }
   }
 
