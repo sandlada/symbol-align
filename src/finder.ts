@@ -1,3 +1,5 @@
+const firstCharMapCache = new Map<string, Map<string, string[]>>();
+
 /**
  * Find positions of target symbols in a line of code,
  * skipping symbols inside strings and comments.
@@ -12,12 +14,18 @@ export function findSymbolPositions(line: string, symbols: string[]): Map<string
 
   // Build a map from first character to candidate symbols
   // Sort longer symbols first so e.g. '=>' matches before '='
-  const sortedSymbols = [...symbols].sort((a, b) => b.length - a.length);
-  const firstCharMap = new Map<string, string[]>();
-  for (const sym of sortedSymbols) {
-    const fc = sym[0];
-    if (!firstCharMap.has(fc)) firstCharMap.set(fc, []);
-    firstCharMap.get(fc)!.push(sym);
+  // Cache the map so we don't rebuild it on every line
+  const cacheKey = symbols.join('\0');
+  let firstCharMap = firstCharMapCache.get(cacheKey);
+  if (!firstCharMap) {
+    firstCharMap = new Map<string, string[]>();
+    const sortedSymbols = [...symbols].sort((a, b) => b.length - a.length);
+    for (const sym of sortedSymbols) {
+      const fc = sym[0];
+      if (!firstCharMap.has(fc)) firstCharMap.set(fc, []);
+      firstCharMap.get(fc)!.push(sym);
+    }
+    firstCharMapCache.set(cacheKey, firstCharMap);
   }
 
   let i = 0;
