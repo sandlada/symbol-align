@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { readFile, writeFile } from 'node:fs/promises';
+import { resolve, sep } from 'node:path';
 import { align } from './aligner.js';
 
 function showHelp(): void {
@@ -99,8 +100,20 @@ function readStdin(): Promise<string> {
   });
 }
 
+export function validatePath(filePath: string): string {
+  const cwd = process.cwd();
+  const resolvedPath = resolve(cwd, filePath);
+
+  if (resolvedPath !== cwd && !resolvedPath.startsWith(cwd + sep)) {
+    throw new Error(`Path traversal detected: ${filePath} resolves outside of current working directory`);
+  }
+
+  return resolvedPath;
+}
+
 async function readFileFromDisk(filePath: string): Promise<string> {
-  return await readFile(filePath, 'utf-8');
+  const safePath = validatePath(filePath);
+  return await readFile(safePath, 'utf-8');
 }
 
 async function main(): Promise<void> {
@@ -125,7 +138,8 @@ async function main(): Promise<void> {
     : result.code;
 
   if (args.output) {
-    await writeFile(args.output, output, 'utf-8');
+    const safeOutput = validatePath(args.output);
+    await writeFile(safeOutput, output, 'utf-8');
   } else {
     process.stdout.write(output);
   }
