@@ -26,6 +26,12 @@ export function findSymbolPositions(line: string, symbols: string[]): Map<string
       firstCharMap.get(fc)!.push(sym);
     }
     firstCharMapCache.set(cacheKey, firstCharMap);
+    if (firstCharMapCache.size > 50) {
+      const firstKey = firstCharMapCache.keys().next().value;
+      if (firstKey !== undefined) {
+        firstCharMapCache.delete(firstKey);
+      }
+    }
   }
 
   let i = 0;
