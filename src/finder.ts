@@ -17,7 +17,13 @@ export function findSymbolPositions(line: string, symbols: string[]): Map<string
   // Cache the map so we don't rebuild it on every line
   const cacheKey = symbols.join('\0');
   let firstCharMap = firstCharMapCache.get(cacheKey);
-  if (!firstCharMap) {
+  if (firstCharMap) {
+    // Update LRU: re-insert so it becomes the most recently used
+    firstCharMapCache.delete(cacheKey);
+    firstCharMapCache.set(cacheKey, firstCharMap);
+  } else {
+    // Sort longer symbols first so e.g. '=>' matches before '='
+    // Secondary sort alphabetically ensures identical symbol sets yield identical cache keys
     const sortedSymbols = [...symbols].sort((a, b) => {
       if (b.length !== a.length) return b.length - a.length;
       return a.localeCompare(b);
@@ -38,11 +44,12 @@ export function findSymbolPositions(line: string, symbols: string[]): Map<string
     }
 
     // Store it under the original key too for O(1) fast path
+    // This implicitly makes it the most recently used
     firstCharMapCache.set(cacheKey, firstCharMap);
 
     // Evict oldest items if limit exceeded
     // (a single miss could add 2 keys, so we check using a while loop)
-    while (firstCharMapCache.size > 50) {
+    while (firstCharMapCache.size > 100) {
       const firstKey = firstCharMapCache.keys().next().value;
       if (firstKey !== undefined) {
         firstCharMapCache.delete(firstKey);
