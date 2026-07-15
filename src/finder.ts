@@ -18,15 +18,31 @@ export function findSymbolPositions(line: string, symbols: string[]): Map<string
   const cacheKey = symbols.join('\0');
   let firstCharMap = firstCharMapCache.get(cacheKey);
   if (!firstCharMap) {
-    firstCharMap = new Map<string, string[]>();
-    const sortedSymbols = [...symbols].sort((a, b) => b.length - a.length);
-    for (const sym of sortedSymbols) {
-      const fc = sym[0];
-      if (!firstCharMap.has(fc)) firstCharMap.set(fc, []);
-      firstCharMap.get(fc)!.push(sym);
+    const sortedSymbols = [...symbols].sort((a, b) => {
+      if (b.length !== a.length) return b.length - a.length;
+      return a.localeCompare(b);
+    });
+
+    // Check if we already have this map under a sorted key
+    const sortedCacheKey = sortedSymbols.join('\0');
+    firstCharMap = firstCharMapCache.get(sortedCacheKey);
+
+    if (!firstCharMap) {
+      firstCharMap = new Map<string, string[]>();
+      for (const sym of sortedSymbols) {
+        const fc = sym[0];
+        if (!firstCharMap.has(fc)) firstCharMap.set(fc, []);
+        firstCharMap.get(fc)!.push(sym);
+      }
+      firstCharMapCache.set(sortedCacheKey, firstCharMap);
     }
+
+    // Store it under the original key too for O(1) fast path
     firstCharMapCache.set(cacheKey, firstCharMap);
-    if (firstCharMapCache.size > 50) {
+
+    // Evict oldest items if limit exceeded
+    // (a single miss could add 2 keys, so we check using a while loop)
+    while (firstCharMapCache.size > 50) {
       const firstKey = firstCharMapCache.keys().next().value;
       if (firstKey !== undefined) {
         firstCharMapCache.delete(firstKey);
