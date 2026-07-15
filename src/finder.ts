@@ -1,3 +1,5 @@
+const firstCharMapCache = new Map<string, Map<string, string[]>>();
+
 /**
  * Find positions of target symbols in a line of code,
  * skipping symbols inside strings and comments.
@@ -12,12 +14,47 @@ export function findSymbolPositions(line: string, symbols: string[]): Map<string
 
   // Build a map from first character to candidate symbols
   // Sort longer symbols first so e.g. '=>' matches before '='
-  const sortedSymbols = [...symbols].sort((a, b) => b.length - a.length);
-  const firstCharMap = new Map<string, string[]>();
-  for (const sym of sortedSymbols) {
-    const fc = sym[0];
-    if (!firstCharMap.has(fc)) firstCharMap.set(fc, []);
-    firstCharMap.get(fc)!.push(sym);
+  // Cache the map so we don't rebuild it on every line
+  const cacheKey = symbols.join('\0');
+  let firstCharMap = firstCharMapCache.get(cacheKey);
+  if (firstCharMap) {
+    // Update LRU: re-insert so it becomes the most recently used
+    firstCharMapCache.delete(cacheKey);
+    firstCharMapCache.set(cacheKey, firstCharMap);
+  } else {
+    // Sort longer symbols first so e.g. '=>' matches before '='
+    // Secondary sort alphabetically ensures identical symbol sets yield identical cache keys
+    const sortedSymbols = [...symbols].sort((a, b) => {
+      if (b.length !== a.length) return b.length - a.length;
+      return a.localeCompare(b);
+    });
+
+    // Check if we already have this map under a sorted key
+    const sortedCacheKey = sortedSymbols.join('\0');
+    firstCharMap = firstCharMapCache.get(sortedCacheKey);
+
+    if (!firstCharMap) {
+      firstCharMap = new Map<string, string[]>();
+      for (const sym of sortedSymbols) {
+        const fc = sym[0];
+        if (!firstCharMap.has(fc)) firstCharMap.set(fc, []);
+        firstCharMap.get(fc)!.push(sym);
+      }
+      firstCharMapCache.set(sortedCacheKey, firstCharMap);
+    }
+
+    // Store it under the original key too for O(1) fast path
+    // This implicitly makes it the most recently used
+    firstCharMapCache.set(cacheKey, firstCharMap);
+
+    // Evict oldest items if limit exceeded
+    // (a single miss could add 2 keys, so we check using a while loop)
+    while (firstCharMapCache.size > 100) {
+      const firstKey = firstCharMapCache.keys().next().value;
+      if (firstKey !== undefined) {
+        firstCharMapCache.delete(firstKey);
+      }
+    }
   }
 
   let i = 0;
