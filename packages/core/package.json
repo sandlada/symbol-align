@@ -1,0 +1,68 @@
+{
+    "name": "@sandlada/symbol-align",
+    "version": "0.0.1-20260710.a",
+    "description": "Vertical alignment for code symbols (=, :, =>, //, # and more) — CLI & API",
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "publishConfig": {
+        "access": "public"
+    },
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "bin": {
+        "symbol-align": "./dist/cli.js"
+    },
+    "files": [
+        "dist",
+        "README.md",
+        "LICENSE",
+        "SECURITY.md",
+        "CODE_OF_CONDUCT.md"
+    ],
+    "scripts": {
+        "build": "tsc",
+        "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+        "dev": "tsx src/cli.ts",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "typecheck": "tsc --noEmit -p tsconfig.test.json",
+        "prepack": "node ../../scripts/sync-docs.mjs materialize",
+        "postpack": "node ../../scripts/sync-docs.mjs restore",
+        "prepublishOnly": "pnpm run build && pnpm run test"
+    },
+    "keywords": [
+        "align",
+        "alignment",
+        "code",
+        "format",
+        "vertical",
+        "symbol",
+        "equals",
+        "colon",
+        "arrow"
+    ],
+    "engines": {
+        "node": ">=18"
+    },
+    "author": "Kai Orion",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/sandlada/symbol-align.git"
+    },
+    "bugs": {
+        "url": "https://github.com/sandlada/symbol-align/issues"
+    },
+    "homepage": "https://github.com/sandlada/symbol-align#readme",
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "tsx": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    }
+}

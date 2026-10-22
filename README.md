@@ -8,7 +8,19 @@ Vertically align code symbols such as `=`, `:`, `=>`, `//`, `#` — via CLI or A
 
 ---
 
+## Packages
+
+This repository is a [pnpm](https://pnpm.io) workspace (`packages/*`).
+
+| Package                                                       | Description                          |
+| ------------------------------------------------------------- | ------------------------------------ |
+| [`@sandlada/symbol-align`](packages/core)                     | Core library + CLI (published to npm) |
+
 ## Install
+
+```bash
+pnpm add -D @sandlada/symbol-align
+```
 
 ```bash
 npm install -D @sandlada/symbol-align
@@ -192,6 +204,55 @@ Examples:
 
 - Does **not** detect regex `/.../` — symbols inside regex may be aligned
 - Single-pass alignment per symbol group
+
+## Repository Structure
+
+```
+symbol-align/
+├── packages/
+│   └── core/               # @sandlada/symbol-align — the published package
+│       ├── src/            # library + CLI sources
+│       └── package.json
+├── scripts/
+│   └── sync-docs.mjs       # materializes / restores the linked doc files
+├── pnpm-workspace.yaml     # workspace + shared dependency catalog
+├── tsconfig.base.json      # shared compiler options
+└── package.json            # workspace root (private)
+```
+
+Documentation files (`README.md`, `LICENSE`, `SECURITY.md`, `CODE_OF_CONDUCT.md`)
+live in the repository root. Each package links them back to the root copies so
+that a document is edited in exactly one place. `scripts/sync-docs.mjs` turns the
+links into real files while packing (`prepack`) and restores them afterwards
+(`postpack`), because `npm-packlist` skips symlinked files.
+
+## Development
+
+Requires [pnpm](https://pnpm.io) 9+ (the repository pins the version in
+`packageManager`).
+
+```bash
+pnpm install        # install workspace dependencies
+pnpm build          # build every package (tsc)
+pnpm test           # run every package's test suite (vitest)
+pnpm typecheck      # type-check every package including tests
+pnpm clean          # remove build output
+
+pnpm --filter @sandlada/symbol-align build   # build a single package
+pnpm --filter @sandlada/symbol-align dev     # run the CLI from source (tsx)
+```
+
+Shared dependency versions are declared in the `catalog` section of
+`pnpm-workspace.yaml` and referenced from a package with the `catalog:` protocol.
+
+### Release
+
+```bash
+pnpm --filter @sandlada/symbol-align version <major|minor|patch>
+pnpm build
+pnpm test
+pnpm --filter @sandlada/symbol-align publish
+```
 
 ## License
 
