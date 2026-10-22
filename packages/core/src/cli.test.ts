@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { CliStreams } from './cli.js';
-import { parseArgs, readPackageVersion, runCli, usage, validatePath } from './cli.js';
+import { parseArgs, readPackageVersion, renderDiff, runCli, usage, validatePath } from './cli.js';
 
 /** The CLI streams with the written output collected for assertions. */
 interface CapturedStreams extends CliStreams {
@@ -48,8 +48,11 @@ describe('parseArgs', () => {
     it('returns the default arguments when no option is given', () => {
         expect(parseArgs(['node', 'cli.js'])).toEqual({
             check: false,
+            diff: false,
+            files: [],
             help: false,
             version: false,
+            write: false,
         });
     });
 
@@ -58,15 +61,23 @@ describe('parseArgs', () => {
     });
 
     it('reads the file path from --file', () => {
-        expect(parseArgs(['node', 'cli.js', '--file', 'input.ts']).file).toBe('input.ts');
+        expect(parseArgs(['node', 'cli.js', '--file', 'input.ts']).files).toEqual(['input.ts']);
     });
 
     it('reads the file path from -f', () => {
-        expect(parseArgs(['node', 'cli.js', '-f', 'input.ts']).file).toBe('input.ts');
+        expect(parseArgs(['node', 'cli.js', '-f', 'input.ts']).files).toEqual(['input.ts']);
     });
 
     it('reads the file path from --file=value', () => {
-        expect(parseArgs(['node', 'cli.js', '--file=input.ts']).file).toBe('input.ts');
+        expect(parseArgs(['node', 'cli.js', '--file=input.ts']).files).toEqual(['input.ts']);
+    });
+
+    it('collects every file path in the order they are given', () => {
+        expect(parseArgs(['node', 'cli.js', '--file', 'first.ts', '--file', 'second.ts']).files).toEqual(['first.ts', 'second.ts']);
+    });
+
+    it('collects the file paths of the mixed forms of the option', () => {
+        expect(parseArgs(['node', 'cli.js', '-f', 'first.ts', '--file=second.ts']).files).toEqual(['first.ts', 'second.ts']);
     });
 
     it('reads the output path from --output', () => {
@@ -165,6 +176,14 @@ describe('parseArgs', () => {
         expect(parseArgs(['node', 'cli.js', '--check']).check).toBe(true);
     });
 
+    it('enables the write mode with --write', () => {
+        expect(parseArgs(['node', 'cli.js', '--write']).write).toBe(true);
+    });
+
+    it('enables the diff mode with --diff', () => {
+        expect(parseArgs(['node', 'cli.js', '--diff']).diff).toBe(true);
+    });
+
     it('enables the help mode with --help', () => {
         expect(parseArgs(['node', 'cli.js', '--help']).help).toBe(true);
     });
@@ -212,7 +231,7 @@ describe('parseArgs', () => {
     it('parses several options at once', () => {
         const args = parseArgs(['node', 'cli.js', '-f', 'input.ts', '-o', 'output.ts', '-s', ':,=', '--check']);
 
-        expect(args.file).toBe('input.ts');
+        expect(args.files).toEqual(['input.ts']);
         expect(args.output).toBe('output.ts');
         expect(args.symbols).toEqual([':', '=']);
         expect(args.check).toBe(true);
@@ -238,6 +257,40 @@ describe('validatePath', () => {
 describe('readPackageVersion', () => {
     it('returns the version of the package', () => {
         expect(readPackageVersion()).toMatch(/^\d+\.\d+\.\d+/);
+    });
+});
+
+describe('renderDiff', () => {
+    it('renders nothing when the two texts are identical', () => {
+        expect(renderDiff('a = 1\n', 'a = 1\n')).toEqual([]);
+    });
+
+    it('renders the header and the hunk of a changed line', () => {
+        expect(renderDiff('const cc = 1;\nconst d = 2;\n', 'const cc = 1;\nconst d  = 2;\n')).toEqual(['--- input', '+++ aligned', '@@ -1,2 +1,2 @@', ' const cc = 1;', '-const d = 2;', '+const d  = 2;']);
+    });
+
+    it('groups consecutive changed lines into a single hunk', () => {
+        expect(renderDiff('aa = 1\nb = 2\nc = 3\n', 'aa = 1\nb  = 2\nc  = 3\n')).toEqual(['--- input', '+++ aligned', '@@ -1,3 +1,3 @@', ' aa = 1', '-b = 2', '+b  = 2', '-c = 3', '+c  = 3']);
+    });
+
+    it('separates two distant changed lines into two hunks', () => {
+        expect(renderDiff('aa = 1\nb = 2\n\nc = 3\n\ndd = 4\ne = 5\n', 'aa = 1\nb  = 2\n\nc = 3\n\ndd = 4\ne  = 5\n')).toEqual([
+            '--- input',
+            '+++ aligned',
+            '@@ -1,3 +1,3 @@',
+            ' aa = 1',
+            '-b = 2',
+            '+b  = 2',
+            ' ',
+            '@@ -6,2 +6,2 @@',
+            ' dd = 4',
+            '-e = 5',
+            '+e  = 5',
+        ]);
+    });
+
+    it('merges two hunks that share a context line', () => {
+        expect(renderDiff('aa = 1\nb = 2\n\nc = 3\ndd = 4\n', 'aa = 1\nb  = 2\n\nc  = 3\ndd = 4\n')).toEqual(['--- input', '+++ aligned', '@@ -1,5 +1,5 @@', ' aa = 1', '-b = 2', '+b  = 2', ' ', '-c = 3', '+c  = 3', ' dd = 4']);
     });
 });
 
@@ -323,6 +376,146 @@ describe('runCli', () => {
             expect(streams.stdoutText()).toBe('');
             expect(await readFile(join(directory, 'output.ts'), 'utf-8')).toBe('a  = 1\nbb = 2\n');
         });
+    });
+
+    it('writes the aligned code back into the file it read with --write', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'input.ts'), 'a = 1\nbb = 2\n', 'utf-8');
+            const streams = createStreams();
+
+            const code = await runCli(['node', 'cli.js', '--file', 'input.ts', '--write'], streams);
+
+            expect(code).toBe(0);
+            expect(streams.stdoutText()).toBe('');
+            expect(await readFile(join(directory, 'input.ts'), 'utf-8')).toBe('a  = 1\nbb = 2\n');
+        });
+    });
+
+    it('writes every file back into place with --write and several files', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'first.ts'), 'a = 1\nbb = 2\n', 'utf-8');
+            await writeFile(join(directory, 'second.ts'), 'c = 3\ndd = 4\n', 'utf-8');
+            const streams = createStreams();
+
+            const code = await runCli(['node', 'cli.js', '--file', 'first.ts', '--file', 'second.ts', '--write'], streams);
+
+            expect(code).toBe(0);
+            expect(streams.stdoutText()).toBe('');
+            expect(await readFile(join(directory, 'first.ts'), 'utf-8')).toBe('a  = 1\nbb = 2\n');
+            expect(await readFile(join(directory, 'second.ts'), 'utf-8')).toBe('c  = 3\ndd = 4\n');
+        });
+    });
+
+    it('reports an error for --write without --file', async () => {
+        const streams = createStreams('a = 1');
+
+        const code = await runCli(['node', 'cli.js', '--write'], streams);
+
+        expect(code).toBe(1);
+        expect(streams.stdoutText()).toBe('');
+        expect(streams.stderrText()).toBe('Error: --write requires --file\n');
+    });
+
+    it('reports an error for --write together with --output', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'input.ts'), 'a = 1\nbb = 2\n', 'utf-8');
+            const streams = createStreams();
+
+            const code = await runCli(['node', 'cli.js', '--file', 'input.ts', '--write', '--output', 'output.ts'], streams);
+
+            expect(code).toBe(1);
+            expect(streams.stdoutText()).toBe('');
+            expect(streams.stderrText()).toBe('Error: --write cannot be combined with --output\n');
+            expect(await readFile(join(directory, 'input.ts'), 'utf-8')).toBe('a = 1\nbb = 2\n');
+        });
+    });
+
+    it('reads every file given with --file', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'first.ts'), 'a = 1\nbb = 2\n', 'utf-8');
+            await writeFile(join(directory, 'second.ts'), 'c = 3\ndd = 4\n', 'utf-8');
+            const streams = createStreams();
+
+            const code = await runCli(['node', 'cli.js', '--file', 'first.ts', '--file', 'second.ts'], streams);
+
+            expect(code).toBe(0);
+            expect(streams.stdoutText()).toBe('a  = 1\nbb = 2\n\nc  = 3\ndd = 4\n');
+        });
+    });
+
+    it('reports an error for --output with several files', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'first.ts'), 'a = 1\n', 'utf-8');
+            await writeFile(join(directory, 'second.ts'), 'c = 3\n', 'utf-8');
+            const streams = createStreams();
+
+            const code = await runCli(['node', 'cli.js', '--file', 'first.ts', '--file', 'second.ts', '--output', 'output.ts'], streams);
+
+            expect(code).toBe(1);
+            expect(streams.stdoutText()).toBe('');
+            expect(streams.stderrText()).toBe('Error: --output cannot be used with several files\n');
+        });
+    });
+
+    it('returns 1 for --check when one of several files is not aligned', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'first.ts'), 'a  = 1\nbb = 2\n', 'utf-8');
+            await writeFile(join(directory, 'second.ts'), 'c = 3\ndd = 4\n', 'utf-8');
+            const streams = createStreams();
+
+            const code = await runCli(['node', 'cli.js', '--file', 'first.ts', '--file', 'second.ts', '--check'], streams);
+
+            expect(code).toBe(1);
+            expect(streams.stdoutText()).toBe('');
+            expect(streams.stderrText()).toContain('second.ts');
+            expect(streams.stderrText()).not.toContain('first.ts');
+        });
+    });
+
+    it('prints a unified diff for --diff', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'input.ts'), 'const cc = 1;\nconst cc = 2;\nconst cc = 3;\nconst d = 4;\n', 'utf-8');
+            const streams = createStreams();
+
+            const code = await runCli(['node', 'cli.js', '--file', 'input.ts', '--diff'], streams);
+
+            expect(code).toBe(0);
+            expect(streams.stdoutText()).toBe(['--- input', '+++ aligned', '@@ -3,2 +3,2 @@', ' const cc = 3;', '-const d = 4;', '+const d  = 4;', ''].join('\n'));
+        });
+    });
+
+    it('prints nothing for --diff when the input is already aligned', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'input.ts'), 'a  = 1\nbb = 2\n', 'utf-8');
+            const streams = createStreams();
+
+            const code = await runCli(['node', 'cli.js', '--file', 'input.ts', '--diff'], streams);
+
+            expect(code).toBe(0);
+            expect(streams.stdoutText()).toBe('');
+        });
+    });
+
+    it('never writes a file for --diff', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'input.ts'), 'a = 1\nbb = 2\n', 'utf-8');
+            const streams = createStreams();
+
+            const code = await runCli(['node', 'cli.js', '--file', 'input.ts', '--diff'], streams);
+
+            expect(code).toBe(0);
+            expect(await readFile(join(directory, 'input.ts'), 'utf-8')).toBe('a = 1\nbb = 2\n');
+        });
+    });
+
+    it('reports an error for --diff together with --check', async () => {
+        const streams = createStreams('a = 1');
+
+        const code = await runCli(['node', 'cli.js', '--diff', '--check'], streams);
+
+        expect(code).toBe(1);
+        expect(streams.stdoutText()).toBe('');
+        expect(streams.stderrText()).toBe('Error: --diff cannot be combined with --check\n');
     });
 
     it('writes an error to stderr and returns 1 for an unknown option', async () => {

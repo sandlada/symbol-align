@@ -97,11 +97,17 @@ cat file.ts | npx symbol-align
 # Align = signs — file mode
 npx symbol-align --file input.ts
 
+# Align = signs — rewrite the file in place
+npx symbol-align --file input.ts --write
+
 # Align : and = signs
 npx symbol-align --file input.ts --symbols =,:
 
 # Align => arrows
 cat file.ts | npx symbol-align --symbols '=>'
+
+# Show what would change
+npx symbol-align --file input.ts --diff
 
 # Use the conventions of a language
 npx symbol-align --file main.py --language python
@@ -112,9 +118,10 @@ npx symbol-align --file input.ts --check
 
 Any symbol can be aligned — just list it with `--symbols`.
 
-Use `--file` / `-f` for direct file input, or pipe via stdin for streaming use.
-Use `--output` / `-o` to write to a file instead of stdout.
-Use `--language` / `-l` to pick a language profile and `--stdin-filepath` / `-t`
+Use `--file` / `-f` for direct file input (repeat it to align several files),
+or pipe via stdin for streaming use. Use `--output` / `-o` to write to a file
+instead of stdout and `--write` to rewrite the input file. Use
+`--language` / `-l` to pick a language profile and `--stdin-filepath` / `-t`
 to let the CLI detect the language from the path of the piped file.
 
 ### API
@@ -396,14 +403,16 @@ const g = (xyz) => xyz;
 
 ```
 Usage: symbol-align [options] [< file]
-       symbol-align [options] --file <path>
+       symbol-align [options] --file <path> [--file <path> ...]
 
 Vertically align punctuation symbols in a code snippet.
-Reads from stdin or a file and writes to stdout.
+Reads from stdin or from one or more files and writes to stdout.
 
 Options:
-  -f, --file <path>         Read from file instead of stdin
+  -f, --file <path>         Read from file instead of stdin (may be repeated)
   -o, --output <path>       Write to file instead of stdout
+      --write               Write the aligned code back into the file that was read
+      --diff                Print a unified diff of the input and the aligned result
   -s, --symbols <list>      Comma-separated symbols to align
   -l, --language <id>       Language profile to use
   -t, --stdin-filepath <p>  Path of the piped file (used for language detection)
@@ -413,11 +422,19 @@ Options:
   -v, --version             Print the version
   -h, --help                Show this help
 
+Notes:
+  --write requires --file and cannot be combined with --output
+  --write only inserts spaces, the line endings of the file are kept
+  --output cannot be used with several files
+  --diff cannot be combined with --check and never writes a file
+
 Examples:
   echo "a = 1\nbb = 2" | symbol-align
   cat file.ts | symbol-align --symbols =,:
   symbol-align --file input.ts
   symbol-align -f input.ts -o output.ts
+  symbol-align -f input.ts --write
+  symbol-align -f input.ts -f other.ts --diff
   symbol-align -f input.ts --language python
   symbol-align -f input.ts --config symbol-align.config.json
 ```
@@ -562,6 +579,11 @@ writing anything, so it can guard a repository:
   still be aligned
 - Only the **first** occurrence of a symbol per line is used for alignment
 - The aligner never removes spaces, so it cannot un-align a snippet
+- The columns are counted in characters, not in grapheme clusters. A character
+  that needs more than one code unit (an emoji for example) before the symbol
+  shifts the visual column a little.
+- Tab indented code lines up best with `scope: 'indent'`, because the `block`
+  scope mixes the nesting levels of a file
 
 ## Repository structure
 

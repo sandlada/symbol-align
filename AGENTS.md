@@ -105,6 +105,7 @@ Concretely:
 │   │   │   ├── invariants.test.ts # Property-style invariant tests over every language
 │   │   │   └── fixtures.test.ts  # Fixture-driven alignment tests
 │   │   ├── package.json       # Package manifest (published)
+│   │   ├── schemas/            # JSON schema of symbol-align.config.json
 │   │   ├── tsconfig.json      # Build config (emits to dist/)
 │   │   ├── tsconfig.test.json # Type-check config (src incl. tests, no emit)
 │   │   └── vitest.config.ts   # Package-level test config

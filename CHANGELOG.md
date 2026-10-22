@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`--check` CLI flag** that reports misalignment and exits with code `1`
   without writing any output.
 - **`--version` CLI flag.**
+- **`--write`** rewrites the file that was read instead of writing to stdout,
+  and **`--file`** may be given more than once so that several files are
+  aligned in one run.
+- **`--diff`** prints a unified diff of the input and the aligned result, which
+  is what a pre-commit hook needs to show what would change.
 - A `generic` profile that recognises `'`, `"` and `` ` `` strings and `//` /
   `/* */` comments. It is the default when no language is given.
 - **A project configuration file** (`symbol-align.config.json`) with per file

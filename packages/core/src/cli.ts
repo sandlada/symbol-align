@@ -38,8 +38,12 @@ export interface CliArgs {
     readonly help: boolean;
     /** Print the package version. */
     readonly version: boolean;
-    /** File to read instead of standard input. */
-    readonly file?: string;
+    /** Write the aligned code back into the file it was read from. */
+    readonly write: boolean;
+    /** Print a unified diff of the input and the aligned result. */
+    readonly diff: boolean;
+    /** The files to read — empty when the standard input is read. */
+    readonly files: readonly string[];
     /** File to write instead of standard output. */
     readonly output?: string;
 }
@@ -60,14 +64,16 @@ export interface CliStreams {
 
 /** The help text printed by `--help`. */
 export const usage = `Usage: symbol-align [options] [< file]
-       symbol-align [options] --file <path>
+       symbol-align [options] --file <path> [--file <path> ...]
 
 Vertically align punctuation symbols in a code snippet.
-Reads from stdin or a file and writes to stdout.
+Reads from stdin or from one or more files and writes to stdout.
 
 Options:
-  -f, --file <path>         Read from file instead of stdin
+  -f, --file <path>         Read from file instead of stdin (may be repeated)
   -o, --output <path>       Write to file instead of stdout
+      --write               Write the aligned code back into the file that was read
+      --diff                Print a unified diff of the input and the aligned result
   -s, --symbols <list>      Comma-separated symbols to align
   -l, --language <id>       Language profile to use
   -t, --stdin-filepath <p>  Path of the piped file (used for language detection)
@@ -77,11 +83,19 @@ Options:
   -v, --version             Print the version
   -h, --help                Show this help
 
+Notes:
+  --write requires --file and cannot be combined with --output
+  --write only inserts spaces, the line endings of the file are kept
+  --output cannot be used with several files
+  --diff cannot be combined with --check and never writes a file
+
 Examples:
   echo "a = 1\\nbb = 2" | symbol-align
   cat file.ts | symbol-align --symbols =,:
   symbol-align --file input.ts
   symbol-align -f input.ts -o output.ts
+  symbol-align -f input.ts --write
+  symbol-align -f input.ts -f other.ts --diff
   symbol-align -f input.ts --language python
   symbol-align -f input.ts --config symbol-align.config.json
 `;
@@ -191,7 +205,7 @@ const applyOption =
     (args: CliArgs): CliArgs => {
         switch (name) {
             case 'file':
-                return { ...args, file: value };
+                return { ...args, files: [...args.files, value] };
             case 'output':
                 return { ...args, output: value };
             case 'symbols':
@@ -210,8 +224,11 @@ const applyOption =
 /** The arguments of a command line without any option. */
 const defaultArgs: CliArgs = {
     check: false,
+    diff: false,
+    files: [],
     help: false,
     version: false,
+    write: false,
 };
 
 /**
@@ -238,6 +255,14 @@ const parseTokens = (tokens: readonly string[], args: CliArgs): CliArgs => {
 
     if (token === '--check') {
         return parseTokens(rest, { ...args, check: true });
+    }
+
+    if (token === '--write') {
+        return parseTokens(rest, { ...args, write: true });
+    }
+
+    if (token === '--diff') {
+        return parseTokens(rest, { ...args, diff: true });
     }
 
     const option = matchOption(token);
@@ -268,6 +293,123 @@ const parseTokens = (tokens: readonly string[], args: CliArgs): CliArgs => {
 export const parseArgs = (argv: readonly string[]): CliArgs => parseTokens(argv.slice(2), defaultArgs);
 
 /* -------------------------------------------------------------------------- */
+/* Diff                                                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Splits a text into its lines.
+ *
+ * The empty tail behind a trailing newline is not a line of the text.
+ */
+const toLines = (text: string): readonly string[] => {
+    const lines = text.split('\n');
+
+    return lines.length > 1 && lines[lines.length - 1] === '' ? lines.slice(0, -1) : lines;
+};
+
+/** The indices of the lines that differ between the two texts. */
+const changedLineIndices = (input: readonly string[], result: readonly string[]): readonly number[] => input.map((line, index) => (line === result[index] ? -1 : index)).filter((index) => index >= 0);
+
+/** A hunk of a unified diff — an inclusive range of lines. */
+interface DiffHunk {
+    /** The zero-based index of the first line of the hunk. */
+    readonly start: number;
+    /** The zero-based index of the last line of the hunk. */
+    readonly end: number;
+}
+
+/** Groups the given indices into runs of consecutive indices. */
+const groupConsecutive = (indices: readonly number[]): readonly (readonly number[])[] => {
+    const groups: number[][] = [];
+
+    indices.forEach((index) => {
+        const current = groups[groups.length - 1];
+
+        if (current !== undefined && current[current.length - 1] + 1 === index) {
+            current.push(index);
+            return;
+        }
+
+        groups.push([index]);
+    });
+
+    return groups;
+};
+
+/**
+ * Merges the hunks that overlap or touch each other.
+ *
+ * Two hunks that share a context line belong to the same hunk — the lines
+ * between them are never printed twice.
+ */
+const mergeHunks = (hunks: readonly DiffHunk[]): readonly DiffHunk[] => {
+    const merged: DiffHunk[] = [];
+
+    hunks.forEach((hunk) => {
+        const current = merged[merged.length - 1];
+
+        if (current === undefined || hunk.start > current.end + 1) {
+            merged.push(hunk);
+            return;
+        }
+
+        merged[merged.length - 1] = { start: current.start, end: Math.max(current.end, hunk.end) };
+    });
+
+    return merged;
+};
+
+/** The lines of a hunk — the context lines, the removed and the added lines. */
+const hunkLines =
+    (input: readonly string[]) =>
+    (result: readonly string[]) =>
+    (start: number, end: number): readonly string[] =>
+        Array.from({ length: end - start + 1 }, (_, offset) => {
+            const index = start + offset;
+            const before = input[index] ?? '';
+            const after = result[index] ?? '';
+
+            return before === after ? [` ${before}`] : [`-${before}`, `+${after}`];
+        }).flat();
+
+/**
+ * Renders the unified diff between the input and the aligned result.
+ *
+ * The aligner only inserts spaces, so both texts have the same number of
+ * lines and a line keeps its number on both sides of the diff. A hunk covers
+ * the changed lines plus one line of context before and after them.
+ *
+ * Nothing is rendered when the two texts are identical.
+ */
+export const renderDiff = (input: string, result: string): readonly string[] => {
+    const inputLines = toLines(input);
+    const resultLines = toLines(result);
+    const changed = changedLineIndices(inputLines, resultLines);
+
+    if (changed.length === 0) {
+        return [];
+    }
+
+    const hunks = mergeHunks(
+        groupConsecutive(changed).map((group) => ({
+            start: Math.max(0, group[0] - 1),
+            end: Math.min(inputLines.length - 1, group[group.length - 1] + 1),
+        })),
+    );
+
+    return [
+        '--- input',
+        '+++ aligned',
+        ...hunks.flatMap((hunk) => {
+            const count = hunk.end - hunk.start + 1;
+            const start = hunk.start + 1;
+
+            return [`@@ -${start},${count} +${start},${count} @@`, ...hunkLines(inputLines)(resultLines)(hunk.start, hunk.end)];
+        }),
+    ];
+};
+
+/* -------------------------------------------------------------------------- */
 /* Runtime                                                                      */
 /* -------------------------------------------------------------------------- */
 
@@ -282,7 +424,7 @@ const errorMessage = (error: unknown): string => (error instanceof Error ? error
  *
  * The file that is read wins over the path of the piped file.
  */
-const targetPathOf = (args: CliArgs): string | undefined => args.file ?? args.stdinFilepath;
+const targetPathOf = (args: CliArgs, filePath: string | undefined): string | undefined => filePath ?? args.stdinFilepath;
 
 /**
  * Loads the project configuration.
@@ -307,8 +449,9 @@ const loadConfiguration = (args: CliArgs): SymbolAlignConfig | undefined => {
  */
 const buildOptions =
     (args: CliArgs) =>
+    (filePath: string | undefined) =>
     (config: SymbolAlignConfig | undefined): AlignOptions => {
-        const base = config === undefined ? {} : resolveConfig(config)(targetPathOf(args));
+        const base = config === undefined ? {} : resolveConfig(config)(targetPathOf(args, filePath));
         const detected = args.stdinFilepath === undefined ? undefined : detectLanguage(args.stdinFilepath);
         const language = args.language ?? base.language ?? detected;
 
@@ -322,6 +465,113 @@ const buildOptions =
 
 /** Adds exactly one trailing newline to a non empty text. */
 const withTrailingNewline = (code: string): string => (code.length === 0 ? code : `${code.replace(/\n+$/, '')}\n`);
+
+/** A single input of a run — the standard input or one of the files. */
+interface CliInput {
+    /** The path of the file — `undefined` for the standard input. */
+    readonly path: string | undefined;
+    /** The content that was read. */
+    readonly code: string;
+}
+
+/** The outcome of the alignment of a single input. */
+interface CliResult extends CliInput {
+    /** The aligned content. */
+    readonly aligned: string;
+    /** The number of lines that were modified. */
+    readonly changes: number;
+}
+
+/**
+ * Rejects the option combinations that cannot be executed.
+ *
+ * `--write` needs a file to write into, `--output` needs a single input and
+ * `--diff` reports what would change instead of checking it.
+ */
+const validateArgs = (args: CliArgs): void => {
+    if (args.diff && args.check) {
+        throw new Error('--diff cannot be combined with --check');
+    }
+
+    if (args.write && args.output !== undefined) {
+        throw new Error('--write cannot be combined with --output');
+    }
+
+    if (args.write && args.files.length === 0) {
+        throw new Error('--write requires --file');
+    }
+
+    if (args.output !== undefined && args.files.length > 1) {
+        throw new Error('--output cannot be used with several files');
+    }
+};
+
+/** Reads the inputs of the run — the standard input or the given files. */
+const readInputs =
+    (args: CliArgs) =>
+    async (streams: CliStreams): Promise<readonly CliInput[]> => {
+        if (args.files.length === 0) {
+            return [{ path: undefined, code: await streams.stdin() }];
+        }
+
+        return Promise.all(args.files.map(async (path) => ({ path, code: await readFile(validatePath(path), 'utf-8') })));
+    };
+
+/** Aligns every input of the run. */
+const alignInputs =
+    (args: CliArgs) =>
+    (config: SymbolAlignConfig | undefined) =>
+    (inputs: readonly CliInput[]): readonly CliResult[] =>
+        inputs.map((input) => {
+            const result = align(input.code)(buildOptions(args)(input.path)(config));
+
+            return { ...input, aligned: result.code, changes: result.changes };
+        });
+
+/** Writes the aligned content back into the file it was read from. */
+const writeInPlace = (result: CliResult): Promise<void> => {
+    if (result.path === undefined) {
+        throw new Error('--write requires --file');
+    }
+
+    return writeFile(validatePath(result.path), result.aligned, 'utf-8');
+};
+
+/** The aligned content of every result, separated by a newline. */
+const toStandardOutput = (results: readonly CliResult[]): string => results.map((result) => withTrailingNewline(result.aligned)).join('\n');
+
+/** The unified diff of every result. */
+const toDiff = (results: readonly CliResult[]): string => {
+    const diffs = results.map((result) => renderDiff(result.code, result.aligned)).filter((diff) => diff.length > 0);
+
+    return diffs.length === 0 ? '' : `${diffs.map((diff) => diff.join('\n')).join('\n')}\n`;
+};
+
+/** The message that reports an input that is not aligned. */
+const checkMessage = (label: string | undefined, changes: number): string => (label === undefined ? `Input is not aligned: ${changes} line(s) would change.\n` : `${label}: not aligned, ${changes} line(s) would change.\n`);
+
+/**
+ * Reports the inputs that are not aligned.
+ *
+ * The exit code is 1 as soon as one of the inputs would change.
+ */
+const reportCheck =
+    (results: readonly CliResult[]) =>
+    (streams: CliStreams): number => {
+        const usePath = results.length > 1;
+        let failed = false;
+
+        results.forEach((result) => {
+            if (result.changes === 0) {
+                return;
+            }
+
+            failed = true;
+            streams.stderr(checkMessage(usePath ? result.path : undefined, result.changes));
+        });
+
+        return failed ? 1 : 0;
+    };
 
 /** Runs the CLI for the given arguments. */
 const execute =
@@ -337,26 +587,33 @@ const execute =
             return 0;
         }
 
-        const code = args.file === undefined ? await streams.stdin() : await readFile(validatePath(args.file), 'utf-8');
-        const result = align(code)(buildOptions(args)(loadConfiguration(args)));
+        validateArgs(args);
+
+        const results = alignInputs(args)(loadConfiguration(args))(await readInputs(args)(streams));
+
+        if (args.diff) {
+            streams.stdout(toDiff(results));
+            return 0;
+        }
 
         if (args.check) {
-            if (result.changes > 0) {
-                streams.stderr(`Input is not aligned: ${result.changes} line(s) would change.\n`);
-                return 1;
-            }
+            return reportCheck(results)(streams);
+        }
+
+        if (args.write) {
+            await Promise.all(results.map(writeInPlace));
+            return 0;
+        }
+
+        if (args.output !== undefined) {
+            const [result] = results;
+
+            await writeFile(validatePath(args.output), withTrailingNewline(result?.aligned ?? ''), 'utf-8');
 
             return 0;
         }
 
-        const output = withTrailingNewline(result.code);
-
-        if (args.output === undefined) {
-            streams.stdout(output);
-            return 0;
-        }
-
-        await writeFile(validatePath(args.output), output, 'utf-8');
+        streams.stdout(toStandardOutput(results));
 
         return 0;
     };
