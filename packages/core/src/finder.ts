@@ -1,149 +1,151 @@
-const firstCharMapCache = new Map<string, Map<string, string[]>>();
+/**
+ * Symbol finder for `@sandlada/symbol-align`.
+ *
+ * The finder never parses code — it only looks at the code regions reported by
+ * the scanner and locates the requested symbols inside them. A symbol is
+ * rejected when it is only a fragment of a longer operator (`=` inside `=>`,
+ * `==` or `:=`) or when it violates a word boundary.
+ */
+
+import type { AlignSymbol, CodeRegion, LineComment } from './types.js';
+
+/** Options accepted by {@link findSymbolPositions}. */
+export interface FindOptions {
+    /** Code regions of the line (real code only). */
+    readonly regions: readonly CodeRegion[];
+    /** Symbols to look for. */
+    readonly symbols: readonly AlignSymbol[];
+    /** Operator tokens of the language. */
+    readonly operators?: readonly string[];
+    /** The trailing line comment of the line, if any. */
+    readonly comment?: LineComment;
+}
+
+/** Whether `character` is a letter, a digit or an underscore. */
+const isWordChar = (character: string): boolean => (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') || (character >= '0' && character <= '9') || character === '_';
+
+/** Whether `symbol` consists of word characters only. */
+const isWordSymbol = (symbol: string): boolean => symbol.length > 0 && [...symbol].every(isWordChar);
+
+/** Whether `character` is a punctuation-like operator character. */
+const isOperatorChar = (character: string): boolean => !isWordChar(character) && character.trim().length > 0;
+
+/** Whether `symbol` consists of operator characters only. */
+const isOperatorSymbol = (symbol: string): boolean => symbol.length > 0 && [...symbol].every(isOperatorChar);
+
+/** Whether the range `[start, end)` lies completely inside one of the regions. */
+const isInsideRegion = (regions: readonly CodeRegion[], start: number, end: number): boolean => regions.some((region) => start >= region.start && end <= region.end);
 
 /**
- * Find positions of target symbols in a line of code,
- * skipping symbols inside strings and comments.
+ * Marks every column that is covered by an operator token.
+ *
+ * `coverage[column]` holds the length of the longest operator that covers that
+ * column. A single character operator never covers more than itself, so it is
+ * skipped — only multi character operators can invalidate a match.
  */
-export function findSymbolPositions(line: string, symbols: string[]): Map<string, number[]> {
-  const result = new Map<string, number[]>();
-  for (const sym of symbols) {
-    result.set(sym, []);
-  }
+const operatorCoverage = (line: string, regions: readonly CodeRegion[], operators: readonly string[]): Uint8Array => {
+    const coverage = new Uint8Array(line.length);
+    const multiCharOperators = operators.filter((operator) => operator.length > 1);
 
-  if (symbols.length === 0) return result;
+    if (multiCharOperators.length === 0) {
+        return coverage;
+    }
 
-  // Build a map from first character to candidate symbols
-  // Sort longer symbols first so e.g. '=>' matches before '='
-  // Cache the map so we don't rebuild it on every line
-  const cacheKey = symbols.join('\0');
-  let firstCharMap = firstCharMapCache.get(cacheKey);
-  if (firstCharMap) {
-    // Update LRU: re-insert so it becomes the most recently used
-    firstCharMapCache.delete(cacheKey);
-    firstCharMapCache.set(cacheKey, firstCharMap);
-  } else {
-    // Sort longer symbols first so e.g. '=>' matches before '='
-    // Secondary sort alphabetically ensures identical symbol sets yield identical cache keys
-    const sortedSymbols = [...symbols].sort((a, b) => {
-      if (b.length !== a.length) return b.length - a.length;
-      return a.localeCompare(b);
+    const byFirstCharacter = new Map<string, string[]>();
+    multiCharOperators.forEach((operator) => {
+        const first = operator[0];
+        byFirstCharacter.set(first, [...(byFirstCharacter.get(first) ?? []), operator]);
     });
 
-    // Check if we already have this map under a sorted key
-    const sortedCacheKey = sortedSymbols.join('\0');
-    firstCharMap = firstCharMapCache.get(sortedCacheKey);
-
-    if (!firstCharMap) {
-      firstCharMap = new Map<string, string[]>();
-      for (const sym of sortedSymbols) {
-        const fc = sym[0];
-        if (!firstCharMap.has(fc)) firstCharMap.set(fc, []);
-        firstCharMap.get(fc)!.push(sym);
-      }
-      firstCharMapCache.set(sortedCacheKey, firstCharMap);
-    }
-
-    // Store it under the original key too for O(1) fast path
-    // This implicitly makes it the most recently used
-    firstCharMapCache.set(cacheKey, firstCharMap);
-
-    // Evict oldest items if limit exceeded
-    // (a single miss could add 2 keys, so we check using a while loop)
-    while (firstCharMapCache.size > 100) {
-      const firstKey = firstCharMapCache.keys().next().value;
-      if (firstKey !== undefined) {
-        firstCharMapCache.delete(firstKey);
-      }
-    }
-  }
-
-  let i = 0;
-  let inSingleString = false;
-  let inDoubleString = false;
-  let inBacktickString = false;
-  let inBlockComment = false;
-  const len = line.length;
-
-  while (i < len) {
-    const ch = line[i];
-
-    // === Exit states for strings and comments ===
-    if (inSingleString) {
-      if (ch === "'" && (i === 0 || line[i - 1] !== '\\')) inSingleString = false;
-      i++;
-      continue;
-    }
-    if (inDoubleString) {
-      if (ch === '"' && (i === 0 || line[i - 1] !== '\\')) inDoubleString = false;
-      i++;
-      continue;
-    }
-    if (inBacktickString) {
-      if (ch === '`' && (i === 0 || line[i - 1] !== '\\')) inBacktickString = false;
-      i++;
-      continue;
-    }
-    if (inBlockComment) {
-      if (ch === '*' && i + 1 < len && line[i + 1] === '/') {
-        inBlockComment = false;
-        i += 2;
-      } else {
-        i++;
-      }
-      continue;
-    }
-
-    // === Outside strings/comments ===
-
-    // Line comment (//) — also matches as a symbol if present
-    if (ch === '/' && i + 1 < len && line[i + 1] === '/') {
-      if (symbols.includes('//')) {
-        result.get('//')!.push(i);
-      }
-      break; // rest of line is a comment
-    }
-
-    // Block comment start (/*)
-    if (ch === '/' && i + 1 < len && line[i + 1] === '*') {
-      inBlockComment = true;
-      i += 2;
-      continue;
-    }
-
-    // String starts
-    if (ch === "'") {
-      inSingleString = true;
-      i++;
-      continue;
-    }
-    if (ch === '"') {
-      inDoubleString = true;
-      i++;
-      continue;
-    }
-    if (ch === '`') {
-      inBacktickString = true;
-      i++;
-      continue;
-    }
-
-    // Check for target symbols
-    const candidates = firstCharMap.get(ch);
-    if (candidates) {
-      let matched = false;
-      for (const sym of candidates) {
-        if (line.slice(i, i + sym.length) === sym) {
-          result.get(sym)!.push(i);
-          i += sym.length;
-          matched = true;
-          break;
+    regions.forEach((region) => {
+        for (let index = region.start; index < region.end; index += 1) {
+            const candidates = byFirstCharacter.get(line[index]);
+            if (candidates === undefined) {
+                continue;
+            }
+            candidates.forEach((operator) => {
+                if (index + operator.length > region.end || !line.startsWith(operator, index)) {
+                    return;
+                }
+                for (let column = index; column < index + operator.length; column += 1) {
+                    coverage[column] = Math.max(coverage[column], operator.length);
+                }
+            });
         }
-      }
-      if (matched) continue;
+    });
+
+    return coverage;
+};
+
+/** Length of the longest operator that covers the range `[start, end)`. */
+const coveredBy = (coverage: Uint8Array, start: number, end: number): number => {
+    let longest = 0;
+    for (let column = start; column < end; column += 1) {
+        longest = Math.max(longest, coverage[column]);
     }
+    return longest;
+};
 
-    i++;
-  }
+/**
+ * Finds the positions of the requested symbols inside the code regions of a line.
+ *
+ * @param line - The line of code to search.
+ * @returns A function that takes the find options and returns the symbol positions.
+ */
+export const findSymbolPositions =
+    (line: string) =>
+    (options: FindOptions): ReadonlyMap<string, readonly number[]> => {
+        const positions = new Map<string, number[]>();
 
-  return result;
-}
+        options.symbols.forEach((symbol) => {
+            if (!positions.has(symbol)) positions.set(symbol, []);
+        });
+
+        if (options.symbols.length === 0) {
+            return positions;
+        }
+
+        const candidates = [...options.symbols].sort((left, right) => right.length - left.length);
+        const coverage = operatorCoverage(line, options.regions, options.operators ?? []);
+        let index = 0;
+
+        while (index < line.length) {
+            const symbol = candidates.find((candidate) => candidate.length > 0 && line.startsWith(candidate, index));
+            if (symbol === undefined) {
+                index += 1;
+                continue;
+            }
+
+            const start = index;
+            const end = index + symbol.length;
+
+            if (!isInsideRegion(options.regions, start, end)) {
+                index += 1;
+                continue;
+            }
+
+            if (isOperatorSymbol(symbol) && coveredBy(coverage, start, end) > symbol.length) {
+                index = end;
+                continue;
+            }
+
+            if (isWordSymbol(symbol)) {
+                const before = start > 0 ? line[start - 1] : '';
+                const after = end < line.length ? line[end] : '';
+                if (isWordChar(before) || isWordChar(after)) {
+                    index = end;
+                    continue;
+                }
+            }
+
+            positions.get(symbol)?.push(start);
+            index = end;
+        }
+
+        const { comment } = options;
+        if (comment !== undefined && positions.has(comment.marker)) {
+            positions.get(comment.marker)?.push(comment.column);
+        }
+
+        return positions;
+    };

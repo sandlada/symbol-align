@@ -1,0 +1,404 @@
+/**
+ * Language profiles for `@sandlada/symbol-align`.
+ *
+ * A profile describes everything the scanner needs to know about a language:
+ * comment markers, string delimiters and the operator tokens that must never
+ * be split apart. All data is static — no profile is mutated at runtime.
+ */
+
+import type { LanguageId, LanguageProfile, StringDelimiter } from './types.js';
+
+/* -------------------------------------------------------------------------- */
+/* Shared string delimiters                                                   */
+/* -------------------------------------------------------------------------- */
+
+const singleQuote: StringDelimiter = { open: "'", close: "'", escape: 'backslash', multiline: false };
+const doubleQuote: StringDelimiter = { open: '"', close: '"', escape: 'backslash', multiline: false };
+const templateLiteral: StringDelimiter = { open: '`', close: '`', escape: 'backslash', multiline: true };
+const tripleSingleQuote: StringDelimiter = { open: "'''", close: "'''", escape: 'backslash', multiline: true };
+const tripleDoubleQuote: StringDelimiter = { open: '"""', close: '"""', escape: 'backslash', multiline: true };
+const goRawString: StringDelimiter = { open: '`', close: '`', escape: 'none', multiline: true };
+const csharpVerbatimString: StringDelimiter = { open: '@"', close: '"', escape: 'doubled', multiline: true };
+const csharpRawString: StringDelimiter = { open: '"""', close: '"""', escape: 'none', multiline: true };
+
+/* -------------------------------------------------------------------------- */
+/* Shared operator tables (always sorted longest-first)                        */
+/* -------------------------------------------------------------------------- */
+
+const javascriptOperators = [
+    '>>>=',
+    '===',
+    '!==',
+    '**=',
+    '>>>',
+    '&&=',
+    '||=',
+    '??=',
+    '<<=',
+    '>>=',
+    '=>',
+    '==',
+    '!=',
+    '<=',
+    '>=',
+    '+=',
+    '-=',
+    '*=',
+    '/=',
+    '%=',
+    '**',
+    '&&',
+    '||',
+    '??',
+    '?.',
+    '++',
+    '--',
+    '<<',
+    '>>',
+    '&=',
+    '|=',
+    '^=',
+    '=',
+    '+',
+    '-',
+    '*',
+    '/',
+    '%',
+    '<',
+    '>',
+    '!',
+    '&',
+    '|',
+    '^',
+    '~',
+    '?',
+    ':',
+] as const;
+
+const pythonOperators = ['**=', '//=', '>>=', '<<=', '->', '==', '!=', '<=', '>=', '+=', '-=', '*=', '/=', '%=', '//', '**', '<<', '>>', '=', '+', '-', '*', '/', '%', '<', '>', '!', '&', '|', '^', '~', '?', ':'] as const;
+
+const goOperators = ['...', ':=', '==', '!=', '<=', '>=', '+=', '-=', '*=', '/=', '%=', '&&', '||', '&^', '<<', '>>', '<-', '->', '=', '+', '-', '*', '/', '%', '<', '>', '!', '&', '|', '^', '~', '?', ':'] as const;
+
+const rustOperators = ['..=', '==', '!=', '<=', '>=', '+=', '-=', '*=', '/=', '%=', '&&', '||', '<<', '>>', '->', '=>', '::', '..', '=', '+', '-', '*', '/', '%', '<', '>', '!', '&', '|', '^', '?', ':'] as const;
+
+const cFamilyOperators = ['==', '!=', '<=', '>=', '+=', '-=', '*=', '/=', '%=', '&&', '||', '++', '--', '->', '=>', '::', '=', '+', '-', '*', '/', '%', '<', '>', '!', '&', '|', '^', '?', ':'] as const;
+
+const rubyOperators = ['==', '!=', '<=', '>=', '+=', '-=', '*=', '/=', '%=', '&&', '||', '=>', '**', '=', '+', '-', '*', '/', '%', '<', '>', '!', '&', '|', '^', '?', ':'] as const;
+
+const phpOperators = ['===', '!==', '<=>', '==', '!=', '<=', '>=', '+=', '-=', '*=', '/=', '.=', '%=', '&&', '||', '??', '->', '=>', '::', '**', '=', '+', '-', '*', '/', '%', '<', '>', '!', '&', '|', '^', '?', ':'] as const;
+
+const shellOperators = ['==', '!=', '<=', '>=', '=', '+', '-', '*', '/', '%', '<', '>', '!', '?', ':'] as const;
+
+const sqlOperators = ['||', '<>', '<=', '>=', '!=', '=', '+', '-', '*', '/', '%', '<', '>'] as const;
+
+const yamlOperators = ['=', ':'] as const;
+
+const jsonOperators = [':'] as const;
+
+const cssOperators = ['=', '+', '-', '*', '/'] as const;
+
+const markupOperators = ['='] as const;
+
+/* -------------------------------------------------------------------------- */
+/* Profiles                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The profile table.
+ *
+ * The keys are the `LanguageId` values in the order they are declared in
+ * `types.ts` — the `Record` type makes a missing or unknown language a
+ * compile-time error.
+ */
+const profileTable = {
+    generic: {
+        id: 'generic',
+        name: 'Generic',
+        extensions: [],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote, templateLiteral],
+        operators: javascriptOperators,
+        defaultSymbols: ['='],
+    },
+    javascript: {
+        id: 'javascript',
+        name: 'JavaScript',
+        extensions: ['js', 'mjs', 'cjs', 'jsx'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote, templateLiteral],
+        operators: javascriptOperators,
+        defaultSymbols: ['='],
+    },
+    typescript: {
+        id: 'typescript',
+        name: 'TypeScript',
+        extensions: ['ts', 'mts', 'cts', 'tsx'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote, templateLiteral],
+        operators: javascriptOperators,
+        defaultSymbols: ['='],
+    },
+    python: {
+        id: 'python',
+        name: 'Python',
+        extensions: ['py', 'pyi', 'pyw'],
+        lineComments: ['#'],
+        blockComments: [],
+        strings: [singleQuote, doubleQuote, tripleSingleQuote, tripleDoubleQuote],
+        operators: pythonOperators,
+        defaultSymbols: ['='],
+    },
+    go: {
+        id: 'go',
+        name: 'Go',
+        extensions: ['go'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote, goRawString],
+        operators: goOperators,
+        defaultSymbols: ['=', ':='],
+    },
+    rust: {
+        id: 'rust',
+        name: 'Rust',
+        extensions: ['rs'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote],
+        operators: rustOperators,
+        defaultSymbols: ['='],
+    },
+    java: {
+        id: 'java',
+        name: 'Java',
+        extensions: ['java'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote],
+        operators: cFamilyOperators,
+        defaultSymbols: ['='],
+    },
+    kotlin: {
+        id: 'kotlin',
+        name: 'Kotlin',
+        extensions: ['kt', 'kts'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote],
+        operators: cFamilyOperators,
+        defaultSymbols: ['='],
+    },
+    swift: {
+        id: 'swift',
+        name: 'Swift',
+        extensions: ['swift'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote],
+        operators: cFamilyOperators,
+        defaultSymbols: ['='],
+    },
+    csharp: {
+        id: 'csharp',
+        name: 'C#',
+        extensions: ['cs', 'csx'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote, csharpVerbatimString, csharpRawString],
+        operators: cFamilyOperators,
+        defaultSymbols: ['='],
+    },
+    cpp: {
+        id: 'cpp',
+        name: 'C++',
+        extensions: ['cpp', 'cc', 'cxx', 'hpp', 'hh', 'hxx'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote],
+        operators: cFamilyOperators,
+        defaultSymbols: ['='],
+    },
+    c: {
+        id: 'c',
+        name: 'C',
+        extensions: ['c', 'h'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote],
+        operators: cFamilyOperators,
+        defaultSymbols: ['='],
+    },
+    ruby: {
+        id: 'ruby',
+        name: 'Ruby',
+        extensions: ['rb', 'rake', 'gemspec'],
+        lineComments: ['#'],
+        blockComments: [],
+        strings: [singleQuote, doubleQuote],
+        operators: rubyOperators,
+        defaultSymbols: ['='],
+    },
+    php: {
+        id: 'php',
+        name: 'PHP',
+        extensions: ['php', 'phtml'],
+        lineComments: ['//', '#'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote],
+        operators: phpOperators,
+        defaultSymbols: ['='],
+    },
+    dart: {
+        id: 'dart',
+        name: 'Dart',
+        extensions: ['dart'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote],
+        operators: cFamilyOperators,
+        defaultSymbols: ['='],
+    },
+    shell: {
+        id: 'shell',
+        name: 'Shell',
+        extensions: ['sh', 'bash', 'zsh', 'fish'],
+        lineComments: ['#'],
+        blockComments: [],
+        strings: [singleQuote, doubleQuote],
+        operators: shellOperators,
+        defaultSymbols: ['='],
+    },
+    sql: {
+        id: 'sql',
+        name: 'SQL',
+        extensions: ['sql'],
+        lineComments: ['--'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote],
+        operators: sqlOperators,
+        defaultSymbols: ['='],
+    },
+    yaml: {
+        id: 'yaml',
+        name: 'YAML',
+        extensions: ['yaml', 'yml'],
+        lineComments: ['#'],
+        blockComments: [],
+        strings: [singleQuote, doubleQuote],
+        operators: yamlOperators,
+        defaultSymbols: ['='],
+    },
+    json: {
+        id: 'json',
+        name: 'JSON',
+        extensions: ['json'],
+        lineComments: [],
+        blockComments: [],
+        strings: [doubleQuote],
+        operators: jsonOperators,
+        defaultSymbols: [':'],
+    },
+    css: {
+        id: 'css',
+        name: 'CSS',
+        extensions: ['css'],
+        lineComments: [],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote],
+        operators: cssOperators,
+        defaultSymbols: [':'],
+    },
+    html: {
+        id: 'html',
+        name: 'HTML',
+        extensions: ['html', 'htm'],
+        lineComments: [],
+        blockComments: [['<!--', '-->']],
+        strings: [singleQuote, doubleQuote],
+        operators: markupOperators,
+        defaultSymbols: ['='],
+    },
+    xml: {
+        id: 'xml',
+        name: 'XML',
+        extensions: ['xml'],
+        lineComments: [],
+        blockComments: [['<!--', '-->']],
+        strings: [singleQuote, doubleQuote],
+        operators: markupOperators,
+        defaultSymbols: ['='],
+    },
+    markdown: {
+        id: 'markdown',
+        name: 'Markdown',
+        extensions: ['md', 'markdown'],
+        lineComments: [],
+        blockComments: [],
+        strings: [],
+        operators: markupOperators,
+        defaultSymbols: ['='],
+    },
+    plaintext: {
+        id: 'plaintext',
+        name: 'Plain Text',
+        extensions: ['txt', 'text'],
+        lineComments: [],
+        blockComments: [],
+        strings: [],
+        operators: markupOperators,
+        defaultSymbols: ['='],
+    },
+} as const satisfies Record<LanguageId, LanguageProfile>;
+
+/* -------------------------------------------------------------------------- */
+/* Lookup tables                                                               */
+/* -------------------------------------------------------------------------- */
+
+/** Lookup by language id — every key of the profile table. */
+const profileIndex: Readonly<Record<string, LanguageProfile | undefined>> = Object.freeze(Object.fromEntries(Object.entries(profileTable)));
+
+/** Lookup by file extension (without the leading dot). */
+const extensionIndex: Readonly<Record<string, LanguageId | undefined>> = Object.freeze(Object.fromEntries(Object.values(profileTable).flatMap((profile) => profile.extensions.map((extension) => [extension, profile.id] as const))));
+
+/** Matches the last path segment of a POSIX or Windows style path. */
+const fileNamePattern = /[^/\\]+$/;
+
+/* -------------------------------------------------------------------------- */
+/* Public API                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/** One profile per supported language, in the order the ids are declared in `types.ts`. */
+export const allLanguages: readonly LanguageProfile[] = Object.freeze(Object.values(profileTable));
+
+/**
+ * Returns the profile of `id`.
+ *
+ * The lookup is total — an unknown id never throws, it falls back to the
+ * `generic` profile.
+ */
+export const languageProfile = (id: LanguageId): LanguageProfile => profileIndex[id] ?? profileTable.generic;
+
+/** Type guard for {@link LanguageId}. */
+export const isLanguageId = (value: string): value is LanguageId => Object.hasOwn(profileTable, value);
+
+/**
+ * Detects the language of `filePath` by its file extension.
+ *
+ * The extension is the last `.` segment of the file name, compared
+ * case-insensitively. Unknown extensions and files without an extension are
+ * detected as `generic`.
+ */
+export const detectLanguage = (filePath: string): LanguageId => {
+    const fileName = fileNamePattern.exec(filePath)?.[0] ?? '';
+    const dotIndex = fileName.lastIndexOf('.');
+
+    if (dotIndex <= 0) {
+        return 'generic';
+    }
+
+    const extension = fileName.slice(dotIndex + 1).toLowerCase();
+    return extensionIndex[extension] ?? 'generic';
+};

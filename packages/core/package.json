@@ -1,7 +1,7 @@
 {
     "name": "@sandlada/symbol-align",
     "version": "0.0.1-20260710.a",
-    "description": "Vertical alignment for code symbols (=, :, =>, //, # and more) — CLI & API",
+    "description": "Code-snippet symbol-alignment formatter — lines up =, :, =>, //, # and more. CLI & API",
     "type": "module",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
@@ -10,12 +10,12 @@
     },
     "exports": {
         ".": {
-            "import": "./dist/index.js",
-            "types": "./dist/index.d.ts"
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
         }
     },
     "bin": {
-        "symbol-align": "./dist/cli.js"
+        "symbol-align": "./dist/bin.js"
     },
     "files": [
         "dist",
@@ -27,7 +27,7 @@
     "scripts": {
         "build": "tsc",
         "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
-        "dev": "tsx src/cli.ts",
+        "dev": "tsx src/bin.ts",
         "test": "vitest run",
         "test:watch": "vitest",
         "typecheck": "tsc --noEmit -p tsconfig.test.json",
@@ -39,15 +39,18 @@
         "align",
         "alignment",
         "code",
+        "code-snippet",
         "format",
+        "formatter",
         "vertical",
         "symbol",
         "equals",
         "colon",
-        "arrow"
+        "arrow",
+        "prettier-plugin"
     ],
     "engines": {
-        "node": ">=18"
+        "node": ">=24"
     },
     "author": "Kai Orion",
     "license": "MIT",

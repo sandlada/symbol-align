@@ -3,7 +3,7 @@
     "version": "0.0.0",
     "private": true,
     "type": "module",
-    "description": "Monorepo for @sandlada/symbol-align — vertical alignment for code symbols",
+    "description": "Monorepo for @sandlada/symbol-align — code-snippet symbol alignment",
     "packageManager": "pnpm@12.14.0",
     "license": "MIT",
     "author": "Kai Orion",
@@ -20,18 +20,22 @@
         "build:solution": "tsc --build",
         "clean": "pnpm -r clean",
         "dev": "pnpm --filter @sandlada/symbol-align dev",
+        "format": "biome format --write .",
+        "format:check": "biome format .",
+        "lint": "biome lint .",
         "test": "pnpm -r test",
         "test:watch": "pnpm -r --parallel test:watch",
         "typecheck": "pnpm -r typecheck"
     },
     "devDependencies": {
+        "@biomejs/biome": "catalog:",
         "@types/node": "catalog:",
         "tsx": "catalog:",
         "typescript": "catalog:",
         "vitest": "catalog:"
     },
     "engines": {
-        "node": ">=18",
-        "pnpm": ">=9"
+        "node": ">=24",
+        "pnpm": ">=10"
     }
 }

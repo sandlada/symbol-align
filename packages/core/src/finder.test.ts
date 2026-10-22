@@ -1,105 +1,165 @@
 import { describe, it, expect } from 'vitest';
 import { findSymbolPositions } from './finder.js';
+import type { CodeRegion } from './types.js';
+
+const wholeLine = (line: string): readonly CodeRegion[] => [{ start: 0, end: line.length }];
 
 describe('findSymbolPositions', () => {
-  it('finds a single symbol', () => {
-    const result = findSymbolPositions('a = b', ['=']);
-    expect(result.get('=')).toEqual([2]);
-  });
+    it('finds a simple symbol at the right column', () => {
+        const line = 'const x = 1';
+        const result = findSymbolPositions(line)({ regions: wholeLine(line), symbols: ['='] });
+        expect(result.get('=')).toEqual([8]);
+    });
 
-  it('finds multiple symbols on the same line', () => {
-    const result = findSymbolPositions('const x: Type = value', [':', '=']);
-    expect(result.get(':')).toEqual([7]);
-    expect(result.get('=')).toEqual([14]);
-  });
+    it('reports every requested symbol even when it is absent', () => {
+        const line = 'const x = 1';
+        const result = findSymbolPositions(line)({ regions: wholeLine(line), symbols: ['=', ':'] });
+        expect(result.has('=')).toBe(true);
+        expect(result.has(':')).toBe(true);
+        expect(result.get(':')).toEqual([]);
+    });
 
-  it('returns empty array for symbol not present', () => {
-    const result = findSymbolPositions('const x = 1', [':']);
-    expect(result.get(':')).toEqual([]);
-  });
+    it('does not find symbols outside of the given regions', () => {
+        const line = 'x = "a = b"';
+        const result = findSymbolPositions(line)({ regions: [{ start: 0, end: 4 }], symbols: ['='] });
+        expect(result.get('=')).toEqual([2]);
+    });
 
-  it('skips symbols inside single-quoted strings', () => {
-    const result = findSymbolPositions("const s = 'a = b'", ['=']);
-    // Only the first = outside the string
-    expect(result.get('=')).toEqual([8]);
-  });
+    it('does not find a symbol that only partially overlaps a region', () => {
+        const line = 'x = "a = b"';
+        const result = findSymbolPositions(line)({ regions: [{ start: 0, end: 3 }], symbols: ['='] });
+        expect(result.get('=')).toEqual([2]);
+    });
 
-  it('skips symbols inside double-quoted strings', () => {
-    const result = findSymbolPositions('const s = "a = b"', ['=']);
-    expect(result.get('=')).toEqual([8]);
-  });
+    it('prefers the longest symbol at a position', () => {
+        const line = 'const f = (x) => x';
+        const result = findSymbolPositions(line)({
+            regions: wholeLine(line),
+            symbols: ['=', '=>'],
+            operators: ['=>', '==', '==='],
+        });
+        expect(result.get('=')).toEqual([8]);
+        expect(result.get('=>')).toEqual([14]);
+    });
 
-  it('skips symbols inside backtick strings', () => {
-    const result = findSymbolPositions('const s = `a = b`', ['=']);
-    expect(result.get('=')).toEqual([8]);
-  });
+    it('rejects the equals sign of an arrow when only the equals sign is requested', () => {
+        const line = 'const f = (x) => x';
+        const result = findSymbolPositions(line)({ regions: wholeLine(line), symbols: ['='], operators: ['=>'] });
+        expect(result.get('=')).toEqual([8]);
+    });
 
-  it('handles escaped quotes in strings', () => {
-    const result = findSymbolPositions("const s = 'a \\' = b' = c", ['=']);
-    // Both = signs outside strings are found (before the string and after)
-    expect(result.get('=')).toEqual([8, 21]);
-  });
+    it('rejects the equals sign of an equality operator', () => {
+        const line = 'if (a == b) {}';
+        const result = findSymbolPositions(line)({ regions: wholeLine(line), symbols: ['='], operators: ['=='] });
+        expect(result.get('=')).toEqual([]);
+    });
 
-  it('skips symbols inside single-line comments', () => {
-    const result = findSymbolPositions('const x = 1 // this = comment', ['=']);
-    expect(result.get('=')).toEqual([8]);
-  });
+    it('rejects the equals sign of a short variable declaration', () => {
+        const line = 'x := 1';
+        const result = findSymbolPositions(line)({ regions: wholeLine(line), symbols: ['='], operators: [':='] });
+        expect(result.get('=')).toEqual([]);
+    });
 
-  it('skips symbols inside block comments', () => {
-    const result = findSymbolPositions('const x = /* = */ 1', ['=']);
-    expect(result.get('=')).toEqual([8]);
-  });
+    it('rejects the equals sign of a comparison operator', () => {
+        const line = 'if (a >= b) {}';
+        const result = findSymbolPositions(line)({ regions: wholeLine(line), symbols: ['='], operators: ['>='] });
+        expect(result.get('=')).toEqual([]);
+    });
 
-  it('records // as a symbol when present in targets', () => {
-    const result = findSymbolPositions('x = 1 // comment', ['=', '//']);
-    expect(result.get('=')).toEqual([2]);
-    expect(result.get('//')).toEqual([6]);
-  });
+    it('rejects the equals sign of a compound assignment', () => {
+        const line = 'total += amount';
+        const result = findSymbolPositions(line)({ regions: wholeLine(line), symbols: ['='], operators: ['+='] });
+        expect(result.get('=')).toEqual([]);
+    });
 
-  it('prefers longer symbol matches (=> before =)', () => {
-    const result = findSymbolPositions('const f = (x) => x = 1', ['=', '=>']);
-    expect(result.get('=>')).toEqual([14]);
-    expect(result.get('=')).toEqual([8, 19]);
-  });
+    it('accepts a short variable declaration when the declaration operator is requested', () => {
+        const line = 'x := 1';
+        const result = findSymbolPositions(line)({ regions: wholeLine(line), symbols: [':='], operators: [':='] });
+        expect(result.get(':=')).toEqual([2]);
+    });
 
-  it('returns empty map for empty symbols list', () => {
-    const result = findSymbolPositions('a = b', []);
-    expect(result.size).toBe(0);
-  });
+    it('does not let an operator inside a string invalidate a code match', () => {
+        const line = 'x = "=="';
+        const result = findSymbolPositions(line)({
+            regions: [{ start: 0, end: 4 }],
+            symbols: ['='],
+            operators: ['=='],
+        });
+        expect(result.get('=')).toEqual([2]);
+    });
 
-  it('handles empty line', () => {
-    const result = findSymbolPositions('', ['=']);
-    expect(result.get('=')).toEqual([]);
-  });
+    it('rejects the equals sign of the longest matching operator token', () => {
+        const line = 'if (a === b) {}';
+        const result = findSymbolPositions(line)({ regions: wholeLine(line), symbols: ['='], operators: ['===', '=='] });
+        expect(result.get('=')).toEqual([]);
+    });
 
-  it('finds # symbol', () => {
-    const result = findSymbolPositions('x = 1 # comment', ['=', '#']);
-    expect(result.get('=')).toEqual([2]);
-    expect(result.get('#')).toEqual([6]);
-  });
+    it('accepts an operator symbol that is not a fragment of a longer token', () => {
+        const line = 'x = 1';
+        const result = findSymbolPositions(line)({ regions: wholeLine(line), symbols: ['='], operators: ['=='] });
+        expect(result.get('=')).toEqual([2]);
+    });
 
-  it('finds symbols on consecutive lines with different positions', () => {
-    const lines = ['a = 1', 'bb = 22'];
-    const results = lines.map((l) => findSymbolPositions(l, ['=']));
-    expect(results[0].get('=')).toEqual([2]);
-    expect(results[1].get('=')).toEqual([3]);
-  });
+    it('respects word boundaries of word symbols', () => {
+        const line = 'const readonlyThing = 1;';
+        const result = findSymbolPositions(line)({ regions: wholeLine(line), symbols: ['readonly'] });
+        expect(result.get('readonly')).toEqual([]);
+    });
 
-  it('handles block comment spanning content with symbols', () => {
-    const result = findSymbolPositions('x = 1 /* comment = still */ y = 2', ['=']);
-    // The = inside /* */ should be skipped
-    expect(result.get('=')).toEqual([2, 30]);
-  });
+    it('finds a word symbol that stands on its own', () => {
+        const line = 'const readonly = 1;';
+        const result = findSymbolPositions(line)({ regions: wholeLine(line), symbols: ['readonly'] });
+        expect(result.get('readonly')).toEqual([6]);
+    });
 
-  it('handles nested string-like content inside backticks', () => {
-    const result = findSymbolPositions('const s = `hello "${x}"` = end', ['=']);
-    expect(result.get('=')).toEqual([8, 25]);
-  });
+    it('reports the column of the comment marker when the marker is requested', () => {
+        const line = 'const x = 1 // note';
+        const result = findSymbolPositions(line)({
+            regions: [{ start: 0, end: 11 }],
+            symbols: ['=', '//'],
+            comment: { column: 12, marker: '//' },
+        });
+        expect(result.get('//')).toEqual([12]);
+        expect(result.get('=')).toEqual([8]);
+    });
 
-  it('does not break on regex-like division', () => {
-    // Simple case: /regex/ - we treat / as regular char (acceptable limitation)
-    const result = findSymbolPositions('const re = /foo=bar/', ['=']);
-    // Both = signs found (one before the regex-like part, one inside it)
-    expect(result.get('=')).toEqual([9, 15]);
-  });
+    it('does not report the comment marker when it is not requested', () => {
+        const line = 'const x = 1 // note';
+        const result = findSymbolPositions(line)({
+            regions: [{ start: 0, end: 11 }],
+            symbols: ['='],
+            comment: { column: 12, marker: '//' },
+        });
+        expect(result.get('=')).toEqual([8]);
+        expect(result.get('//')).toBeUndefined();
+    });
+
+    it('reports every occurrence of a symbol on the line', () => {
+        const line = 'a = b; c = d;';
+        const result = findSymbolPositions(line)({ regions: wholeLine(line), symbols: ['='] });
+        expect(result.get('=')).toEqual([2, 9]);
+    });
+
+    it('reports every occurrence of a symbol across several regions', () => {
+        const line = 'a = b; /* x */ c = d;';
+        const result = findSymbolPositions(line)({
+            regions: [
+                { start: 0, end: 5 },
+                { start: 15, end: 20 },
+            ],
+            symbols: ['='],
+        });
+        expect(result.get('=')).toEqual([2, 17]);
+    });
+
+    it('returns an empty map when no symbol is requested', () => {
+        const line = 'const x = 1';
+        const result = findSymbolPositions(line)({ regions: wholeLine(line), symbols: [] });
+        expect(result.size).toBe(0);
+    });
+
+    it('reports nothing for an empty line', () => {
+        const result = findSymbolPositions('')({ regions: [{ start: 0, end: 0 }], symbols: ['='] });
+        expect(result.get('=')).toEqual([]);
+    });
 });

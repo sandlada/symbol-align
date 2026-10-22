@@ -1,161 +1,402 @@
-#!/usr/bin/env node
+/**
+ * Command line interface of `@sandlada/symbol-align`.
+ *
+ * The module is free of side effects: importing it never touches the
+ * process. Parsing, reading, aligning and writing are exposed as plain
+ * functions; the executable entry point (`bin.ts`) owns the process plumbing
+ * and turns the returned exit code into `process.exit`.
+ */
 
+import { readFileSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { align } from './aligner.js';
+import { detectLanguage, isLanguageId } from './language.js';
+import type { AlignmentScope, AlignOptions, LanguageId } from './types.js';
 
-function showHelp(): void {
-  process.stdout.write(`
-Usage: symbol-align [options] [< file]
+/* -------------------------------------------------------------------------- */
+/* Public types                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/** The parsed command line arguments. */
+export interface CliArgs {
+    /** Symbols to align — `undefined` keeps the defaults of the language profile. */
+    readonly symbols?: readonly string[];
+    /** Language profile that drives string and comment handling. */
+    readonly language?: LanguageId;
+    /** Path of the piped file — used to detect the language of standard input. */
+    readonly stdinFilepath?: string;
+    /** Grouping strategy used before aligning. */
+    readonly scope: AlignmentScope;
+    /** Report misalignment instead of writing the aligned code. */
+    readonly check: boolean;
+    /** Print the usage text. */
+    readonly help: boolean;
+    /** Print the package version. */
+    readonly version: boolean;
+    /** File to read instead of standard input. */
+    readonly file?: string;
+    /** File to write instead of standard output. */
+    readonly output?: string;
+}
+
+/** The I/O channels of the CLI — the process is never touched directly. */
+export interface CliStreams {
+    /** Writes a chunk to standard output. */
+    readonly stdout: (chunk: string) => void;
+    /** Writes a chunk to standard error. */
+    readonly stderr: (chunk: string) => void;
+    /** Reads the whole standard input as text. */
+    readonly stdin: () => Promise<string>;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Usage text                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/** The help text printed by `--help`. */
+export const usage = `Usage: symbol-align [options] [< file]
        symbol-align [options] --file <path>
 
-Vertically align symbols in code. Reads from stdin or a file, writes to stdout.
+Vertically align punctuation symbols in a code snippet.
+Reads from stdin or a file and writes to stdout.
 
 Options:
-  -f, --file <path>    Read from file instead of stdin
-  -o, --output <path>  Write to file instead of stdout
-  -s, --symbols <list> Comma-separated symbols to align (default: "=")
-                           Examples: "="  "=,:"  "=,:,=>,//,#"
-  --help               Show this help
+  -f, --file <path>         Read from file instead of stdin
+  -o, --output <path>       Write to file instead of stdout
+  -s, --symbols <list>      Comma-separated symbols to align
+  -l, --language <id>       Language profile to use
+  -t, --stdin-filepath <p>  Path of the piped file (used for language detection)
+      --scope <block|file>  Grouping strategy (default: block)
+      --check               Exit 1 when the input is not already aligned
+  -v, --version             Print the version
+  -h, --help                Show this help
 
 Examples:
-  echo "a = 1\nbb = 2" | symbol-align
+  echo "a = 1\\nbb = 2" | symbol-align
   cat file.ts | symbol-align --symbols =,:
   symbol-align --file input.ts
   symbol-align -f input.ts -o output.ts
-  symbol-align -f input.ts --symbols =,: -o aligned.ts
+  symbol-align -f input.ts --language python
+`;
 
-Notes:
-  - Symbols inside strings and comments are ignored.
-  - Lines that don't contain the symbol are left unchanged.
-  - Multi-symbol alignment processes symbols in order of appearance.
-`);
+/* -------------------------------------------------------------------------- */
+/* Argument parsing                                                             */
+/* -------------------------------------------------------------------------- */
+
+/** Long names of the options that take a value. */
+type ValueOptionName = 'file' | 'output' | 'symbols' | 'language' | 'stdin-filepath' | 'scope';
+
+/** A value taking option of the command line. */
+interface ValueOption {
+    /** The long name of the option — also used in error messages. */
+    readonly name: ValueOptionName;
+    /** The optional short alias, written without the leading dash. */
+    readonly short: string | undefined;
 }
 
-export interface CliArgs {
-  symbols: string[];
-  help: boolean;
-  file?: string;
-  output?: string;
+/** A value taking option found on the command line. */
+interface OptionMatch {
+    /** The long name of the matched option. */
+    readonly name: ValueOptionName;
+    /** The value of the `--name=value` form — `undefined` for the `--name value` form. */
+    readonly inline: string | undefined;
 }
 
-export function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = {
-    symbols: ['='],
-    help: false,
-  };
+/** Every value taking option, in the order they are listed in the usage text. */
+const valueOptions: readonly ValueOption[] = [
+    { name: 'file', short: 'f' },
+    { name: 'output', short: 'o' },
+    { name: 'symbols', short: 's' },
+    { name: 'language', short: 'l' },
+    { name: 'stdin-filepath', short: 't' },
+    { name: 'scope', short: undefined },
+];
 
-  for (let i = 2; i < argv.length; i++) {
-    const arg = argv[i];
+/** Looks a value taking option up by its long name. */
+const findLongOption = (name: string): ValueOption | undefined => valueOptions.find((option) => option.name === name);
 
-    const parseStringArg = (longName: string, shortName: string): string | undefined => {
-      if (arg === `--${longName}` || arg === `-${shortName}`) {
-        if (i + 1 < argv.length) {
-          return argv[++i];
+/** Looks a value taking option up by its short alias. */
+const findShortOption = (alias: string): ValueOption | undefined => valueOptions.find((option) => option.short === alias);
+
+/**
+ * Matches a token against the value taking options.
+ *
+ * Both the `--name value` and the `--name=value` form are recognised, the
+ * short aliases only support the `--name value` form.
+ */
+const matchOption = (token: string): OptionMatch | undefined => {
+    if (token.startsWith('--')) {
+        const separator = token.indexOf('=');
+        const name = separator === -1 ? token.slice(2) : token.slice(2, separator);
+        const inline = separator === -1 ? undefined : token.slice(separator + 1);
+        const option = findLongOption(name);
+
+        return option === undefined ? undefined : { name: option.name, inline };
+    }
+
+    if (token.startsWith('-') && token.length === 2) {
+        const option = findShortOption(token.slice(1));
+
+        return option === undefined ? undefined : { name: option.name, inline: undefined };
+    }
+
+    return undefined;
+};
+
+/**
+ * Parses a comma separated symbol list.
+ *
+ * Entries are trimmed and empty entries are dropped. An empty list keeps the
+ * default of the language profile.
+ */
+const parseSymbols = (value: string): readonly string[] | undefined => {
+    const symbols = value
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0);
+
+    return symbols.length > 0 ? symbols : undefined;
+};
+
+/** Parses a language id — an unknown id is an error. */
+const parseLanguage = (value: string): LanguageId => {
+    if (!isLanguageId(value)) {
+        throw new Error(`Unknown language: ${value}`);
+    }
+
+    return value;
+};
+
+/** Parses the grouping strategy — an unknown strategy is an error. */
+const parseScope = (value: string): AlignmentScope => {
+    if (value === 'block' || value === 'file') {
+        return value;
+    }
+
+    throw new Error(`Invalid scope: ${value}. Expected "block" or "file".`);
+};
+
+/** Applies a parsed option value to the arguments collected so far. */
+const applyOption =
+    (name: ValueOptionName) =>
+    (value: string) =>
+    (args: CliArgs): CliArgs => {
+        switch (name) {
+            case 'file':
+                return { ...args, file: value };
+            case 'output':
+                return { ...args, output: value };
+            case 'symbols':
+                return { ...args, symbols: parseSymbols(value) };
+            case 'language':
+                return { ...args, language: parseLanguage(value) };
+            case 'stdin-filepath':
+                return { ...args, stdinFilepath: value };
+            case 'scope':
+                return { ...args, scope: parseScope(value) };
         }
-      } else if (arg.startsWith(`--${longName}=`)) {
-        return arg.slice(`--${longName}=`.length);
-      }
-      return undefined;
     };
 
-    if (arg === '--help') {
-      args.help = true;
-      continue;
+/** The arguments of a command line without any option. */
+const defaultArgs: CliArgs = {
+    scope: 'block',
+    check: false,
+    help: false,
+    version: false,
+};
+
+/**
+ * Parses the tokens of a command line.
+ *
+ * The tokens are consumed from left to right; a value taking option takes the
+ * next token as its value — unless the next token is another long option,
+ * which means that the value is missing.
+ */
+const parseTokens = (tokens: readonly string[], args: CliArgs): CliArgs => {
+    const [token, ...rest] = tokens;
+
+    if (token === undefined) {
+        return args;
     }
 
-    const symbols = parseStringArg('symbols', 's');
-    if (symbols !== undefined) {
-      args.symbols = symbols.split(',').map((s) => s.trim()).filter(Boolean);
-      continue;
+    if (token === '--help' || token === '-h') {
+        return parseTokens(rest, { ...args, help: true });
     }
 
-    const file = parseStringArg('file', 'f');
-    if (file !== undefined) {
-      args.file = file;
-      continue;
+    if (token === '--version' || token === '-v') {
+        return parseTokens(rest, { ...args, version: true });
     }
 
-    const output = parseStringArg('output', 'o');
-    if (output !== undefined) {
-      args.output = output;
-      continue;
+    if (token === '--check') {
+        return parseTokens(rest, { ...args, check: true });
     }
-  }
 
-  return args;
-}
+    const option = matchOption(token);
 
-function readStdin(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    process.stdin.setEncoding('utf-8');
+    if (option === undefined) {
+        throw new Error(`Unknown option: ${token}`);
+    }
 
-    process.stdin.on('data', (chunk: string | Buffer) => {
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, 'utf-8'));
+    if (option.inline !== undefined) {
+        return parseTokens(rest, applyOption(option.name)(option.inline)(args));
+    }
+
+    const [value, ...afterValue] = rest;
+
+    if (value === undefined || (value.startsWith('--') && value.length > 2)) {
+        throw new Error(`Missing value for ${option.name}`);
+    }
+
+    return parseTokens(afterValue, applyOption(option.name)(value)(args));
+};
+
+/**
+ * Parses the command line arguments of the CLI.
+ *
+ * The first two entries of `argv` — the node executable and the script path —
+ * are ignored, everything after them is parsed as an option.
+ */
+export const parseArgs = (argv: readonly string[]): CliArgs => parseTokens(argv.slice(2), defaultArgs);
+
+/* -------------------------------------------------------------------------- */
+/* Runtime                                                                      */
+/* -------------------------------------------------------------------------- */
+
+/** The version reported when the package manifest cannot be read. */
+const fallbackVersion = '0.0.0';
+
+/** Extracts the message of an unknown error value. */
+const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+
+/**
+ * Resolves the language profile of the run.
+ *
+ * An explicit `--language` always wins, otherwise the language is detected
+ * from the path of the piped file. Without both, the aligner uses the default
+ * profile of the language.
+ */
+const resolveLanguage = (args: CliArgs): LanguageId | undefined => {
+    if (args.language !== undefined) {
+        return args.language;
+    }
+
+    if (args.stdinFilepath !== undefined) {
+        return detectLanguage(args.stdinFilepath);
+    }
+
+    return undefined;
+};
+
+/** Builds the aligner options — values that were not given are left out. */
+const buildOptions =
+    (args: CliArgs) =>
+    (language: LanguageId | undefined): AlignOptions => ({
+        ...(args.symbols === undefined ? {} : { symbols: args.symbols }),
+        ...(language === undefined ? {} : { language }),
+        scope: args.scope,
     });
 
-    process.stdin.on('end', () => {
-      resolve(Buffer.concat(chunks).toString('utf-8'));
-    });
+/** Adds exactly one trailing newline to a non empty text. */
+const withTrailingNewline = (code: string): string => (code.length === 0 ? code : `${code.replace(/\n+$/, '')}\n`);
 
-    process.stdin.on('error', (err) => {
-      reject(err);
-    });
+/** Runs the CLI for the given arguments. */
+const execute =
+    (args: CliArgs) =>
+    async (streams: CliStreams): Promise<number> => {
+        if (args.help) {
+            streams.stdout(usage);
+            return 0;
+        }
 
-    // If stdin is a TTY, there's no piped input
-    if (process.stdin.isTTY) {
-      resolve('');
+        if (args.version) {
+            streams.stdout(`${readPackageVersion()}\n`);
+            return 0;
+        }
+
+        const code = args.file === undefined ? await streams.stdin() : await readFile(validatePath(args.file), 'utf-8');
+        const result = align(code)(buildOptions(args)(resolveLanguage(args)));
+
+        if (args.check) {
+            if (result.changes > 0) {
+                streams.stderr(`Input is not aligned: ${result.changes} line(s) would change.\n`);
+                return 1;
+            }
+
+            return 0;
+        }
+
+        const output = withTrailingNewline(result.code);
+
+        if (args.output === undefined) {
+            streams.stdout(output);
+            return 0;
+        }
+
+        await writeFile(validatePath(args.output), output, 'utf-8');
+
+        return 0;
+    };
+
+/**
+ * Runs the command line interface.
+ *
+ * The returned number is the exit code of the process — the function never
+ * calls `process.exit` itself.
+ */
+export const runCli = async (argv: readonly string[], streams: CliStreams): Promise<number> => {
+    try {
+        return await execute(parseArgs(argv))(streams);
+    } catch (error) {
+        streams.stderr(`Error: ${errorMessage(error)}\n`);
+        return 1;
     }
-  });
-}
+};
 
-export function validatePath(filePath: string): string {
-  const cwd = process.cwd();
-  const resolvedPath = resolve(cwd, filePath);
+/* -------------------------------------------------------------------------- */
+/* Files and version                                                            */
+/* -------------------------------------------------------------------------- */
 
-  if (resolvedPath !== cwd && !resolvedPath.startsWith(cwd + sep)) {
-    throw new Error(`Path traversal detected: ${filePath} resolves outside of current working directory`);
-  }
+/**
+ * Resolves a path against the current working directory.
+ *
+ * Paths that leave the working directory are rejected — the CLI must not
+ * read or write outside of the project the user is working in.
+ */
+export const validatePath = (filePath: string): string => {
+    const cwd = process.cwd();
+    const resolvedPath = resolve(cwd, filePath);
 
-  return resolvedPath;
-}
+    if (resolvedPath !== cwd && !resolvedPath.startsWith(cwd + sep)) {
+        throw new Error(`Path traversal detected: ${filePath} resolves outside of current working directory`);
+    }
 
-async function readFileFromDisk(filePath: string): Promise<string> {
-  const safePath = validatePath(filePath);
-  return await readFile(safePath, 'utf-8');
-}
+    return resolvedPath;
+};
 
-async function main(): Promise<void> {
-  const args = parseArgs(process.argv);
+/**
+ * Reads the version of the package from the manifest next to this module.
+ *
+ * The manifest is resolved relative to the module, which works for the
+ * sources in `src/` as well as for the build output in `dist/`. An unreadable
+ * or malformed manifest falls back to `0.0.0`.
+ */
+export const readPackageVersion = (): string => {
+    try {
+        const manifestPath = fileURLToPath(new URL('../package.json', import.meta.url));
+        const manifest: unknown = JSON.parse(readFileSync(manifestPath, 'utf-8'));
 
-  if (args.help) {
-    showHelp();
-    process.exit(0);
-  }
+        if (typeof manifest === 'object' && manifest !== null && 'version' in manifest) {
+            const version = (manifest as { readonly version?: unknown }).version;
 
-  const code = args.file
-    ? await readFileFromDisk(args.file)
-    : await readStdin();
+            if (typeof version === 'string' && version.length > 0) {
+                return version;
+            }
+        }
 
-  if (code.length === 0) {
-    process.exit(0);
-  }
-
-  const result = align(code, { symbols: args.symbols });
-  const output = result.code.length > 0 && !result.code.endsWith('\n')
-    ? result.code + '\n'
-    : result.code;
-
-  if (args.output) {
-    const safeOutput = validatePath(args.output);
-    await writeFile(safeOutput, output, 'utf-8');
-  } else {
-    process.stdout.write(output);
-  }
-}
-
-main().catch((err) => {
-  process.stderr.write(`Error: ${err.message}\n`);
-  process.exit(1);
-});
+        return fallbackVersion;
+    } catch {
+        return fallbackVersion;
+    }
+};
