@@ -25,11 +25,14 @@ clean vertical columns.
 - [Usage](#usage)
   - [CLI](#cli)
   - [API](#api)
+- [How it works](#how-it-works)
 - [Options](#options)
 - [Supported languages](#supported-languages)
 - [Rules](#rules)
 - [Examples](#examples)
 - [CLI reference](#cli-reference)
+- [Configuration](#configuration)
+- [Migration](#migration)
 - [Limitations](#limitations)
 - [Repository structure](#repository-structure)
 - [Development](#development)
@@ -156,6 +159,27 @@ const { code: aligned } = align(code)({ symbols: [':', '='] });
 // → const yy: AnotherType = 22;
 ```
 
+## How it works
+
+1. **Scan.** The snippet is scanned once with the rules of the language profile.
+   The scanner knows the comment markers and the string delimiters of the
+   language and reports the regions that hold *real code*. Everything else —
+   string content, block comments, Python docstrings, Go raw strings — is
+   invisible to the aligner.
+2. **Find.** For every symbol you asked for, the finder locates its first
+   occurrence inside those code regions. A match that is only a fragment of a
+   longer operator (`=` inside `=>`, `==`, `:=`, `>=`) is discarded, and a word
+   symbol must stand on its own (`readonly` never matches `readonlyThing`).
+3. **Group.** The lines are split into blank-line separated blocks. Only the
+   lines of the same block are aligned with each other, so unrelated parts of a
+   file never influence one another. `scope: 'file'` turns the grouping off.
+4. **Align.** Every symbol is aligned in the order of its first appearance.
+   For each symbol the lines of a block are padded until the symbol starts at
+   the same column — only spaces are ever inserted.
+
+Because the scanner understands the language, the result is stable: running
+the formatter twice never changes the snippet a second time.
+
 ## Options
 
 ### `AlignOptions`
@@ -184,32 +208,68 @@ aligned. What the language profile adds is the *lexical* knowledge: which
 sequences start a string, which start a comment, and which operators must not
 be split apart.
 
-| Language   | Id           | Default symbol | Notable handling                                        |
-| ---------- | ------------ | -------------- | ------------------------------------------------------- |
-| Generic    | `generic`    | `=`            | default profile — `'`, `"`, `` ` `` strings, `//`, `/* */` |
-| JavaScript | `javascript` | `=`            | template literals, `//`, `/* */`                        |
-| TypeScript | `typescript` | `=`            | template literals, `//`, `/* */`                        |
-| Python     | `python`     | `=`            | `#` comments, triple-quoted strings                    |
-| Go         | `go`         | `=`, `:=`      | raw backtick strings, `:=`                              |
-| Rust       | `rust`       | `=`            | lifetimes vs. char literals, `::`, `->`                 |
-| Java       | `java`       | `=`            | `//`, `/* */`                                            |
-| Kotlin     | `kotlin`     | `=`            | `//`, `/* */`                                            |
-| Swift      | `swift`      | `=`            | `//`, `/* */`                                            |
-| C#         | `csharp`     | `=`            | verbatim `@"…"`, raw `"""…"""`, `//`, `/* */`            |
-| C++        | `cpp`        | `=`            | `//`, `/* */`, `->`, `::`                                |
-| C          | `c`          | `=`            | `//`, `/* */`                                            |
-| Ruby       | `ruby`       | `=`            | `#` comments, `=>`                                       |
-| PHP        | `php`       | `=`            | `#` and `//` comments, `=>`, `::`                        |
-| Dart       | `dart`       | `=`            | `//`, `/* */`                                            |
-| Shell      | `shell`      | `=`            | `#` comments                                             |
-| SQL        | `sql`        | `=`            | `--` comments, `/* */`                                   |
-| YAML       | `yaml`       | `=`            | `#` comments                                             |
-| JSON       | `json`       | `:`            | no comments                                              |
-| CSS        | `css`        | `:`            | `/* */` comments                                          |
-| HTML       | `html`       | `=`            | `<!-- -->` comments                                       |
-| XML        | `xml`        | `=`            | `<!-- -->` comments                                       |
-| Markdown   | `markdown`   | `=`            | no comments                                               |
-| Plaintext  | `plaintext`  | `=`            | fallback profile                                          |
+| Language | Id | Default symbol | Notable handling |
+| -------- | -- | -------------- | ---------------- |
+| Generic | `generic` | `=` | `//`, `/*` `*/`, 3 string forms |
+| JavaScript | `javascript` | `=` | `//`, `/*` `*/`, 3 string forms |
+| TypeScript | `typescript` | `=` | `//`, `/*` `*/`, 3 string forms |
+| Python | `python` | `=` | `#`, 4 string forms |
+| Go | `go` | `=`, `:=` | `//`, `/*` `*/`, 3 string forms |
+| Rust | `rust` | `=` | `//`, `/*` `*/`, 2 string forms |
+| Java | `java` | `=` | `//`, `/*` `*/`, 2 string forms |
+| Kotlin | `kotlin` | `=` | `//`, `/*` `*/`, 2 string forms |
+| Swift | `swift` | `=` | `//`, `/*` `*/`, 2 string forms |
+| C# | `csharp` | `=` | `//`, `/*` `*/`, 4 string forms |
+| C++ | `cpp` | `=` | `//`, `/*` `*/`, 2 string forms |
+| C | `c` | `=` | `//`, `/*` `*/`, 2 string forms |
+| Ruby | `ruby` | `=` | `#`, 2 string forms |
+| PHP | `php` | `=` | `//` `#`, `/*` `*/`, 2 string forms |
+| Dart | `dart` | `=` | `//`, `/*` `*/`, 2 string forms |
+| Shell | `shell` | `=` | `#`, 2 string forms |
+| SQL | `sql` | `=` | `--`, `/*` `*/`, 1 string form |
+| YAML | `yaml` | `=` | `#`, 2 string forms |
+| JSON | `json` | `:` | 1 string form |
+| CSS | `css` | `:` | `/*` `*/`, 2 string forms |
+| HTML | `html` | `=` | `<!--` `-->`, 2 string forms |
+| XML | `xml` | `=` | `<!--` `-->`, 2 string forms |
+| Markdown | `markdown` | `=` | plain text |
+| Plain Text | `plaintext` | `=` | plain text |
+| Elixir | `elixir` | `=` | `#`, 3 string forms |
+| Haskell | `haskell` | `=` | `--`, `{-` `-}`, 2 string forms |
+| Lua | `lua` | `=` | `--`, `--[[` `]]`, 3 string forms |
+| Scala | `scala` | `=` | `//`, `/*` `*/`, 3 string forms |
+| Objective-C | `objectivec` | `=` | `//`, `/*` `*/`, 2 string forms |
+| Perl | `perl` | `=` | `#`, 2 string forms |
+| Julia | `julia` | `=` | `#`, `#=` `=#`, 3 string forms |
+| Zig | `zig` | `=` | `//`, 2 string forms |
+| PowerShell | `powershell` | `=` | `#`, `<#` `#>`, 2 string forms |
+| Clojure | `clojure` | `=` | `;`, 2 string forms |
+| Erlang | `erlang` | `=` | `%%`, 2 string forms |
+| R | `r` | `<-`, `=` | `#`, 3 string forms |
+| Fortran | `fortran` | `=` | `!`, 2 string forms |
+| Nim | `nim` | `=` | `#`, `#[` `]#`, 2 string forms |
+| Crystal | `crystal` | `=` | `#`, 3 string forms |
+| Gleam | `gleam` | `=` | `//`, 2 string forms |
+| Odin | `odin` | `=` | `//`, `/*` `*/`, 2 string forms |
+| Solidity | `solidity` | `=` | `//`, `/*` `*/`, 2 string forms |
+| Groovy | `groovy` | `=` | `//`, `/*` `*/`, 4 string forms |
+| Terraform | `terraform` | `=` | `#` `//`, `/*` `*/`, 2 string forms |
+| TOML | `toml` | `=` | `#`, 3 string forms |
+| INI | `ini` | `=` | `;` `#`, 2 string forms |
+| Makefile | `makefile` | `=` | `#`, 2 string forms |
+| Dockerfile | `dockerfile` | `=` | `#`, 2 string forms |
+| GraphQL | `graphql` | `:` | `#`, 2 string forms |
+| Visual Basic | `vb` | `=` | apostrophe comments, 1 string form |
+| Delphi | `delphi` | `=` | `//`, `{` `}` `(*` `*)`, 1 string form |
+| Vue | `vue` | `=` | `//`, `/*` `*/` `<!--` `-->`, 3 string forms |
+| Svelte | `svelte` | `=` | `//`, `/*` `*/` `<!--` `-->`, 3 string forms |
+| Astro | `astro` | `=` | `//`, `/*` `*/` `<!--` `-->`, 3 string forms |
+| Protocol Buffers | `protobuf` | `=` | `//`, `/*` `*/`, 2 string forms |
+| V | `v` | `=` | `//`, `/*` `*/`, 2 string forms |
+
+The language is detected from the file extension. Pass `--language` to choose
+one explicitly, or `--stdin-filepath` so the CLI can detect it from the path of
+the piped file.
 
 ## Rules
 
@@ -334,6 +394,7 @@ Options:
   -s, --symbols <list>      Comma-separated symbols to align
   -l, --language <id>       Language profile to use
   -t, --stdin-filepath <p>  Path of the piped file (used for language detection)
+  -c, --config <path>       Configuration file (default: nearest symbol-align.config.json)
       --scope <block|file>  Grouping strategy (default: block)
       --check               Exit 1 when the input is not already aligned
   -v, --version             Print the version
@@ -345,6 +406,74 @@ Examples:
   symbol-align --file input.ts
   symbol-align -f input.ts -o output.ts
   symbol-align -f input.ts --language python
+  symbol-align -f input.ts --config symbol-align.config.json
+```
+
+## Migration
+
+The `0.1` release reworked the API. The full list of changes is in the
+[CHANGELOG](CHANGELOG.md).
+
+```diff
+- import { align } from '@sandlada/symbol-align';
++ import { align } from '@sandlada/symbol-align';
+
+- const result = align(code, { symbols: ['=', ':'] });
++ const result = align(code)({ symbols: ['=', ':'] });
+```
+
+| before                              | now                                       |
+| ----------------------------------- | ----------------------------------------- |
+| `align(code, options)`              | `align(code)(options)`                    |
+| —                                   | `alignWith(options)(code)`                |
+| —                                   | `alignSymbols('=', ':')(code)`            |
+| —                                   | `alignLanguage('python')(code)`           |
+| strings/comments always skipped     | handled by the language profile           |
+| `=` inside `=>` was aligned         | never aligned                             |
+| every line was aligned with every other line | only lines of the same block   |
+| `changes` counted padding operations | `changes` counts distinct modified lines |
+
+## Configuration
+
+Drop a `symbol-align.config.json` into your repository to control the
+defaults. The CLI discovers the nearest file automatically; `--config` names a
+specific one.
+
+```json
+{
+    "symbols": ["=", ":"],
+    "scope": "block",
+    "overrides": {
+        "*.py": { "symbols": ["="] },
+        "src/**/config.ts": { "symbols": ["=", ":", "=>"] }
+    }
+}
+```
+
+| Key         | Type              | Description                                                    |
+| ----------- | ----------------- | -------------------------------------------------------------- |
+| `symbols`   | `string[]`        | Symbols to align                                                |
+| `language`  | `LanguageId`      | Language profile to use                                         |
+| `scope`     | `'block'\|'file'` | Grouping strategy                                               |
+| `overrides` | `object`          | Per file pattern overrides of `symbols`, `language` and `scope`  |
+
+The patterns are matched against the file name and against the full path. `*`
+does not cross a directory separator, `**` does, and a leading `**` also
+matches files in the root directory. A later matching override wins.
+
+The command line always wins over the configuration:
+
+```bash
+symbol-align --file input.ts --symbols '='   # overrides the configured symbols
+```
+
+The same configuration is available to the API:
+
+```ts
+import { loadConfig, resolveConfig } from '@sandlada/symbol-align';
+
+const config = loadConfig(process.cwd());
+const options = resolveConfig(config)('src/config.ts');
 ```
 
 ## Limitations
@@ -364,16 +493,18 @@ symbol-align/
 │       └── package.json
 ├── scripts/
 │   └── sync-docs.mjs       # materializes / restores the linked doc files
+├── biome.json              # lint + format configuration
 ├── pnpm-workspace.yaml     # workspace + shared dependency catalog
 ├── tsconfig.base.json      # shared compiler options
 └── package.json            # workspace root (private)
 ```
 
-Documentation files (`README.md`, `LICENSE`, `SECURITY.md`, `CODE_OF_CONDUCT.md`)
-live in the repository root. Each package links them back to the root copies so
-that a document is edited in exactly one place. `scripts/sync-docs.mjs` turns the
-links into real files while packing (`prepack`) and restores them afterwards
-(`postpack`), because `npm-packlist` skips symlinked files.
+Documentation files (`README.md`, `CHANGELOG.md`, `LICENSE`, `SECURITY.md`,
+`CODE_OF_CONDUCT.md`) live in the repository root. Each package links them back
+to the root copies so that a document is edited in exactly one place.
+`scripts/sync-docs.mjs` turns the links into real files while packing
+(`prepack`) and restores them afterwards (`postpack`), because `npm-packlist`
+skips symlinked files.
 
 ## Development
 

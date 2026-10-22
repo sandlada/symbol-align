@@ -12,6 +12,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { align } from './aligner.js';
+import { loadConfig, loadConfigFile, resolveConfig, type SymbolAlignConfig } from './config.js';
 import { detectLanguage, isLanguageId } from './language.js';
 import type { AlignmentScope, AlignOptions, LanguageId } from './types.js';
 
@@ -27,8 +28,10 @@ export interface CliArgs {
     readonly language?: LanguageId;
     /** Path of the piped file — used to detect the language of standard input. */
     readonly stdinFilepath?: string;
-    /** Grouping strategy used before aligning. */
-    readonly scope: AlignmentScope;
+    /** Path of the configuration file — `undefined` discovers the nearest one. */
+    readonly config?: string;
+    /** Grouping strategy used before aligning — `undefined` keeps the default. */
+    readonly scope?: AlignmentScope;
     /** Report misalignment instead of writing the aligned code. */
     readonly check: boolean;
     /** Print the usage text. */
@@ -68,6 +71,7 @@ Options:
   -s, --symbols <list>      Comma-separated symbols to align
   -l, --language <id>       Language profile to use
   -t, --stdin-filepath <p>  Path of the piped file (used for language detection)
+  -c, --config <path>       Configuration file (default: nearest symbol-align.config.json)
       --scope <block|file>  Grouping strategy (default: block)
       --check               Exit 1 when the input is not already aligned
   -v, --version             Print the version
@@ -79,6 +83,7 @@ Examples:
   symbol-align --file input.ts
   symbol-align -f input.ts -o output.ts
   symbol-align -f input.ts --language python
+  symbol-align -f input.ts --config symbol-align.config.json
 `;
 
 /* -------------------------------------------------------------------------- */
@@ -86,7 +91,7 @@ Examples:
 /* -------------------------------------------------------------------------- */
 
 /** Long names of the options that take a value. */
-type ValueOptionName = 'file' | 'output' | 'symbols' | 'language' | 'stdin-filepath' | 'scope';
+type ValueOptionName = 'file' | 'output' | 'symbols' | 'language' | 'stdin-filepath' | 'config' | 'scope';
 
 /** A value taking option of the command line. */
 interface ValueOption {
@@ -111,6 +116,7 @@ const valueOptions: readonly ValueOption[] = [
     { name: 'symbols', short: 's' },
     { name: 'language', short: 'l' },
     { name: 'stdin-filepath', short: 't' },
+    { name: 'config', short: 'c' },
     { name: 'scope', short: undefined },
 ];
 
@@ -194,6 +200,8 @@ const applyOption =
                 return { ...args, language: parseLanguage(value) };
             case 'stdin-filepath':
                 return { ...args, stdinFilepath: value };
+            case 'config':
+                return { ...args, config: value };
             case 'scope':
                 return { ...args, scope: parseScope(value) };
         }
@@ -201,7 +209,6 @@ const applyOption =
 
 /** The arguments of a command line without any option. */
 const defaultArgs: CliArgs = {
-    scope: 'block',
     check: false,
     help: false,
     version: false,
@@ -271,32 +278,47 @@ const fallbackVersion = '0.0.0';
 const errorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 /**
- * Resolves the language profile of the run.
+ * The path the per file overrides of the configuration are matched against.
  *
- * An explicit `--language` always wins, otherwise the language is detected
- * from the path of the piped file. Without both, the aligner uses the default
- * profile of the language.
+ * The file that is read wins over the path of the piped file.
  */
-const resolveLanguage = (args: CliArgs): LanguageId | undefined => {
-    if (args.language !== undefined) {
-        return args.language;
+const targetPathOf = (args: CliArgs): string | undefined => args.file ?? args.stdinFilepath;
+
+/**
+ * Loads the project configuration.
+ *
+ * An explicit `--config` names the file that is read, otherwise the nearest
+ * `symbol-align.config.json` is discovered from the working directory.
+ */
+const loadConfiguration = (args: CliArgs): SymbolAlignConfig | undefined => {
+    if (args.config !== undefined) {
+        return loadConfigFile(resolve(process.cwd(), args.config));
     }
 
-    if (args.stdinFilepath !== undefined) {
-        return detectLanguage(args.stdinFilepath);
-    }
-
-    return undefined;
+    return loadConfig(process.cwd());
 };
 
-/** Builds the aligner options — values that were not given are left out. */
+/**
+ * Builds the aligner options.
+ *
+ * The configuration provides the defaults, the command line overrides them.
+ * The language is taken from `--language`, then from the configuration and
+ * finally from the extension of the piped file.
+ */
 const buildOptions =
     (args: CliArgs) =>
-    (language: LanguageId | undefined): AlignOptions => ({
-        ...(args.symbols === undefined ? {} : { symbols: args.symbols }),
-        ...(language === undefined ? {} : { language }),
-        scope: args.scope,
-    });
+    (config: SymbolAlignConfig | undefined): AlignOptions => {
+        const base = config === undefined ? {} : resolveConfig(config)(targetPathOf(args));
+        const detected = args.stdinFilepath === undefined ? undefined : detectLanguage(args.stdinFilepath);
+        const language = args.language ?? base.language ?? detected;
+
+        return {
+            ...base,
+            ...(language === undefined ? {} : { language }),
+            ...(args.symbols === undefined ? {} : { symbols: args.symbols }),
+            ...(args.scope === undefined ? {} : { scope: args.scope }),
+        };
+    };
 
 /** Adds exactly one trailing newline to a non empty text. */
 const withTrailingNewline = (code: string): string => (code.length === 0 ? code : `${code.replace(/\n+$/, '')}\n`);
@@ -316,7 +338,7 @@ const execute =
         }
 
         const code = args.file === undefined ? await streams.stdin() : await readFile(validatePath(args.file), 'utf-8');
-        const result = align(code)(buildOptions(args)(resolveLanguage(args)));
+        const result = align(code)(buildOptions(args)(loadConfiguration(args)));
 
         if (args.check) {
             if (result.changes > 0) {

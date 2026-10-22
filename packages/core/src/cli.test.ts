@@ -47,7 +47,6 @@ const withTempDir = async (run: (directory: string) => Promise<void>): Promise<v
 describe('parseArgs', () => {
     it('returns the default arguments when no option is given', () => {
         expect(parseArgs(['node', 'cli.js'])).toEqual({
-            scope: 'block',
             check: false,
             help: false,
             version: false,
@@ -136,6 +135,22 @@ describe('parseArgs', () => {
 
     it('reads the scope from --scope=value', () => {
         expect(parseArgs(['node', 'cli.js', '--scope=block']).scope).toBe('block');
+    });
+
+    it('reads the configuration file from --config', () => {
+        expect(parseArgs(['node', 'cli.js', '--config', 'symbol-align.config.json']).config).toBe('symbol-align.config.json');
+    });
+
+    it('reads the configuration file from -c', () => {
+        expect(parseArgs(['node', 'cli.js', '-c', 'symbol-align.config.json']).config).toBe('symbol-align.config.json');
+    });
+
+    it('reads the configuration file from --config=value', () => {
+        expect(parseArgs(['node', 'cli.js', '--config=symbol-align.config.json']).config).toBe('symbol-align.config.json');
+    });
+
+    it('reports a missing value for --config', () => {
+        expect(() => parseArgs(['node', 'cli.js', '--config'])).toThrow('Missing value for config');
     });
 
     it('rejects an unknown scope', () => {
@@ -343,5 +358,68 @@ describe('runCli', () => {
         const lines = streams.stdoutText().split('\n');
         expect(lines[1]?.indexOf('=')).toBe(lines[2]?.indexOf('='));
         expect(lines[1]?.indexOf('=')).toBeLessThan(lines[0]?.indexOf('=') ?? 0);
+    });
+});
+
+describe('runCli with a project configuration', () => {
+    it('discovers the nearest configuration file', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'symbol-align.config.json'), JSON.stringify({ symbols: [':'] }), 'utf-8');
+            const streams = createStreams('a: 1\nbb: 2');
+
+            const code = await runCli(['node', 'cli.js'], streams);
+
+            expect(code).toBe(0);
+            expect(streams.stdoutText()).toBe('a : 1\nbb: 2\n');
+        });
+    });
+
+    it('reads the configuration file given with --config', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'custom.json'), JSON.stringify({ symbols: [':'] }), 'utf-8');
+            const streams = createStreams('a: 1\nbb: 2');
+
+            const code = await runCli(['node', 'cli.js', '--config', 'custom.json'], streams);
+
+            expect(code).toBe(0);
+            expect(streams.stdoutText()).toBe('a : 1\nbb: 2\n');
+        });
+    });
+
+    it('lets the command line override the configuration', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'symbol-align.config.json'), JSON.stringify({ symbols: [':'] }), 'utf-8');
+            const streams = createStreams('a: 1\nbb: 2');
+
+            const code = await runCli(['node', 'cli.js', '--symbols', '='], streams);
+
+            expect(code).toBe(0);
+            expect(streams.stdoutText()).toBe('a: 1\nbb: 2\n');
+        });
+    });
+
+    it('applies a per file override of the configuration', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'symbol-align.config.json'), JSON.stringify({ overrides: { '*.py': { symbols: [':'] } } }), 'utf-8');
+            await writeFile(join(directory, 'input.py'), 'a: 1\nbb: 2\n', 'utf-8');
+            const streams = createStreams();
+
+            const code = await runCli(['node', 'cli.js', '--file', 'input.py'], streams);
+
+            expect(code).toBe(0);
+            expect(streams.stdoutText()).toBe('a : 1\nbb: 2\n');
+        });
+    });
+
+    it('reports a broken configuration file and returns 1', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'symbol-align.config.json'), '{ not json', 'utf-8');
+            const streams = createStreams('a = 1');
+
+            const code = await runCli(['node', 'cli.js'], streams);
+
+            expect(code).toBe(1);
+            expect(streams.stderrText()).toContain('Failed to read configuration');
+        });
     });
 });

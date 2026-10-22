@@ -33,6 +33,38 @@ const LANGUAGE_IDS = {
     xml: true,
     markdown: true,
     plaintext: true,
+    elixir: true,
+    haskell: true,
+    lua: true,
+    scala: true,
+    objectivec: true,
+    perl: true,
+    julia: true,
+    zig: true,
+    powershell: true,
+    clojure: true,
+    erlang: true,
+    r: true,
+    fortran: true,
+    nim: true,
+    crystal: true,
+    gleam: true,
+    odin: true,
+    solidity: true,
+    groovy: true,
+    terraform: true,
+    toml: true,
+    ini: true,
+    makefile: true,
+    dockerfile: true,
+    graphql: true,
+    vb: true,
+    delphi: true,
+    vue: true,
+    svelte: true,
+    astro: true,
+    protobuf: true,
+    v: true,
 } as const satisfies Record<LanguageId, true>;
 
 const expectedIds = Object.keys(LANGUAGE_IDS);
@@ -100,6 +132,23 @@ describe('allLanguages', () => {
         expect(violations).toEqual([]);
     });
 
+    it('never lists `=` before any longer operator that starts with `=`', () => {
+        const violations = allLanguages.flatMap((profile) => {
+            const assignmentIndex = profile.operators.indexOf('=');
+
+            if (assignmentIndex === -1) {
+                return [];
+            }
+
+            return profile.operators
+                .map((operator, index) => ({ operator, index }))
+                .filter(({ operator, index }) => operator.length > 1 && operator.startsWith('=') && index > assignmentIndex)
+                .map(({ operator }) => `${profile.id}: ${operator} has to come before =`);
+        });
+
+        expect(violations).toEqual([]);
+    });
+
     it('aligns at least one symbol by default', () => {
         for (const profile of allLanguages) {
             expect(profile.defaultSymbols.length).toBeGreaterThan(0);
@@ -112,6 +161,22 @@ describe('allLanguages', () => {
                 expect(delimiter.open.length).toBeGreaterThan(0);
                 expect(delimiter.close.length).toBeGreaterThan(0);
             }
+        }
+    });
+
+    it('gives every profile a name', () => {
+        for (const profile of allLanguages) {
+            expect(profile.name.trim().length).toBeGreaterThan(0);
+        }
+    });
+
+    it('gives every profile at least one extension except the generic one', () => {
+        for (const profile of allLanguages) {
+            if (profile.id === 'generic') {
+                continue;
+            }
+
+            expect(profile.extensions.length).toBeGreaterThan(0);
         }
     });
 });
@@ -203,5 +268,133 @@ describe('detectLanguage', () => {
 
     it('detects plain text files as plaintext', () => {
         expect(detectLanguage('notes.txt')).toBe('plaintext');
+    });
+
+    it('detects elixir', () => {
+        expect(detectLanguage('a.ex')).toBe('elixir');
+    });
+
+    it('detects haskell', () => {
+        expect(detectLanguage('a.hs')).toBe('haskell');
+    });
+
+    it('detects lua', () => {
+        expect(detectLanguage('a.lua')).toBe('lua');
+    });
+
+    it('detects scala', () => {
+        expect(detectLanguage('a.scala')).toBe('scala');
+    });
+
+    it('detects objectivec', () => {
+        expect(detectLanguage('a.m')).toBe('objectivec');
+    });
+
+    it('detects perl', () => {
+        expect(detectLanguage('a.pl')).toBe('perl');
+    });
+
+    it('detects julia', () => {
+        expect(detectLanguage('a.jl')).toBe('julia');
+    });
+
+    it('detects zig', () => {
+        expect(detectLanguage('a.zig')).toBe('zig');
+    });
+
+    it('detects powershell', () => {
+        expect(detectLanguage('a.ps1')).toBe('powershell');
+    });
+
+    it('detects clojure', () => {
+        expect(detectLanguage('a.clj')).toBe('clojure');
+    });
+
+    it('detects erlang', () => {
+        expect(detectLanguage('a.erl')).toBe('erlang');
+    });
+
+    it('detects r', () => {
+        expect(detectLanguage('a.r')).toBe('r');
+    });
+
+    it('detects fortran', () => {
+        expect(detectLanguage('a.f90')).toBe('fortran');
+    });
+
+    it('detects nim', () => {
+        expect(detectLanguage('a.nim')).toBe('nim');
+    });
+
+    it('detects crystal', () => {
+        expect(detectLanguage('a.cr')).toBe('crystal');
+    });
+
+    it('detects gleam', () => {
+        expect(detectLanguage('a.gleam')).toBe('gleam');
+    });
+
+    it('detects odin', () => {
+        expect(detectLanguage('a.odin')).toBe('odin');
+    });
+
+    it('detects solidity', () => {
+        expect(detectLanguage('a.sol')).toBe('solidity');
+    });
+
+    it('detects groovy', () => {
+        expect(detectLanguage('a.groovy')).toBe('groovy');
+    });
+
+    it('detects terraform', () => {
+        expect(detectLanguage('a.tf')).toBe('terraform');
+    });
+
+    it('detects toml', () => {
+        expect(detectLanguage('a.toml')).toBe('toml');
+    });
+
+    it('detects ini', () => {
+        expect(detectLanguage('a.ini')).toBe('ini');
+    });
+
+    it('detects makefile', () => {
+        expect(detectLanguage('a.mk')).toBe('makefile');
+    });
+
+    it('detects dockerfile', () => {
+        expect(detectLanguage('a.dockerfile')).toBe('dockerfile');
+    });
+
+    it('detects graphql', () => {
+        expect(detectLanguage('a.graphql')).toBe('graphql');
+    });
+
+    it('detects vb', () => {
+        expect(detectLanguage('a.vb')).toBe('vb');
+    });
+
+    it('detects delphi', () => {
+        expect(detectLanguage('a.pas')).toBe('delphi');
+    });
+
+    it('detects vue', () => {
+        expect(detectLanguage('a.vue')).toBe('vue');
+    });
+
+    it('detects svelte', () => {
+        expect(detectLanguage('a.svelte')).toBe('svelte');
+    });
+
+    it('detects astro', () => {
+        expect(detectLanguage('a.astro')).toBe('astro');
+    });
+
+    it('detects protobuf', () => {
+        expect(detectLanguage('a.proto')).toBe('protobuf');
+    });
+
+    it('detects v', () => {
+        expect(detectLanguage('a.v')).toBe('v');
     });
 });

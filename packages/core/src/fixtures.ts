@@ -483,6 +483,458 @@ export const shellVariables: CodeFixture = {
 };
 
 // ────────────────────────────
+// every language profile aligns its default symbol
+// ────────────────────────────
+
+export const languageGeneric: CodeFixture = {
+    name: 'language-generic',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'generic',
+};
+
+export const languageJavascript: CodeFixture = {
+    name: 'language-javascript',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'javascript',
+};
+
+export const languageTypescript: CodeFixture = {
+    name: 'language-typescript',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'typescript',
+};
+
+export const languagePython: CodeFixture = {
+    name: 'language-python',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'python',
+};
+
+export const languageGo: CodeFixture = {
+    name: 'language-go',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'go',
+};
+
+export const languageRust: CodeFixture = {
+    name: 'language-rust',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'rust',
+};
+
+export const languageJava: CodeFixture = {
+    name: 'language-java',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'java',
+};
+
+export const languageKotlin: CodeFixture = {
+    name: 'language-kotlin',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'kotlin',
+};
+
+export const languageSwift: CodeFixture = {
+    name: 'language-swift',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'swift',
+};
+
+export const languageCsharp: CodeFixture = {
+    name: 'language-csharp',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'csharp',
+};
+
+export const languageCpp: CodeFixture = {
+    name: 'language-cpp',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'cpp',
+};
+
+export const languageC: CodeFixture = {
+    name: 'language-c',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'c',
+};
+
+export const languageRuby: CodeFixture = {
+    name: 'language-ruby',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'ruby',
+};
+
+export const languagePhp: CodeFixture = {
+    name: 'language-php',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'php',
+};
+
+export const languageDart: CodeFixture = {
+    name: 'language-dart',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'dart',
+};
+
+export const languageShell: CodeFixture = {
+    name: 'language-shell',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'shell',
+};
+
+export const languageSql: CodeFixture = {
+    name: 'language-sql',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'sql',
+};
+
+export const languageYaml: CodeFixture = {
+    name: 'language-yaml',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'yaml',
+};
+
+export const languageJson: CodeFixture = {
+    name: 'language-json',
+    input: ['key: value', 'longerKey: value', 'k: value'].join('\n'),
+    output: ['key      : value', 'longerKey: value', 'k        : value'].join('\n'),
+    changes: 2,
+    language: 'json',
+};
+
+export const languageCss: CodeFixture = {
+    name: 'language-css',
+    input: ['key: value', 'longerKey: value', 'k: value'].join('\n'),
+    output: ['key      : value', 'longerKey: value', 'k        : value'].join('\n'),
+    changes: 2,
+    language: 'css',
+};
+
+export const languageHtml: CodeFixture = {
+    name: 'language-html',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'html',
+};
+
+export const languageXml: CodeFixture = {
+    name: 'language-xml',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'xml',
+};
+
+export const languageMarkdown: CodeFixture = {
+    name: 'language-markdown',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'markdown',
+};
+
+export const languagePlaintext: CodeFixture = {
+    name: 'language-plaintext',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'plaintext',
+};
+
+export const languageElixir: CodeFixture = {
+    name: 'language-elixir',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'elixir',
+};
+
+export const languageHaskell: CodeFixture = {
+    name: 'language-haskell',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'haskell',
+};
+
+export const languageLua: CodeFixture = {
+    name: 'language-lua',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'lua',
+};
+
+export const languageScala: CodeFixture = {
+    name: 'language-scala',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'scala',
+};
+
+export const languageObjectivec: CodeFixture = {
+    name: 'language-objectivec',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'objectivec',
+};
+
+export const languagePerl: CodeFixture = {
+    name: 'language-perl',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'perl',
+};
+
+export const languageJulia: CodeFixture = {
+    name: 'language-julia',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'julia',
+};
+
+export const languageZig: CodeFixture = {
+    name: 'language-zig',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'zig',
+};
+
+export const languagePowershell: CodeFixture = {
+    name: 'language-powershell',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'powershell',
+};
+
+export const languageClojure: CodeFixture = {
+    name: 'language-clojure',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'clojure',
+};
+
+export const languageErlang: CodeFixture = {
+    name: 'language-erlang',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'erlang',
+};
+
+export const languageR: CodeFixture = {
+    name: 'language-r',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'r',
+};
+
+export const languageFortran: CodeFixture = {
+    name: 'language-fortran',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'fortran',
+};
+
+export const languageNim: CodeFixture = {
+    name: 'language-nim',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'nim',
+};
+
+export const languageCrystal: CodeFixture = {
+    name: 'language-crystal',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'crystal',
+};
+
+export const languageGleam: CodeFixture = {
+    name: 'language-gleam',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'gleam',
+};
+
+export const languageOdin: CodeFixture = {
+    name: 'language-odin',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'odin',
+};
+
+export const languageSolidity: CodeFixture = {
+    name: 'language-solidity',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'solidity',
+};
+
+export const languageGroovy: CodeFixture = {
+    name: 'language-groovy',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'groovy',
+};
+
+export const languageTerraform: CodeFixture = {
+    name: 'language-terraform',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'terraform',
+};
+
+export const languageToml: CodeFixture = {
+    name: 'language-toml',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'toml',
+};
+
+export const languageIni: CodeFixture = {
+    name: 'language-ini',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'ini',
+};
+
+export const languageMakefile: CodeFixture = {
+    name: 'language-makefile',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'makefile',
+};
+
+export const languageDockerfile: CodeFixture = {
+    name: 'language-dockerfile',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'dockerfile',
+};
+
+export const languageGraphql: CodeFixture = {
+    name: 'language-graphql',
+    input: ['key: value', 'longerKey: value', 'k: value'].join('\n'),
+    output: ['key      : value', 'longerKey: value', 'k        : value'].join('\n'),
+    changes: 2,
+    language: 'graphql',
+};
+
+export const languageVb: CodeFixture = {
+    name: 'language-vb',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'vb',
+};
+
+export const languageDelphi: CodeFixture = {
+    name: 'language-delphi',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'delphi',
+};
+
+export const languageVue: CodeFixture = {
+    name: 'language-vue',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'vue',
+};
+
+export const languageSvelte: CodeFixture = {
+    name: 'language-svelte',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'svelte',
+};
+
+export const languageAstro: CodeFixture = {
+    name: 'language-astro',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'astro',
+};
+
+export const languageProtobuf: CodeFixture = {
+    name: 'language-protobuf',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'protobuf',
+};
+
+export const languageV: CodeFixture = {
+    name: 'language-v',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'v',
+};
+
+// ────────────────────────────
 // collect all fixtures for the batch test
 // ────────────────────────────
 
@@ -537,4 +989,60 @@ export const allFixtures: readonly CodeFixture[] = [
     yamlMapping,
     jsonObject,
     shellVariables,
+    languageGeneric,
+    languageJavascript,
+    languageTypescript,
+    languagePython,
+    languageGo,
+    languageRust,
+    languageJava,
+    languageKotlin,
+    languageSwift,
+    languageCsharp,
+    languageCpp,
+    languageC,
+    languageRuby,
+    languagePhp,
+    languageDart,
+    languageShell,
+    languageSql,
+    languageYaml,
+    languageJson,
+    languageCss,
+    languageHtml,
+    languageXml,
+    languageMarkdown,
+    languagePlaintext,
+    languageElixir,
+    languageHaskell,
+    languageLua,
+    languageScala,
+    languageObjectivec,
+    languagePerl,
+    languageJulia,
+    languageZig,
+    languagePowershell,
+    languageClojure,
+    languageErlang,
+    languageR,
+    languageFortran,
+    languageNim,
+    languageCrystal,
+    languageGleam,
+    languageOdin,
+    languageSolidity,
+    languageGroovy,
+    languageTerraform,
+    languageToml,
+    languageIni,
+    languageMakefile,
+    languageDockerfile,
+    languageGraphql,
+    languageVb,
+    languageDelphi,
+    languageVue,
+    languageSvelte,
+    languageAstro,
+    languageProtobuf,
+    languageV,
 ];

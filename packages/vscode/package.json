@@ -1,0 +1,93 @@
+{
+    "name": "symbol-align",
+    "displayName": "Symbol Align",
+    "description": "Vertically aligns punctuation symbols such as =, : and => inside your code.",
+    "version": "0.0.1",
+    "publisher": "sandlada",
+    "license": "MIT",
+    "type": "module",
+    "categories": [
+        "Formatters"
+    ],
+    "keywords": [
+        "align",
+        "alignment",
+        "format",
+        "formatter",
+        "symbol"
+    ],
+    "engines": {
+        "vscode": "^1.95.0"
+    },
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "main": "./dist/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "symbolAlign.alignDocument",
+                "title": "Symbol Align: Align Document"
+            },
+            {
+                "command": "symbolAlign.alignSelection",
+                "title": "Symbol Align: Align Selection"
+            }
+        ],
+        "configuration": {
+            "title": "Symbol Align",
+            "properties": {
+                "symbolAlign.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Align the symbols of a document when it is formatted."
+                },
+                "symbolAlign.symbols": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": [],
+                    "description": "Symbols to align, for example [\"=\", \":\"]. An empty list aligns the symbols that are conventional for the language."
+                },
+                "symbolAlign.language": {
+                    "type": "string",
+                    "default": "auto",
+                    "description": "Language profile used to align the document. Use \"auto\" to detect it from the language of the document."
+                },
+                "symbolAlign.scope": {
+                    "type": "string",
+                    "enum": [
+                        "block",
+                        "file"
+                    ],
+                    "default": "block",
+                    "description": "How the lines are grouped before they are aligned. \"block\" aligns the lines of a blank-line separated block, \"file\" aligns every line of the document."
+                }
+            }
+        }
+    },
+    "scripts": {
+        "build": "node esbuild.mjs",
+        "typecheck": "tsc --noEmit -p tsconfig.json",
+        "test": "vitest run",
+        "package": "vsce package"
+    },
+    "devDependencies": {
+        "@sandlada/symbol-align": "workspace:*",
+        "@types/node": "catalog:",
+        "@types/vscode": "^1.95.0",
+        "@vscode/vsce": "catalog:",
+        "esbuild": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/sandlada/symbol-align.git"
+    },
+    "bugs": {
+        "url": "https://github.com/sandlada/symbol-align/issues"
+    },
+    "homepage": "https://github.com/sandlada/symbol-align#readme"
+}

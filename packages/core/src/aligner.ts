@@ -199,10 +199,11 @@ const orderByFirstOccurrence =
         const scan: ScanResult = scanSource(lines.join('\n'))(profile);
         const occurrences = new Map<AlignSymbol, FirstOccurrence>();
 
-        lines.forEach((line, index) => {
+        for (const [index, line] of lines.entries()) {
             if (occurrences.size === symbols.length) {
-                return;
+                break;
             }
+
             const positions = findSymbolPositions(line)({
                 regions: scan.codeRegions[index] ?? [],
                 symbols,
@@ -216,7 +217,7 @@ const orderByFirstOccurrence =
                 }
                 occurrences.set(symbol, { line: index, column: columns[0] });
             });
-        });
+        }
 
         return [...symbols].sort((left, right) => {
             const a = occurrences.get(left);

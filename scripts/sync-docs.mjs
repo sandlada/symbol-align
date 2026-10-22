@@ -2,7 +2,7 @@
  * Keeps the documentation files of every workspace package in sync with the
  * repository root.
  *
- * The packages link `README.md`, `LICENSE`, `SECURITY.md` and
+ * The packages link `README.md`, `CHANGELOG.md`, `LICENSE`, `SECURITY.md` and
  * `CODE_OF_CONDUCT.md` back to the root copies so that a document is edited
  * in exactly one place. `npm-packlist` skips symlinked files though, which
  * would strip the README from the published tarball.
@@ -18,7 +18,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const packagesDir = join(root, 'packages');
 
 /** Documentation files that live in the repository root and are linked into each package. */
-const DOCS = ['README.md', 'LICENSE', 'SECURITY.md', 'CODE_OF_CONDUCT.md'];
+const DOCS = ['README.md', 'CHANGELOG.md', 'LICENSE', 'SECURITY.md', 'CODE_OF_CONDUCT.md'];
 
 function listPackages() {
     if (!existsSync(packagesDir)) {

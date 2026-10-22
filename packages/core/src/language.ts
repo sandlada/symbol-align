@@ -20,6 +20,10 @@ const tripleDoubleQuote: StringDelimiter = { open: '"""', close: '"""', escape: 
 const goRawString: StringDelimiter = { open: '`', close: '`', escape: 'none', multiline: true };
 const csharpVerbatimString: StringDelimiter = { open: '@"', close: '"', escape: 'doubled', multiline: true };
 const csharpRawString: StringDelimiter = { open: '"""', close: '"""', escape: 'none', multiline: true };
+const multilineDoubleQuote: StringDelimiter = { open: '"', close: '"', escape: 'backslash', multiline: true };
+const doubledDoubleQuote: StringDelimiter = { open: '"', close: '"', escape: 'doubled', multiline: false };
+const backtickSingleLine: StringDelimiter = { open: '`', close: '`', escape: 'backslash', multiline: false };
+const luaLongString: StringDelimiter = { open: '[[', close: ']]', escape: 'backslash', multiline: true };
 
 /* -------------------------------------------------------------------------- */
 /* Shared operator tables (always sorted longest-first)                        */
@@ -98,6 +102,220 @@ const jsonOperators = [':'] as const;
 const cssOperators = ['=', '+', '-', '*', '/'] as const;
 
 const markupOperators = ['='] as const;
+
+/* -------------------------------------------------------------------------- */
+/* Operator tables of the extended language profiles                           */
+/* -------------------------------------------------------------------------- */
+
+const elixirOperators = [
+    '===',
+    '!==',
+    '&&&',
+    '|||',
+    '<<<',
+    '>>>',
+    '==',
+    '!=',
+    '<=',
+    '>=',
+    '=~',
+    '=>',
+    '<-',
+    '->',
+    '|>',
+    '||',
+    '&&',
+    '++',
+    '--',
+    '**',
+    '//',
+    '<>',
+    '<<',
+    '>>',
+    '::',
+    '..',
+    '|',
+    '&',
+    '+',
+    '-',
+    '*',
+    '/',
+    '!',
+    '^',
+    '~',
+    '?',
+    '=',
+] as const;
+
+const haskellOperators = ['>>=', '->', '=>', '<-', '::', '>>', '==', '/=', '<=', '>=', '&&', '||', '++', '+', '-', '*', '/', '=', ':', '.', '!', '$'] as const;
+
+const luaOperators = ['==', '~=', '<=', '>=', '..', '//', '<<', '>>', '=', '+', '-', '*', '/', '%', '^', '#', '<', '>', '~', '&', '|'] as const;
+
+const scalaOperators = ['===', '!==', '==', '!=', '<=', '>=', '+=', '-=', '*=', '/=', '%=', '&&', '||', '=>', '->', '::', '=', '+', '-', '*', '/', '%', '<', '>', '!', '&', '|', '^', '?', ':'] as const;
+
+const perlOperators = ['<=>', '**=', '||=', '&&=', '//=', '==', '!=', '<=', '>=', '=~', '!~', '+=', '-=', '*=', '/=', '.=', 'x=', '||', '&&', '//', '**', '->', '=>', '=', '+', '-', '*', '/', '.', '!', '?', ':'] as const;
+
+const juliaOperators = [
+    '===',
+    '!==',
+    '<<=',
+    '>>=',
+    '//=',
+    '==',
+    '!=',
+    '<=',
+    '>=',
+    '->',
+    '=>',
+    '<-',
+    '&&',
+    '||',
+    '+=',
+    '-=',
+    '*=',
+    '/=',
+    '%=',
+    '//',
+    '<<',
+    '>>',
+    '**',
+    '=',
+    '+',
+    '-',
+    '*',
+    '/',
+    '%',
+    '<',
+    '>',
+    '!',
+    '&',
+    '|',
+    '^',
+    '~',
+    '?',
+    ':',
+] as const;
+
+const powershellOperators = [
+    '-notmatch',
+    '-replace',
+    '-notlike',
+    '-match',
+    '-split',
+    '-like',
+    '-join',
+    '-band',
+    '-bxor',
+    '-bor',
+    '-shl',
+    '-shr',
+    '-eq',
+    '-ne',
+    '-ge',
+    '-gt',
+    '-le',
+    '-lt',
+    '+=',
+    '-=',
+    '*=',
+    '/=',
+    '%=',
+    '=',
+    '+',
+    '-',
+    '*',
+    '/',
+    '%',
+    '!',
+    '?',
+] as const;
+
+const clojureOperators = ['==', '!=', '<=', '>=', '=', '+', '-', '*', '/', '<', '>'] as const;
+
+const erlangOperators = ['=:=', '=/=', '==', '/=', '=<', '>=', '++', '--', '=>', '<<', '>>', '||', '&&', '=', '+', '-', '*', '/', '<', '>', '!', '?'] as const;
+
+const rOperators = ['%/%', '<<-', '->>', '<-', '->', '==', '!=', '<=', '>=', '%%', '=', '+', '-', '*', '/', '^', '<', '>', '!', '&', '|'] as const;
+
+const fortranOperators = ['**', '==', '/=', '<=', '>=', '=>', '::', '=', '+', '-', '*', '/', '<', '>', ':', '.'] as const;
+
+const nimOperators = ['notin', '**=', '//=', '<<=', '>>=', '==', '!=', '<=', '>=', '+=', '-=', '*=', '/=', '%=', 'in', 'of', '->', '=', '+', '-', '*', '/', '%', '<', '>', '!', '&', '|', '^', '?', ':'] as const;
+
+const crystalOperators = ['===', '!==', '**=', '//=', '<<=', '>>=', '==', '!=', '<=', '>=', '+=', '-=', '*=', '/=', '%=', '&&', '||', '=>', '->', '::', '=~', '=', '+', '-', '*', '/', '%', '<', '>', '!', '&', '|', '^', '?', ':'] as const;
+
+const groovyOperators = [
+    '===',
+    '!==',
+    '**=',
+    '<<=',
+    '>>=',
+    '?=',
+    '==',
+    '!=',
+    '<=',
+    '>=',
+    '+=',
+    '-=',
+    '*=',
+    '/=',
+    '%=',
+    '&&',
+    '||',
+    '**',
+    '=~',
+    '=>',
+    '->',
+    '::',
+    '=',
+    '+',
+    '-',
+    '*',
+    '/',
+    '%',
+    '<',
+    '>',
+    '!',
+    '&',
+    '|',
+    '^',
+    '?',
+    ':',
+] as const;
+
+const terraformOperators = ['==', '!=', '<=', '>=', '&&', '||', '=>', '=', '+', '-', '*', '/', '%', '!', '?', ':'] as const;
+
+const keyValueOperators = ['=', '+', '-'] as const;
+
+const makefileOperators = ['::=', ':=', '+=', '?=', '!=', '==', '=', '+', '-', '*', '/', '%', '?', '!'] as const;
+
+/** The GraphQL operators — the spread, the intersection and the union. */
+const graphqlOperators = ['...', ':', '=', '!', '@', '&', '|'] as const;
+
+/**
+ * The Visual Basic operators.
+ *
+ * VB.NET assigns with `=` and compares inequality with `<>` — it has neither
+ * `!=` nor `:=`.
+ */
+const visualBasicOperators = ['<>', '<=', '>=', '<<', '>>', '=', '+', '-', '*', '/', '\\', '^', '&', '<', '>', '?'] as const;
+
+/**
+ * The C family operators with `::` replaced by `:=`.
+ *
+ * V assigns with `:=` — without it the aligner would split an assignment
+ * into `: =`.
+ */
+const colonAssignmentOperators = ['==', '!=', '<=', '>=', '+=', '-=', '*=', '/=', '%=', '&&', '||', '++', '--', '->', '=>', ':=', '=', '+', '-', '*', '/', '%', '<', '>', '!', '&', '|', '^', '?', ':'] as const;
+
+/**
+ * The C family operators plus `:=`.
+ *
+ * Delphi and Odin declare and assign with `:=` — without it the aligner
+ * would split an assignment into `: =`.
+ */
+const declarationOperators = ['==', '!=', '<=', '>=', '+=', '-=', '*=', '/=', '%=', '&&', '||', '++', '--', '->', '=>', '::', ':=', '=', '+', '-', '*', '/', '%', '<', '>', '!', '&', '|', '^', '?', ':'] as const;
+
+/** The C family operators without `=>` and `::` — Zig has neither. */
+const zigOperators = ['<<=', '>>=', '==', '!=', '<=', '>=', '+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', '&&', '||', '++', '--', '->', '=', '+', '-', '*', '/', '%', '<', '>', '!', '&', '|', '^', '?', ':'] as const;
 
 /* -------------------------------------------------------------------------- */
 /* Profiles                                                                    */
@@ -349,6 +567,338 @@ const profileTable = {
         blockComments: [],
         strings: [],
         operators: markupOperators,
+        defaultSymbols: ['='],
+    },
+    elixir: {
+        id: 'elixir',
+        name: 'Elixir',
+        extensions: ['ex', 'exs', 'eex', 'heex'],
+        lineComments: ['#'],
+        blockComments: [],
+        strings: [singleQuote, doubleQuote, tripleSingleQuote],
+        operators: elixirOperators,
+        defaultSymbols: ['='],
+    },
+    haskell: {
+        id: 'haskell',
+        name: 'Haskell',
+        extensions: ['hs', 'lhs'],
+        lineComments: ['--'],
+        blockComments: [['{-', '-}']],
+        strings: [singleQuote, doubleQuote],
+        operators: haskellOperators,
+        defaultSymbols: ['='],
+    },
+    lua: {
+        id: 'lua',
+        name: 'Lua',
+        extensions: ['lua'],
+        lineComments: ['--'],
+        blockComments: [['--[[', ']]']],
+        strings: [singleQuote, doubleQuote, luaLongString],
+        operators: luaOperators,
+        defaultSymbols: ['='],
+    },
+    scala: {
+        id: 'scala',
+        name: 'Scala',
+        extensions: ['scala', 'sc', 'sbt'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote, tripleSingleQuote],
+        operators: scalaOperators,
+        defaultSymbols: ['='],
+    },
+    objectivec: {
+        id: 'objectivec',
+        name: 'Objective-C',
+        extensions: ['m', 'mm'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote],
+        operators: cFamilyOperators,
+        defaultSymbols: ['='],
+    },
+    perl: {
+        id: 'perl',
+        name: 'Perl',
+        extensions: ['pl', 'pm'],
+        lineComments: ['#'],
+        blockComments: [],
+        strings: [singleQuote, doubleQuote],
+        operators: perlOperators,
+        defaultSymbols: ['='],
+    },
+    julia: {
+        id: 'julia',
+        name: 'Julia',
+        extensions: ['jl'],
+        lineComments: ['#'],
+        blockComments: [['#=', '=#']],
+        strings: [singleQuote, doubleQuote, tripleDoubleQuote],
+        operators: juliaOperators,
+        defaultSymbols: ['='],
+    },
+    zig: {
+        id: 'zig',
+        name: 'Zig',
+        extensions: ['zig'],
+        lineComments: ['//'],
+        blockComments: [],
+        strings: [singleQuote, multilineDoubleQuote],
+        operators: zigOperators,
+        defaultSymbols: ['='],
+    },
+    powershell: {
+        id: 'powershell',
+        name: 'PowerShell',
+        extensions: ['ps1', 'psm1', 'psd1'],
+        lineComments: ['#'],
+        blockComments: [['<#', '#>']],
+        strings: [singleQuote, doubledDoubleQuote],
+        operators: powershellOperators,
+        defaultSymbols: ['='],
+    },
+    clojure: {
+        id: 'clojure',
+        name: 'Clojure',
+        extensions: ['clj', 'cljs', 'cljc', 'edn'],
+        lineComments: [';'],
+        blockComments: [],
+        strings: [singleQuote, doubleQuote],
+        operators: clojureOperators,
+        defaultSymbols: ['='],
+    },
+    erlang: {
+        id: 'erlang',
+        name: 'Erlang',
+        extensions: ['erl', 'hrl'],
+        lineComments: ['%%'],
+        blockComments: [],
+        strings: [singleQuote, multilineDoubleQuote],
+        operators: erlangOperators,
+        defaultSymbols: ['='],
+    },
+    r: {
+        id: 'r',
+        name: 'R',
+        extensions: ['r', 'rmd'],
+        lineComments: ['#'],
+        blockComments: [],
+        strings: [singleQuote, doubleQuote, backtickSingleLine],
+        operators: rOperators,
+        defaultSymbols: ['<-', '='],
+    },
+    fortran: {
+        id: 'fortran',
+        name: 'Fortran',
+        extensions: ['f90', 'f95', 'f03', 'f08'],
+        lineComments: ['!'],
+        blockComments: [],
+        strings: [singleQuote, doubleQuote],
+        operators: fortranOperators,
+        defaultSymbols: ['='],
+    },
+    nim: {
+        id: 'nim',
+        name: 'Nim',
+        extensions: ['nim', 'nims'],
+        lineComments: ['#'],
+        blockComments: [['#[', ']#']],
+        strings: [singleQuote, multilineDoubleQuote],
+        operators: nimOperators,
+        defaultSymbols: ['='],
+    },
+    crystal: {
+        id: 'crystal',
+        name: 'Crystal',
+        extensions: ['cr'],
+        lineComments: ['#'],
+        blockComments: [],
+        strings: [singleQuote, doubleQuote, tripleDoubleQuote],
+        operators: crystalOperators,
+        defaultSymbols: ['='],
+    },
+    gleam: {
+        id: 'gleam',
+        name: 'Gleam',
+        extensions: ['gleam'],
+        lineComments: ['//'],
+        blockComments: [],
+        strings: [singleQuote, doubleQuote],
+        operators: cFamilyOperators,
+        defaultSymbols: ['='],
+    },
+    odin: {
+        id: 'odin',
+        name: 'Odin',
+        extensions: ['odin'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote],
+        operators: declarationOperators,
+        defaultSymbols: ['='],
+    },
+    solidity: {
+        id: 'solidity',
+        name: 'Solidity',
+        extensions: ['sol'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote],
+        operators: cFamilyOperators,
+        defaultSymbols: ['='],
+    },
+    groovy: {
+        id: 'groovy',
+        name: 'Groovy',
+        extensions: ['groovy', 'gvy', 'gradle'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote, tripleSingleQuote, tripleDoubleQuote],
+        operators: groovyOperators,
+        defaultSymbols: ['='],
+    },
+    terraform: {
+        id: 'terraform',
+        name: 'Terraform',
+        extensions: ['tf', 'tfvars', 'hcl'],
+        lineComments: ['#', '//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote],
+        operators: terraformOperators,
+        defaultSymbols: ['='],
+    },
+    toml: {
+        id: 'toml',
+        name: 'TOML',
+        extensions: ['toml'],
+        lineComments: ['#'],
+        blockComments: [],
+        strings: [singleQuote, doubleQuote, tripleSingleQuote],
+        operators: keyValueOperators,
+        defaultSymbols: ['='],
+    },
+    ini: {
+        id: 'ini',
+        name: 'INI',
+        extensions: ['ini', 'cfg', 'conf', 'properties'],
+        lineComments: [';', '#'],
+        blockComments: [],
+        strings: [singleQuote, doubleQuote],
+        operators: keyValueOperators,
+        defaultSymbols: ['='],
+    },
+    makefile: {
+        id: 'makefile',
+        name: 'Makefile',
+        extensions: ['mk', 'makefile', 'mak'],
+        lineComments: ['#'],
+        blockComments: [],
+        strings: [singleQuote, doubleQuote],
+        operators: makefileOperators,
+        defaultSymbols: ['='],
+    },
+    dockerfile: {
+        id: 'dockerfile',
+        name: 'Dockerfile',
+        extensions: ['dockerfile'],
+        lineComments: ['#'],
+        blockComments: [],
+        strings: [singleQuote, doubleQuote],
+        operators: keyValueOperators,
+        defaultSymbols: ['='],
+    },
+    graphql: {
+        id: 'graphql',
+        name: 'GraphQL',
+        extensions: ['graphql', 'gql'],
+        lineComments: ['#'],
+        blockComments: [],
+        strings: [singleQuote, doubleQuote],
+        operators: graphqlOperators,
+        defaultSymbols: [':'],
+    },
+    vb: {
+        id: 'vb',
+        name: 'Visual Basic',
+        extensions: ['vb'],
+        lineComments: ["'"],
+        blockComments: [],
+        strings: [doubledDoubleQuote],
+        operators: visualBasicOperators,
+        defaultSymbols: ['='],
+    },
+    delphi: {
+        id: 'delphi',
+        name: 'Delphi',
+        extensions: ['pas', 'dpr', 'pp'],
+        lineComments: ['//'],
+        blockComments: [
+            ['{', '}'],
+            ['(*', '*)'],
+        ],
+        strings: [singleQuote],
+        operators: declarationOperators,
+        defaultSymbols: ['='],
+    },
+    vue: {
+        id: 'vue',
+        name: 'Vue',
+        extensions: ['vue'],
+        lineComments: ['//'],
+        blockComments: [
+            ['/*', '*/'],
+            ['<!--', '-->'],
+        ],
+        strings: [singleQuote, doubleQuote, templateLiteral],
+        operators: javascriptOperators,
+        defaultSymbols: ['='],
+    },
+    svelte: {
+        id: 'svelte',
+        name: 'Svelte',
+        extensions: ['svelte'],
+        lineComments: ['//'],
+        blockComments: [
+            ['/*', '*/'],
+            ['<!--', '-->'],
+        ],
+        strings: [singleQuote, doubleQuote, templateLiteral],
+        operators: javascriptOperators,
+        defaultSymbols: ['='],
+    },
+    astro: {
+        id: 'astro',
+        name: 'Astro',
+        extensions: ['astro'],
+        lineComments: ['//'],
+        blockComments: [
+            ['/*', '*/'],
+            ['<!--', '-->'],
+        ],
+        strings: [singleQuote, doubleQuote, templateLiteral],
+        operators: javascriptOperators,
+        defaultSymbols: ['='],
+    },
+    protobuf: {
+        id: 'protobuf',
+        name: 'Protocol Buffers',
+        extensions: ['proto'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote],
+        operators: cFamilyOperators,
+        defaultSymbols: ['='],
+    },
+    v: {
+        id: 'v',
+        name: 'V',
+        extensions: ['v'],
+        lineComments: ['//'],
+        blockComments: [['/*', '*/']],
+        strings: [singleQuote, doubleQuote],
+        operators: colonAssignmentOperators,
         defaultSymbols: ['='],
     },
 } as const satisfies Record<LanguageId, LanguageProfile>;

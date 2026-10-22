@@ -84,27 +84,37 @@ Concretely:
 ```
 .
 ├── packages/
-│   └── core/                  # @sandlada/symbol-align — the published package
+│   ├── core/                  # @sandlada/symbol-align — the published package
+│   │   ├── src/
+│   │   │   ├── types.ts       # public type contract (LanguageProfile, AlignOptions, …)
+│   │   │   ├── language.ts     # language profiles: comments, strings, operators, default symbols
+│   │   │   ├── scanner.ts      # lexical scanner — finds real code regions (strings/comments removed)
+│   │   │   ├── finder.ts       # findSymbolPositions() — locates symbols inside code regions
+│   │   │   ├── aligner.ts      # align() — vertical alignment engine
+│   │   │   ├── config.ts       # symbol-align.config.json — parsing, glob overrides, discovery
+│   │   │   ├── cli.ts          # CLI implementation — pure, side effect free
+│   │   │   ├── bin.ts          # executable entry point — owns the process plumbing
+│   │   │   ├── index.ts        # Public API exports
+│   │   │   ├── fixtures.ts     # Multi-line code test fixtures
+│   │   │   ├── language.test.ts  # Language profile tests
+│   │   │   ├── scanner.test.ts   # Scanner tests
+│   │   │   ├── finder.test.ts    # Finder unit tests
+│   │   │   ├── aligner.test.ts   # Aligner unit tests
+│   │   │   ├── cli.test.ts       # CLI argument/path tests
+│   │   │   ├── config.test.ts    # Configuration tests
+│   │   │   ├── invariants.test.ts # Property-style invariant tests over every language
+│   │   │   └── fixtures.test.ts  # Fixture-driven alignment tests
+│   │   ├── package.json       # Package manifest (published)
+│   │   ├── tsconfig.json      # Build config (emits to dist/)
+│   │   ├── tsconfig.test.json # Type-check config (src incl. tests, no emit)
+│   │   └── vitest.config.ts   # Package-level test config
+│   └── vscode/                # VS Code extension that drives the library
 │       ├── src/
-│       │   ├── types.ts       # public type contract (LanguageProfile, AlignOptions, …)
-│       │   ├── language.ts     # language profiles: comments, strings, operators, default symbols
-│       │   ├── scanner.ts      # lexical scanner — finds real code regions (strings/comments removed)
-│       │   ├── finder.ts       # findSymbolPositions() — locates symbols inside code regions
-│       │   ├── aligner.ts      # align() — vertical alignment engine
-│       │   ├── cli.ts          # CLI implementation — pure, side effect free
-│       │   ├── bin.ts          # executable entry point — owns the process plumbing
-│       │   ├── index.ts        # Public API exports
-│       │   ├── fixtures.ts     # Multi-line code test fixtures
-│       │   ├── language.test.ts  # Language profile tests
-│       │   ├── scanner.test.ts   # Scanner tests
-│       │   ├── finder.test.ts    # Finder unit tests
-│       │   ├── aligner.test.ts   # Aligner unit tests
-│       │   ├── cli.test.ts       # CLI argument/path tests
-│       │   └── fixtures.test.ts  # Fixture-driven alignment tests
-│       ├── package.json       # Package manifest (published)
-│       ├── tsconfig.json      # Build config (emits to dist/)
-│       ├── tsconfig.test.json # Type-check config (src incl. tests, no emit)
-│       └── vitest.config.ts   # Package-level test config
+│       │   ├── extension.ts    # VS Code adapter (provider + commands)
+│       │   ├── format.ts       # pure alignment logic
+│       │   └── language.ts     # VS Code language id → library profile
+│       ├── package.json       # Extension manifest
+│       └── esbuild.mjs        # Bundles the extension
 ├── scripts/
 │   └── sync-docs.mjs          # Materializes / restores the linked doc files
 ├── .github/
@@ -138,6 +148,11 @@ alignSymbols(...symbols: string[]): (code: string) => AlignResult
 alignLanguage(language: LanguageId): (code: string) => AlignResult
 scanSource(code: string): (profile: LanguageProfile) => ScanResult
 findSymbolPositions(line: string): (options: FindOptions) => ReadonlyMap<string, readonly number[]>
+parseConfig(raw: unknown): SymbolAlignConfig
+resolveConfig(config: SymbolAlignConfig): (filePath?: string) => AlignOptions
+findConfigFile(startDir: string): string | undefined
+loadConfig(startDir: string): SymbolAlignConfig | undefined
+loadConfigFile(path: string): SymbolAlignConfig
 ```
 
 - `AlignOptions.symbols` — symbols to align (defaults to the language profile's `defaultSymbols`)
@@ -183,6 +198,11 @@ findSymbolPositions(line: string): (options: FindOptions) => ReadonlyMap<string,
   links with real copies in `prepack` and restores them in `postpack`
 - New packages are added by creating `packages/<name>/package.json` — no root
   change is required, the `packages/*` glob picks them up automatically
+- `pnpm-lock.yaml` and `pnpm-workspace.yaml` are written by pnpm and are
+  excluded from the Biome configuration
+- The VS Code extension pins `@types/vscode` explicitly instead of using the
+  catalog, because `vsce` parses that version to validate it against
+  `engines.vscode` and cannot resolve the `catalog:` protocol
 
 ## Build & Test
 

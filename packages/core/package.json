@@ -1,6 +1,6 @@
 {
     "name": "@sandlada/symbol-align",
-    "version": "0.0.1-20260710.a",
+    "version": "0.1.0",
     "description": "Code-snippet symbol-alignment formatter — lines up =, :, =>, //, # and more. CLI & API",
     "type": "module",
     "main": "./dist/index.js",
@@ -20,6 +20,7 @@
     "files": [
         "dist",
         "README.md",
+        "CHANGELOG.md",
         "LICENSE",
         "SECURITY.md",
         "CODE_OF_CONDUCT.md"
