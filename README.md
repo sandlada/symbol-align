@@ -167,6 +167,17 @@ const { code: aligned } = align(code)({ symbols: [':', '='] });
 // → const yy: AnotherType = 22;
 ```
 
+The package has two entry points:
+
+| Entry point                            | Contents                                              | Node.js builtins |
+| -------------------------------------- | ----------------------------------------------------- | ---------------- |
+| `@sandlada/symbol-align`               | The aligner, the language profiles, the configuration | no               |
+| `@sandlada/symbol-align/node`          | The helpers that read a configuration from disk       | yes              |
+
+The main entry point is free of Node.js builtins, so it can be bundled for the
+browser, a worker or any other JavaScript runtime. The helpers that touch the
+filesystem live in the `/node` entry point — see [Configuration](#configuration).
+
 ## How it works
 
 1. **Scan.** The snippet is scanned once with the rules of the language profile.
@@ -498,10 +509,13 @@ The command line always wins over the configuration:
 symbol-align --file input.ts --symbols '='   # overrides the configured symbols
 ```
 
-The same configuration is available to the API:
+The same configuration is available to the API. The filesystem helpers live in
+the `@sandlada/symbol-align/node` entry point, so that the main entry point
+stays free of Node.js builtins and can be bundled for the browser:
 
 ```ts
-import { loadConfig, resolveConfig } from '@sandlada/symbol-align';
+import { resolveConfig } from '@sandlada/symbol-align';
+import { loadConfig } from '@sandlada/symbol-align/node';
 
 const config = loadConfig(process.cwd());
 const options = resolveConfig(config)('src/config.ts');

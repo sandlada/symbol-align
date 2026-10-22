@@ -5,6 +5,27 @@ All notable changes to `@sandlada/symbol-align` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **The core library is free of Node.js builtins.** The modules that the main
+  entry point re-exports no longer import `node:fs` or `node:path`, so
+  `@sandlada/symbol-align` can be bundled for the browser, a worker or any
+  other JavaScript runtime.
+- **`findConfigFile()`, `loadConfig()` and `loadConfigFile()` moved to the
+  `@sandlada/symbol-align/node` entry point.** The helpers read a
+  `symbol-align.config.json` from the filesystem and are therefore only
+  available in a Node.js runtime.
+
+  ```diff
+  - import { loadConfig } from '@sandlada/symbol-align';
+  + import { loadConfig } from '@sandlada/symbol-align/node';
+  ```
+
+  `parseConfig()` and `resolveConfig()` stay in the main entry point — they are
+  pure and work in every runtime.
+
 ## [0.1.0] - 2026-10-22
 
 ### Added

@@ -4,15 +4,14 @@
  * A repository can drop a `symbol-align.config.json` file next to its sources
  * to control the symbols, the language profile and the alignment scope. The
  * file may also carry per file overrides that are selected by a glob pattern.
+ *
+ * The module is free of Node.js builtins so that it can be bundled for the
+ * browser, a worker or any other JavaScript runtime. The helpers that read
+ * the configuration from the filesystem live in `config-fs.ts`.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
 import { isLanguageId } from './language.js';
 import type { AlignOptions, AlignSymbol, AlignmentScope, LanguageId } from './types.js';
-
-/** The name of the configuration file that is looked up in every directory. */
-const CONFIG_FILE_NAME = 'symbol-align.config.json';
 
 /** A per file pattern override of the configuration. */
 export interface ConfigOverride {
@@ -279,52 +278,3 @@ export const resolveConfig =
             ...(scope === undefined ? {} : { scope }),
         };
     };
-
-/**
- * Finds the nearest configuration file.
- *
- * The search starts in `startDir` and walks up to the filesystem root.
- */
-export const findConfigFile = (startDir: string): string | undefined => {
-    const directory = resolve(startDir);
-    const candidate = join(directory, CONFIG_FILE_NAME);
-
-    if (existsSync(candidate)) {
-        return candidate;
-    }
-
-    const parent = dirname(directory);
-    return parent === directory ? undefined : findConfigFile(parent);
-};
-
-/**
- * Loads a configuration file.
- *
- * Returns `undefined` when there is no configuration file. A file that cannot
- * be read or parsed raises an error that names the file and the reason.
- */
-export const loadConfig = (startDir: string): SymbolAlignConfig | undefined => {
-    const path = findConfigFile(startDir);
-
-    if (path === undefined) {
-        return undefined;
-    }
-
-    return loadConfigFile(path);
-};
-
-/**
- * Loads a configuration file from an exact path.
- *
- * A file that cannot be read or parsed raises an error that names the file and
- * the reason.
- */
-export const loadConfigFile = (path: string): SymbolAlignConfig => {
-    try {
-        const content: unknown = JSON.parse(readFileSync(path, 'utf-8'));
-        return parseConfig(content);
-    } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
-        throw new Error(`Failed to read configuration at ${path}: ${reason}`);
-    }
-};

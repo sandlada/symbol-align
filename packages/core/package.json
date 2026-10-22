@@ -12,6 +12,10 @@
         ".": {
             "types": "./dist/index.d.ts",
             "import": "./dist/index.js"
+        },
+        "./node": {
+            "types": "./dist/config-fs.d.ts",
+            "import": "./dist/config-fs.js"
         }
     },
     "bin": {

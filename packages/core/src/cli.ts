@@ -12,7 +12,8 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { align } from './aligner.js';
-import { loadConfig, loadConfigFile, resolveConfig, type SymbolAlignConfig } from './config.js';
+import { resolveConfig, type SymbolAlignConfig } from './config.js';
+import { loadConfig, loadConfigFile } from './config-fs.js';
 import { detectLanguage, isLanguageId } from './language.js';
 import type { AlignmentScope, AlignOptions, LanguageId } from './types.js';
 

@@ -91,7 +91,8 @@ Concretely:
 │   │   │   ├── scanner.ts      # lexical scanner — finds real code regions (strings/comments removed)
 │   │   │   ├── finder.ts       # findSymbolPositions() — locates symbols inside code regions
 │   │   │   ├── aligner.ts      # align() — vertical alignment engine
-│   │   │   ├── config.ts       # symbol-align.config.json — parsing, glob overrides, discovery
+│   │   │   ├── config.ts       # symbol-align.config.json — parsing and glob overrides (pure)
+│   │   │   ├── config-fs.ts   # symbol-align.config.json — discovery and loading (Node.js)
 │   │   │   ├── cli.ts          # CLI implementation — pure, side effect free
 │   │   │   ├── bin.ts          # executable entry point — owns the process plumbing
 │   │   │   ├── index.ts        # Public API exports
@@ -102,6 +103,8 @@ Concretely:
 │   │   │   ├── aligner.test.ts   # Aligner unit tests
 │   │   │   ├── cli.test.ts       # CLI argument/path tests
 │   │   │   ├── config.test.ts    # Configuration tests
+│   │   │   ├── config-fs.test.ts # Filesystem configuration tests
+│   │   │   ├── runtime.test.ts   # Runtime independence guard (no Node.js builtins)
 │   │   │   ├── invariants.test.ts # Property-style invariant tests over every language
 │   │   │   └── fixtures.test.ts  # Fixture-driven alignment tests
 │   │   ├── package.json       # Package manifest (published)
@@ -142,7 +145,13 @@ Concretely:
 
 ## API Surface
 
+The package has two entry points. The main entry point is free of Node.js
+builtins, so it can be bundled for the browser, a worker or any other
+JavaScript runtime. The helpers that touch the filesystem live in the
+`@sandlada/symbol-align/node` entry point.
+
 ```ts
+// @sandlada/symbol-align
 align(code: string): (options?: AlignOptions) => AlignResult
 alignWith(options: AlignOptions): (code: string) => AlignResult
 alignSymbols(...symbols: string[]): (code: string) => AlignResult
@@ -151,6 +160,8 @@ scanSource(code: string): (profile: LanguageProfile) => ScanResult
 findSymbolPositions(line: string): (options: FindOptions) => ReadonlyMap<string, readonly number[]>
 parseConfig(raw: unknown): SymbolAlignConfig
 resolveConfig(config: SymbolAlignConfig): (filePath?: string) => AlignOptions
+
+// @sandlada/symbol-align/node
 findConfigFile(startDir: string): string | undefined
 loadConfig(startDir: string): SymbolAlignConfig | undefined
 loadConfigFile(path: string): SymbolAlignConfig
@@ -192,6 +203,20 @@ loadConfigFile(path: string): SymbolAlignConfig
   spaces and shift the columns of later symbols
 - `changes` counts **distinct** modified lines
 - CLI uses native `process.stdin` / `process.stdout` and `node:fs/promises` (no external arg parser)
+
+## Runtime Independence
+
+The main entry point (`index.ts`) and every module it reaches must stay free
+of Node.js builtins — the package has to be bundleable for the browser, a
+worker or any other JavaScript runtime.
+
+- `cli.ts` and `config-fs.ts` are the **platform adapters**; they are the only
+  modules that may import `node:` builtins
+- `cli.ts` and `config-fs.ts` are **not** reachable from `index.ts` — the
+  filesystem helpers are published as the `@sandlada/symbol-align/node`
+  subpath export
+- `runtime.test.ts` guards the invariant: it walks the module graph of
+  `index.ts` and fails when a Node.js builtin is imported
 
 ## Workspace Conventions
 
