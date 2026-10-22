@@ -41,7 +41,7 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => type
 const isSymbolList = (value: unknown): value is readonly AlignSymbol[] => Array.isArray(value) && value.every((symbol) => typeof symbol === 'string' && symbol.length > 0);
 
 /** Whether `value` is a valid alignment scope. */
-const isScope = (value: unknown): value is AlignmentScope => value === 'block' || value === 'file';
+const isScope = (value: unknown): value is AlignmentScope => value === 'block' || value === 'indent' || value === 'file';
 
 /** Reads the `symbols` entry of a configuration object. */
 const readSymbols = (source: Record<string, unknown>): readonly AlignSymbol[] | undefined => {

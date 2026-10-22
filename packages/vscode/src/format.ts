@@ -5,7 +5,7 @@
  * editor adapter lives in `extension.ts`.
  */
 
-import type { AlignmentScope, AlignOptions, LanguageId } from '@sandlada/symbol-align';
+import type { AlignmentScope, AlignOptions, LanguageId, LineRange } from '@sandlada/symbol-align';
 import { align } from '@sandlada/symbol-align';
 
 import { resolveLanguage } from './language.js';
@@ -22,6 +22,13 @@ export interface FormatRequest {
     readonly language?: LanguageId;
     /** The grouping strategy. */
     readonly scope: AlignmentScope;
+    /**
+     * The lines that are aligned — `undefined` means "align the whole text".
+     *
+     * The lines outside of the range are still scanned, so a string or a
+     * comment that reaches into the range is recognised.
+     */
+    readonly range?: LineRange;
 }
 
 /** The outcome of an alignment run. */
@@ -42,6 +49,7 @@ export interface FormatResponse {
 const toAlignOptions = (request: FormatRequest, language: LanguageId | undefined): AlignOptions => ({
     ...(request.symbols === undefined || request.symbols.length === 0 ? {} : { symbols: request.symbols }),
     ...(language === undefined ? {} : { language }),
+    ...(request.range === undefined ? {} : { range: request.range }),
     scope: request.scope,
 });
 
@@ -49,7 +57,9 @@ const toAlignOptions = (request: FormatRequest, language: LanguageId | undefined
  * Aligns the symbols of a piece of text.
  *
  * The language profile is the one of the request; when the request does not
- * name one it is detected from the VS Code language id.
+ * name one it is detected from the VS Code language id. When the request
+ * carries a range, only the lines of that range are aligned — the remaining
+ * text is still scanned, so the lexical context stays intact.
  */
 export const formatText = (request: FormatRequest): FormatResponse => {
     const language = request.language ?? resolveLanguage(request.languageId);

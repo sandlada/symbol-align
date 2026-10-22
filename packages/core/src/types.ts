@@ -145,19 +145,36 @@ export interface ScanResult {
  * How lines are grouped before they are aligned.
  *
  * - `block` — only lines that belong to the same blank-line separated block
- *   are aligned with each other (default).
+ *   are aligned with each other, whatever their indentation is (default).
+ * - `indent` — only consecutive lines with the same indentation are aligned
+ *   with each other, so every nesting level keeps its own column.
  * - `file` — every line of the input is aligned as a single group.
  */
-export type AlignmentScope = 'block' | 'file';
+export type AlignmentScope = 'block' | 'indent' | 'file';
+
+/** A range of lines of the input. */
+export interface LineRange {
+    /** Zero-based index of the first line of the range (inclusive). */
+    readonly start: number;
+    /** Zero-based index of the line behind the range (exclusive). */
+    readonly end: number;
+}
 
 /** Options accepted by {@link align}. */
 export interface AlignOptions {
     /** Symbols to align. Defaults to the language profile's `defaultSymbols`. */
     readonly symbols?: readonly AlignSymbol[];
-    /** Language profile that drives string and comment handling. Defaults to `plaintext`. */
+    /** Language profile that drives string and comment handling. Defaults to `generic`. */
     readonly language?: LanguageId;
     /** Grouping strategy used before aligning. Defaults to `block`. */
     readonly scope?: AlignmentScope;
+    /**
+     * The lines that are aligned. Defaults to the whole input.
+     *
+     * The rest of the input is still scanned, so a string or a comment that
+     * reaches into the range is recognised.
+     */
+    readonly range?: LineRange;
 }
 
 /** The outcome of an alignment run. */

@@ -103,4 +103,80 @@ describe('formatText', () => {
 
         expect(result.text).toBe('a    = 1\n\nbbbb = 2');
     });
+
+    it('keeps every nesting level on its own column when the scope is indent', () => {
+        const result = formatText({
+            text: 'function f() {\n    const a = 1;\n    const bbbb = 22;\n}',
+            languageId: 'typescript',
+            language: 'typescript',
+            scope: 'indent',
+        });
+
+        expect(result.text.split('\n')).toEqual(['function f() {', '    const a    = 1;', '    const bbbb = 22;', '}']);
+    });
+
+    it('does not mix the nesting levels when the scope is indent', () => {
+        const result = formatText({
+            text: 'const a = 1;\n    const bbbb = 22;',
+            languageId: 'typescript',
+            language: 'typescript',
+            scope: 'indent',
+        });
+
+        expect(result.text).toBe('const a = 1;\n    const bbbb = 22;');
+    });
+});
+
+describe('formatText with a range', () => {
+    const text = 'const a = 1;\nconst bbbb = 22;\nconst cccccc = 333;';
+
+    it('aligns only the lines of the range', () => {
+        const result = formatText({
+            text,
+            languageId: 'typescript',
+            language: 'typescript',
+            scope: 'block',
+            range: { start: 1, end: 3 },
+        });
+
+        expect(result.text.split('\n')).toEqual(['const a = 1;', 'const bbbb   = 22;', 'const cccccc = 333;']);
+    });
+
+    it('aligns the whole text when no range is given', () => {
+        const result = formatText({
+            text,
+            languageId: 'typescript',
+            language: 'typescript',
+            scope: 'block',
+        });
+
+        expect(result.text.split('\n')).toEqual(['const a      = 1;', 'const bbbb   = 22;', 'const cccccc = 333;']);
+    });
+
+    it('leaves the text unchanged when the range is empty', () => {
+        const result = formatText({
+            text,
+            languageId: 'typescript',
+            language: 'typescript',
+            scope: 'block',
+            range: { start: 1, end: 1 },
+        });
+
+        expect(result.text).toBe(text);
+        expect(result.changes).toBe(0);
+    });
+
+    it('recognises a string that reaches into the range', () => {
+        const withString = 'const a = "=\nstill a string";\nconst bbbb = 22;';
+        const result = formatText({
+            text: withString,
+            languageId: 'typescript',
+            language: 'typescript',
+            scope: 'block',
+            range: { start: 2, end: 3 },
+        });
+
+        expect(result.text.split('\n')[2]).toBe('const bbbb = 22;');
+        expect(result.changes).toBe(0);
+    });
 });

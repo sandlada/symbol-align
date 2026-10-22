@@ -72,7 +72,7 @@ Options:
   -l, --language <id>       Language profile to use
   -t, --stdin-filepath <p>  Path of the piped file (used for language detection)
   -c, --config <path>       Configuration file (default: nearest symbol-align.config.json)
-      --scope <block|file>  Grouping strategy (default: block)
+      --scope <block|indent|file>  Grouping strategy (default: block)
       --check               Exit 1 when the input is not already aligned
   -v, --version             Print the version
   -h, --help                Show this help
@@ -177,11 +177,11 @@ const parseLanguage = (value: string): LanguageId => {
 
 /** Parses the grouping strategy — an unknown strategy is an error. */
 const parseScope = (value: string): AlignmentScope => {
-    if (value === 'block' || value === 'file') {
+    if (value === 'block' || value === 'indent' || value === 'file') {
         return value;
     }
 
-    throw new Error(`Invalid scope: ${value}. Expected "block" or "file".`);
+    throw new Error(`Invalid scope: ${value}. Expected "block", "indent" or "file".`);
 };
 
 /** Applies a parsed option value to the arguments collected so far. */

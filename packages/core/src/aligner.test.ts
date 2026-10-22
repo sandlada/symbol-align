@@ -81,6 +81,62 @@ describe('scope', () => {
     it('aligns across blank lines with the file scope', () => {
         expect(align(code)({ scope: 'file' }).code).toBe('name  = "foo"\n\nvalue = "bar"');
     });
+
+    it('keeps every nesting level on its own column with the indent scope', () => {
+        const nested = ['function f() {', '    const a = 1;', '    const bbbb = 22;', '}'];
+        const result = align(nested.join('\n'))({ scope: 'indent' });
+
+        expect(result.code.split('\n')[1]).toBe('    const a    = 1;');
+        expect(result.code.split('\n')[2]).toBe('    const bbbb = 22;');
+    });
+
+    it('does not mix nesting levels with the indent scope', () => {
+        const nested = ['const a = 1;', '    const bbbb = 22;'];
+        const result = align(nested.join('\n'))({ scope: 'indent' });
+
+        expect(result.code).toBe(nested.join('\n'));
+        expect(result.changes).toBe(0);
+    });
+
+    it('aligns the lines of one nesting level with the indent scope', () => {
+        const nested = ['    const a = 1;', '    const bbbb = 22;'];
+        const result = align(nested.join('\n'))({ scope: 'indent' });
+
+        expect(result.code).toBe('    const a    = 1;\n    const bbbb = 22;');
+    });
+});
+
+describe('range', () => {
+    const code = ['const a = 1;', 'const bbbb = 22;', 'const cccccc = 333;'].join('\n');
+
+    it('aligns only the lines of the range', () => {
+        const result = align(code)({ range: { start: 1, end: 3 } });
+
+        expect(result.code.split('\n')[0]).toBe('const a = 1;');
+        expect(result.code.split('\n')[1]).toBe('const bbbb   = 22;');
+        expect(result.code.split('\n')[2]).toBe('const cccccc = 333;');
+    });
+
+    it('leaves the input untouched when the range is empty', () => {
+        const result = align(code)({ range: { start: 1, end: 1 } });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('clamps a range that reaches beyond the input', () => {
+        const result = align(code)({ range: { start: -5, end: 99 } });
+
+        expect(result.code).toBe('const a      = 1;\nconst bbbb   = 22;\nconst cccccc = 333;');
+    });
+
+    it('still recognises a string that reaches into the range', () => {
+        const withString = ['const a = "=', 'still a string";', 'const bbbb = 22;'].join('\n');
+        const result = align(withString)({ range: { start: 2, end: 3 } });
+
+        expect(result.code.split('\n')[2]).toBe('const bbbb = 22;');
+        expect(result.changes).toBe(0);
+    });
 });
 
 describe('strings and comments', () => {

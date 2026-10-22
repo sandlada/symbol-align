@@ -32,6 +32,7 @@ clean vertical columns.
 - [Examples](#examples)
 - [CLI reference](#cli-reference)
 - [Configuration](#configuration)
+- [Recipes](#recipes)
 - [Migration](#migration)
 - [Limitations](#limitations)
 - [Repository structure](#repository-structure)
@@ -170,9 +171,11 @@ const { code: aligned } = align(code)({ symbols: [':', '='] });
    occurrence inside those code regions. A match that is only a fragment of a
    longer operator (`=` inside `=>`, `==`, `:=`, `>=`) is discarded, and a word
    symbol must stand on its own (`readonly` never matches `readonlyThing`).
-3. **Group.** The lines are split into blank-line separated blocks. Only the
-   lines of the same block are aligned with each other, so unrelated parts of a
-   file never influence one another. `scope: 'file'` turns the grouping off.
+3. **Group.** The lines are split into groups. With `scope: 'block'` a group is
+   a blank-line separated block, with `scope: 'indent'` it is a run of lines
+   with the same indentation and with `scope: 'file'` it is the whole input.
+   Only the lines of the same group are aligned with each other, so unrelated
+   parts of a file never influence one another.
 4. **Align.** Every symbol is aligned in the order of its first appearance.
    For each symbol the lines of a block are padded until the symbol starts at
    the same column — only spaces are ever inserted.
@@ -188,11 +191,21 @@ the formatter twice never changes the snippet a second time.
 | ---------- | -------------------- | -------------------- | --------------------------------------------------------------- |
 | `symbols`  | `readonly string[]`  | language defaults    | Symbols to align (e.g. `['=', ':', '=>', '//', '#']`)           |
 | `language` | `LanguageId`         | `'generic'`          | Language profile that drives string and comment handling        |
-| `scope`    | `'block' \| 'file'`  | `'block'`            | Which lines are aligned with each other                         |
+| `scope`    | `'block' \| 'indent' \| 'file'` | `'block'`  | Which lines are aligned with each other                         |
+| `range`    | `LineRange`          | the whole input      | The lines that are aligned                                      |
 
-`scope: 'block'` aligns only the lines of the same blank-line separated block
-with each other — unrelated parts of a file never influence one another.
-`scope: 'file'` aligns every line of the input as a single group.
+Three grouping strategies are available:
+
+- `block` — only the lines of the same blank-line separated block are aligned
+  with each other, whatever their indentation is. This is the default.
+- `indent` — only consecutive lines with the same indentation are aligned with
+  each other, so every nesting level keeps its own column. Use this for code
+  that is indented with tabs.
+- `file` — every line of the input is aligned as a single group.
+
+`range` limits the alignment to a part of the input. The rest of the text is
+still scanned, so a string or a comment that reaches into the range is
+recognised — that is what an editor needs when the user selects a few lines.
 
 ### `AlignResult`
 
@@ -395,7 +408,7 @@ Options:
   -l, --language <id>       Language profile to use
   -t, --stdin-filepath <p>  Path of the piped file (used for language detection)
   -c, --config <path>       Configuration file (default: nearest symbol-align.config.json)
-      --scope <block|file>  Grouping strategy (default: block)
+      --scope <block|indent|file>  Grouping strategy (default: block)
       --check               Exit 1 when the input is not already aligned
   -v, --version             Print the version
   -h, --help                Show this help
@@ -441,6 +454,7 @@ specific one.
 
 ```json
 {
+    "$schema": "https://raw.githubusercontent.com/sandlada/symbol-align/main/packages/core/schemas/symbol-align.config.schema.json",
     "symbols": ["=", ":"],
     "scope": "block",
     "overrides": {
@@ -474,6 +488,72 @@ import { loadConfig, resolveConfig } from '@sandlada/symbol-align';
 
 const config = loadConfig(process.cwd());
 const options = resolveConfig(config)('src/config.ts');
+```
+
+## Recipes
+
+The CLI speaks the same protocol as Prettier — it reads from standard input,
+writes to standard output and takes the path of the edited file in
+`--stdin-filepath`. Every editor that can call an external formatter can
+therefore use it.
+
+### Neovim (conform.nvim)
+
+```lua
+require('conform').formatters['symbol_align'] = {
+    command = 'npx',
+    args = { 'symbol-align', '--stdin-filepath', function() return vim.fn.expand('%:p') end },
+    stdin = { 'content' },
+    exit_codes = { 0, 1 },
+}
+```
+
+### Zed
+
+```json
+{
+    "formatter": [
+        {
+            "code_actions": ["format_document"],
+            "language_servers": ["language-server", "null-ls", "copilot"],
+            "format_on_save": true,
+            "formatter": [
+                { "command": "npx", "args": ["symbol-align", "--stdin-filepath", "$ZED_FILENAME"] }
+            ]
+        }
+    ]
+}
+```
+
+### IntelliJ IDEA
+
+Add the CLI as an *external formatter* under
+`Settings → Tools → External Tools` and pick it as the formatter of your
+language. Pass `--stdin-filepath $FilePath$` so the language is detected.
+
+### Pre-commit (lint-staged)
+
+```json
+{
+    "lint-staged": {
+        "*.{ts,tsx,js,jsx,py,go,rs,java,cs,cpp,c,rb,php}": ["symbol-align --file"]
+    }
+}
+```
+
+### Continuous integration
+
+`symbol-align --check` reports misalignment and exits with code `1` without
+writing anything, so it can guard a repository:
+
+```yaml
+- name: Check the alignment
+  run: |
+    status=0
+    while IFS= read -r file; do
+      symbol-align --check --file "$file" || status=1
+    done < <(git ls-files '*.ts')
+    exit $status
 ```
 
 ## Limitations

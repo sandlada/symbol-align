@@ -1,0 +1,175 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://raw.githubusercontent.com/sandlada/symbol-align/main/packages/core/schemas/symbol-align.config.schema.json",
+    "title": "Symbol Align configuration",
+    "description": "Configuration of the symbol-align code snippet formatter.",
+    "type": "object",
+    "properties": {
+        "symbols": {
+            "type": "array",
+            "description": "Symbols to align. Defaults to the symbols that are conventional for the language.",
+            "items": {
+                "type": "string",
+                "minLength": 1
+            }
+        },
+        "language": {
+            "type": "string",
+            "description": "Language profile that drives string and comment handling.",
+            "enum": [
+                "generic",
+                "javascript",
+                "typescript",
+                "python",
+                "go",
+                "rust",
+                "java",
+                "kotlin",
+                "swift",
+                "csharp",
+                "cpp",
+                "c",
+                "ruby",
+                "php",
+                "dart",
+                "shell",
+                "sql",
+                "yaml",
+                "json",
+                "css",
+                "html",
+                "xml",
+                "markdown",
+                "plaintext",
+                "elixir",
+                "haskell",
+                "lua",
+                "scala",
+                "objectivec",
+                "perl",
+                "julia",
+                "zig",
+                "powershell",
+                "clojure",
+                "erlang",
+                "r",
+                "fortran",
+                "nim",
+                "crystal",
+                "gleam",
+                "odin",
+                "solidity",
+                "groovy",
+                "terraform",
+                "toml",
+                "ini",
+                "makefile",
+                "dockerfile",
+                "graphql",
+                "vb",
+                "delphi",
+                "vue",
+                "svelte",
+                "astro",
+                "protobuf",
+                "v"
+            ]
+        },
+        "scope": {
+            "type": "string",
+            "description": "How the lines are grouped before they are aligned.",
+            "enum": ["block", "indent", "file"]
+        },
+        "overrides": {
+            "type": "object",
+            "description": "Per file pattern overrides of symbols, language and scope.",
+            "propertyNames": {
+                "minLength": 1
+            },
+            "additionalProperties": {
+                "$ref": "#/$defs/override"
+            }
+        }
+    },
+    "additionalProperties": true,
+    "$defs": {
+        "override": {
+            "type": "object",
+            "properties": {
+                "symbols": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "minLength": 1
+                    }
+                },
+                "language": {
+                    "type": "string",
+                    "enum": [
+                        "generic",
+                        "javascript",
+                        "typescript",
+                        "python",
+                        "go",
+                        "rust",
+                        "java",
+                        "kotlin",
+                        "swift",
+                        "csharp",
+                        "cpp",
+                        "c",
+                        "ruby",
+                        "php",
+                        "dart",
+                        "shell",
+                        "sql",
+                        "yaml",
+                        "json",
+                        "css",
+                        "html",
+                        "xml",
+                        "markdown",
+                        "plaintext",
+                        "elixir",
+                        "haskell",
+                        "lua",
+                        "scala",
+                        "objectivec",
+                        "perl",
+                        "julia",
+                        "zig",
+                        "powershell",
+                        "clojure",
+                        "erlang",
+                        "r",
+                        "fortran",
+                        "nim",
+                        "crystal",
+                        "gleam",
+                        "odin",
+                        "solidity",
+                        "groovy",
+                        "terraform",
+                        "toml",
+                        "ini",
+                        "makefile",
+                        "dockerfile",
+                        "graphql",
+                        "vb",
+                        "delphi",
+                        "vue",
+                        "svelte",
+                        "astro",
+                        "protobuf",
+                        "v"
+                    ]
+                },
+                "scope": {
+                    "type": "string",
+                    "enum": ["block", "indent", "file"]
+                }
+            },
+            "additionalProperties": true
+        }
+    }
+}

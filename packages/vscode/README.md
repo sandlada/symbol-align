@@ -22,6 +22,10 @@ code, and it never touches symbols that live inside a string or a comment.
 The extension also registers a document formatter, so *Format Document* aligns
 the file as well.
 
+`Align Selection` only changes the selected lines, but the whole document is
+scanned. A string or a comment that reaches into the selection is therefore
+recognised and the symbols inside it are left alone.
+
 ## Settings
 
 | Setting                 | Type       | Default   | Description                                                                                     |
@@ -29,7 +33,7 @@ the file as well.
 | `symbolAlign.enabled`   | `boolean`  | `true`    | Align the document when it is formatted.                                                         |
 | `symbolAlign.symbols`   | `string[]` | `[]`      | The symbols to align, e.g. `["=", ":"]`. An empty list uses the symbols of the language.          |
 | `symbolAlign.language`  | `string`   | `"auto"`  | The language profile to use. `"auto"` detects it from the language of the document.                |
-| `symbolAlign.scope`     | `string`   | `"block"` | `"block"` aligns the lines of a blank-line separated block, `"file"` aligns every line of the file. |
+| `symbolAlign.scope`     | `string`   | `"block"` | `"block"` aligns the lines of a blank-line separated block, `"indent"` keeps every nesting level on its own column, `"file"` aligns every line of the file. |
 
 The `symbolAlign.enabled` setting only controls the formatter. The two commands
 always align, because they are an explicit request.

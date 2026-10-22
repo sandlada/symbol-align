@@ -59,10 +59,11 @@
                     "type": "string",
                     "enum": [
                         "block",
+                        "indent",
                         "file"
                     ],
                     "default": "block",
-                    "description": "How the lines are grouped before they are aligned. \"block\" aligns the lines of a blank-line separated block, \"file\" aligns every line of the document."
+                    "description": "How the lines are grouped before they are aligned. \"block\" aligns the lines of a blank-line separated block, \"indent\" keeps every nesting level on its own column, \"file\" aligns every line of the document."
                 }
             }
         }

@@ -16,6 +16,7 @@ export type {
     LanguageId,
     LanguageProfile,
     LineComment,
+    LineRange,
     ScanResult,
     StringDelimiter,
 } from './types.js';

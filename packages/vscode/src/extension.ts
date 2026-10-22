@@ -5,7 +5,7 @@
  * `language.ts` — this module only wires the editor API to that logic.
  */
 
-import type { AlignmentScope, LanguageId } from '@sandlada/symbol-align';
+import type { AlignmentScope, LanguageId, LineRange } from '@sandlada/symbol-align';
 import { isLanguageId } from '@sandlada/symbol-align';
 import * as vscode from 'vscode';
 import type { FormatResponse } from './format.js';
@@ -27,6 +27,19 @@ interface SymbolAlignSettings {
 /** Every document of the workspace is a candidate for the alignment. */
 const documentSelector: vscode.DocumentSelector = [{ scheme: 'file', language: '*' }];
 
+/**
+ * Reads the grouping strategy from the configuration.
+ *
+ * An unknown value falls back to `block`, the default of the core library.
+ */
+const readScope = (value: string): AlignmentScope => {
+    if (value === 'indent' || value === 'file') {
+        return value;
+    }
+
+    return 'block';
+};
+
 /** Reads the settings of the extension. */
 const readSettings = (): SymbolAlignSettings => {
     const configuration = vscode.workspace.getConfiguration('symbolAlign');
@@ -35,7 +48,7 @@ const readSettings = (): SymbolAlignSettings => {
         enabled: configuration.get<boolean>('enabled', true),
         symbols: configuration.get<string[]>('symbols', []),
         language: configuration.get<string>('language', 'auto'),
-        scope: configuration.get<string>('scope', 'block') === 'file' ? 'file' : 'block',
+        scope: readScope(configuration.get<string>('scope', 'block')),
     };
 };
 
@@ -56,22 +69,35 @@ const resolveTargetLanguage = (configured: string, languageId: string): Language
 /** The range that covers the whole document. */
 const fullRange = (document: vscode.TextDocument): vscode.Range => new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length));
 
-/** The range that covers the lines touched by the selection. */
-const selectedLines = (editor: vscode.TextEditor): vscode.Range => {
-    const { document, selection } = editor;
-    const lastLine = selection.end.line;
+/**
+ * The lines that are covered by a selection.
+ *
+ * The end of the selection is inclusive, the end of the range is exclusive.
+ */
+const selectionLineRange = (selection: vscode.Selection): LineRange => ({
+    start: selection.start.line,
+    end: selection.end.line + 1,
+});
 
-    return new vscode.Range(new vscode.Position(selection.start.line, 0), new vscode.Position(lastLine, document.lineAt(lastLine).text.length));
+/** The range of the editor that covers the lines of a line range. */
+const lineRange = (document: vscode.TextDocument, range: LineRange): vscode.Range => {
+    const lastLine = Math.min(range.end, document.lineCount) - 1;
+
+    return new vscode.Range(new vscode.Position(range.start, 0), new vscode.Position(lastLine, document.lineAt(lastLine).text.length));
 };
 
+/** The lines of an aligned text that belong to the line range. */
+const linesOfRange = (text: string, range: LineRange): string => text.split('\n').slice(range.start, range.end).join('\n');
+
 /** Aligns a text with the settings of the extension. */
-const alignText = (text: string, document: vscode.TextDocument, settings: SymbolAlignSettings, language: LanguageId): FormatResponse =>
+const alignText = (text: string, document: vscode.TextDocument, settings: SymbolAlignSettings, language: LanguageId, range?: LineRange): FormatResponse =>
     formatText({
         text,
         languageId: document.languageId,
         symbols: settings.symbols,
         language,
         scope: settings.scope,
+        ...(range === undefined ? {} : { range }),
     });
 
 /** Formats a document by lining its symbols up. */
@@ -136,7 +162,12 @@ const alignDocument = async (): Promise<void> => {
     await vscode.workspace.applyEdit(edit);
 };
 
-/** Aligns the selected lines of the active editor. */
+/**
+ * Aligns the selected lines of the active editor.
+ *
+ * The whole document is aligned — only the selected lines may change — so
+ * that a string or a comment that reaches into the selection is recognised.
+ */
 const alignSelection = async (): Promise<void> => {
     const editor = vscode.window.activeTextEditor;
 
@@ -154,16 +185,28 @@ const alignSelection = async (): Promise<void> => {
         return;
     }
 
-    const range = selectedLines(editor);
-    const text = document.getText(range);
-    const result = alignText(text, document, settings, language);
+    const lines = selectionLineRange(editor.selection);
+
+    if (lines.start >= lines.end) {
+        return;
+    }
+
+    const text = document.getText();
+    const result = alignText(text, document, settings, language, lines);
 
     if (result.text === text) {
         return;
     }
 
+    const range = lineRange(document, lines);
+    const aligned = linesOfRange(result.text, lines);
+
+    if (aligned === document.getText(range)) {
+        return;
+    }
+
     const edit = new vscode.WorkspaceEdit();
-    edit.replace(document.uri, range, result.text);
+    edit.replace(document.uri, range, aligned);
     await vscode.workspace.applyEdit(edit);
 };
 

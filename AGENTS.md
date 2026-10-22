@@ -157,7 +157,8 @@ loadConfigFile(path: string): SymbolAlignConfig
 
 - `AlignOptions.symbols` — symbols to align (defaults to the language profile's `defaultSymbols`)
 - `AlignOptions.language` — language profile that drives string/comment handling (defaults to `generic`)
-- `AlignOptions.scope` — `block` (default) or `file`
+- `AlignOptions.scope` — `block` (default), `indent` or `file`
+- `AlignOptions.range` — the lines that are aligned (defaults to the whole input)
 - `AlignResult.code` — aligned code string
 - `AlignResult.changes` — number of distinct lines that were modified
 
@@ -172,7 +173,10 @@ loadConfigFile(path: string): SymbolAlignConfig
   `==`) is **not** aligned
 - Multi-symbol alignment processes symbols in **order of first appearance**
 - With `scope: 'block'` only lines of the same blank-line separated block are
-  aligned with each other
+  aligned with each other; with `scope: 'indent'` only the lines of the same
+  nesting level are
+- `range` limits the alignment to a part of the input while the rest is still
+  scanned
 - The tool **only adds spaces** (never removes)
 
 ## Implementation Notes

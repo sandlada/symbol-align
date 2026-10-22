@@ -1,7 +1,7 @@
 import { findSymbolPositions } from './finder.js';
 import { languageProfile } from './language.js';
 import { scanSource } from './scanner.js';
-import type { AlignOptions, AlignResult, AlignSymbol, AlignmentScope, LanguageId, LanguageProfile, ScanResult } from './types.js';
+import type { AlignOptions, AlignResult, AlignSymbol, AlignmentScope, LanguageId, LanguageProfile, LineRange, ScanResult } from './types.js';
 
 /** A line index together with the column of the symbol that is being aligned. */
 interface LineColumn {
@@ -37,29 +37,73 @@ const indentOf = (line: string): number => line.length - line.trimStart().length
 const insertSpaces = (line: string, column: number, count: number): string => `${line.slice(0, column)}${' '.repeat(count)}${line.slice(column)}`;
 
 /**
+ * Clamps a range to the lines of the input.
+ *
+ * A range that starts before the first line or ends behind the last one is
+ * trimmed; an empty range covers the whole input.
+ */
+const normalizeRange = (range: LineRange | undefined, lineCount: number): LineRange => {
+    if (range === undefined) {
+        return { start: 0, end: lineCount };
+    }
+
+    const start = Math.max(0, Math.min(range.start, lineCount));
+    const end = Math.max(start, Math.min(range.end, lineCount));
+
+    return { start, end };
+};
+
+/**
  * Groups the line indices that are aligned together.
  *
- * `block` scope breaks groups at blank lines so that unrelated parts of a file
- * never influence each other; `file` scope aligns every line as one group.
+ * - `block` breaks groups at blank lines so that unrelated parts of a file
+ *   never influence each other.
+ * - `indent` additionally breaks groups whenever the indentation changes, so
+ *   every nesting level keeps its own column.
+ * - `file` aligns every line as one group.
+ *
+ * Lines outside the given range never join a group.
  */
-const groupIndices = (lines: readonly string[], scope: AlignmentScope): readonly (readonly number[])[] => {
+const groupIndices = (lines: readonly string[], scope: AlignmentScope, range: LineRange): readonly (readonly number[])[] => {
     const groups: number[][] = [];
     let current: number[] = [];
+    let currentIndent = -1;
 
-    lines.forEach((line, index) => {
-        if (scope === 'file' || !isBlank(line)) {
-            current.push(index);
-            return;
-        }
+    const flush = (): void => {
         if (current.length > 0) {
             groups.push(current);
             current = [];
         }
+    };
+
+    lines.forEach((line, index) => {
+        if (index < range.start || index >= range.end) {
+            flush();
+            return;
+        }
+
+        if (scope === 'file') {
+            current.push(index);
+            return;
+        }
+
+        if (isBlank(line)) {
+            flush();
+            currentIndent = -1;
+            return;
+        }
+
+        const indent = indentOf(line);
+
+        if (scope === 'indent' && currentIndent !== -1 && indent !== currentIndent) {
+            flush();
+        }
+
+        currentIndent = indent;
+        current.push(index);
     });
 
-    if (current.length > 0) {
-        groups.push(current);
-    }
+    flush();
 
     return groups;
 };
@@ -161,10 +205,10 @@ const padAfterPrefixKeyword = (symbol: AlignSymbol, lines: readonly string[], co
 
 /** Runs one alignment pass for a single symbol. */
 const alignSymbol =
-    (symbol: AlignSymbol, profile: LanguageProfile, scope: AlignmentScope) =>
+    (symbol: AlignSymbol, profile: LanguageProfile, scope: AlignmentScope, range: LineRange) =>
     (lines: readonly string[]): SymbolPass => {
         const columns = locateSymbol(symbol, profile)(lines);
-        const groups = groupIndices(lines, scope);
+        const groups = groupIndices(lines, scope, range);
         const changed = new Set<number>();
         let current = lines;
 
@@ -194,7 +238,7 @@ const alignSymbol =
  * leading `=` of a block is aligned before a trailing `:`.
  */
 const orderByFirstOccurrence =
-    (symbols: readonly AlignSymbol[], profile: LanguageProfile) =>
+    (symbols: readonly AlignSymbol[], profile: LanguageProfile, range: LineRange) =>
     (lines: readonly string[]): readonly AlignSymbol[] => {
         const scan: ScanResult = scanSource(lines.join('\n'))(profile);
         const occurrences = new Map<AlignSymbol, FirstOccurrence>();
@@ -202,6 +246,10 @@ const orderByFirstOccurrence =
         for (const [index, line] of lines.entries()) {
             if (occurrences.size === symbols.length) {
                 break;
+            }
+
+            if (index < range.start || index >= range.end) {
+                continue;
             }
 
             const positions = findSymbolPositions(line)({
@@ -257,21 +305,23 @@ export const alignWith =
         const profile = languageProfile(options.language ?? 'generic');
         const symbols = options.symbols ?? profile.defaultSymbols;
         const scope = options.scope ?? 'block';
+        const lines = splitLines(code);
+        const range = normalizeRange(options.range, lines.length);
 
         if (symbols.length === 0) {
             return { code, changes: 0 };
         }
 
-        const ordered = orderByFirstOccurrence(symbols, profile)(splitLines(code));
+        const ordered = orderByFirstOccurrence(symbols, profile, range)(lines);
         const changed = new Set<number>();
 
-        const aligned = ordered.reduce((lines, symbol) => {
-            const pass = alignSymbol(symbol, profile, scope)(lines);
+        const aligned = ordered.reduce((current, symbol) => {
+            const pass = alignSymbol(symbol, profile, scope, range)(current);
             pass.changed.forEach((index) => {
                 changed.add(index);
             });
             return pass.lines;
-        }, splitLines(code));
+        }, lines);
 
         return { code: aligned.join('\n'), changes: changed.size };
     };

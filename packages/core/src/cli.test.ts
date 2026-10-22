@@ -154,7 +154,7 @@ describe('parseArgs', () => {
     });
 
     it('rejects an unknown scope', () => {
-        expect(() => parseArgs(['node', 'cli.js', '--scope', 'chunk'])).toThrow('Invalid scope: chunk. Expected "block" or "file".');
+        expect(() => parseArgs(['node', 'cli.js', '--scope', 'chunk'])).toThrow('Invalid scope: chunk. Expected "block", "indent" or "file".');
     });
 
     it('rejects an unknown language', () => {

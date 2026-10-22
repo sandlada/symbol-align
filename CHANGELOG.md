@@ -26,8 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   where it is.
 - **`--language` CLI flag** to pick a language profile and **`--stdin-filepath`**
   to detect the language from the path of the piped file.
-- **`--scope` CLI flag** to choose between `block` (default) and `file`
-  grouping.
+- **`--scope` CLI flag** to choose between `block` (default), `indent` and
+  `file` grouping.
 - **`--check` CLI flag** that reports misalignment and exits with code `1`
   without writing any output.
 - **`--version` CLI flag.**
@@ -36,6 +36,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A project configuration file** (`symbol-align.config.json`) with per file
   pattern overrides. The CLI discovers the nearest file automatically and
   `--config` names a specific one; the command line always wins over it.
+- **A JSON schema** for the configuration file
+  (`packages/core/schemas/symbol-align.config.schema.json`) so editors can
+  validate and complete it.
+- **An `indent` scope** that aligns only the lines of the same nesting level
+  with each other, which keeps tab indented code lined up.
+- **A `range` option** that aligns a part of a document while the rest of the
+  text is still scanned — that is what an editor needs when the user selects
+  a few lines.
+- **Recipes** for Neovim, Zed, IntelliJ, lint-staged and CI.
 - A GitHub Actions workflow that lints, checks the formatting, type-checks,
   builds and tests the workspace.
 - Biome 2 for linting and formatting.
