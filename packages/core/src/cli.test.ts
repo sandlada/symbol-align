@@ -228,6 +228,18 @@ describe('parseArgs', () => {
         expect(() => parseArgs(['node', 'cli.js', '--scope'])).toThrow('Missing value for scope');
     });
 
+    it('rejects an empty value for --file', () => {
+        expect(() => parseArgs(['node', 'cli.js', '--file='])).toThrow('Empty value for file');
+    });
+
+    it('rejects an empty value for --output', () => {
+        expect(() => parseArgs(['node', 'cli.js', '--output='])).toThrow('Empty value for output');
+    });
+
+    it('rejects an empty value for --config', () => {
+        expect(() => parseArgs(['node', 'cli.js', '--config='])).toThrow('Empty value for config');
+    });
+
     it('parses several options at once', () => {
         const args = parseArgs(['node', 'cli.js', '-f', 'input.ts', '-o', 'output.ts', '-s', ':,=', '--check']);
 

@@ -201,6 +201,17 @@ const parseScope = (value: string): AlignmentScope => {
     throw new Error(`Invalid scope: ${value}. Expected "block", "indent" or "file".`);
 };
 
+/** Rejects an empty value for a path taking option. */
+const requirePath =
+    (name: ValueOptionName) =>
+    (value: string): string => {
+        if (value.length === 0) {
+            throw new Error(`Empty value for ${name}`);
+        }
+
+        return value;
+    };
+
 /** Applies a parsed option value to the arguments collected so far. */
 const applyOption =
     (name: ValueOptionName) =>
@@ -208,9 +219,9 @@ const applyOption =
     (args: CliArgs): CliArgs => {
         switch (name) {
             case 'file':
-                return { ...args, files: [...args.files, value] };
+                return { ...args, files: [...args.files, requirePath(name)(value)] };
             case 'output':
-                return { ...args, output: value };
+                return { ...args, output: requirePath(name)(value) };
             case 'symbols':
                 return { ...args, symbols: parseSymbols(value) };
             case 'language':
@@ -218,7 +229,7 @@ const applyOption =
             case 'stdin-filepath':
                 return { ...args, stdinFilepath: value };
             case 'config':
-                return { ...args, config: value };
+                return { ...args, config: requirePath(name)(value) };
             case 'scope':
                 return { ...args, scope: parseScope(value) };
         }
