@@ -413,6 +413,8 @@ describe('strings are never touched', () => {
         expect(align('a = 1\nbb = 2')({ symbols: ['=', '='] }).code).toBe('a  = 1\nbb = 2');
         expect(align('a = 1')({ symbols: [''] }).changes).toBe(0);
         expect(align('a = 1\nbb = 2')({ symbols: [] }).code).toBe('a = 1\nbb = 2');
+        expect(align('a = 1\nbb = 2')({ symbols: [' '] }).changes).toBe(0);
+        expect(align('a = 1\nbb = 2')({ symbols: ['=\n'] }).changes).toBe(0);
         expect(align('readonlyx = 1\nvalue = 2')({ symbols: ['readonly', '='] }).code).toBe('readonlyx = 1\nvalue     = 2');
     });
 
@@ -531,6 +533,16 @@ describe('strings are never touched', () => {
             }
         }
     });
+
+    it('splits indent groups on tab, space and blank boundaries', () => {
+        expect(align('\ta = 1\n  bb = 2')({ scope: 'indent' }).code).toBe('\ta = 1\n  bb = 2');
+        expect(align('\ta = 1\n\tbb = 2')({ scope: 'indent' }).code).toBe('\ta  = 1\n\tbb = 2');
+        expect(align('  a = 1\n    bb = 2\n  ccc = 3')({ scope: 'indent' }).code).toBe('  a = 1\n    bb = 2\n  ccc = 3');
+        expect(align('  a = 1\n   \n  bb = 2')({ scope: 'indent' }).code).toBe('  a = 1\n   \n  bb = 2');
+
+        const second = align('\ta = 1\n\tbb = 2')({ scope: 'indent' });
+        expect(align(second.code)({ scope: 'indent' }).changes).toBe(0);
+    });
 });
 
 describe('already formatted code stays untouched', () => {
@@ -566,11 +578,13 @@ describe('already formatted code stays untouched', () => {
                 symbols: fixture.symbols,
                 language: fixture.language,
                 scope: fixture.scope,
+                range: fixture.range,
             });
             const second = align(first.code)({
                 symbols: fixture.symbols,
                 language: fixture.language,
                 scope: fixture.scope,
+                range: fixture.range,
             });
 
             expect(second.code).toBe(first.code);
