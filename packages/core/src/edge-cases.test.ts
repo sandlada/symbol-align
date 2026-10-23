@@ -338,6 +338,17 @@ describe('strings are never touched', () => {
         expect(align('cat <<EOF // note\nkey = value\nEOF\nx = 1\nyy = 2')({ language: 'shell' }).code).toBe('cat <<EOF // note\nkey = value\nEOF\nx  = 1\nyy = 2');
     });
 
+    it('treats raw prefixes as plain strings and holes as opaque across lines', () => {
+        expect(align('r"a\\"b=c"\nxx = 1')({ language: 'python' }).code).toBe('r"a\\"b=c"\nxx = 1');
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        expect(align('x = `a${`b\nc=d`}e`\nlonger = 1')({ language: 'javascript' }).changes).toBe(1);
+        expect(align('x = %w[a=b\nc=d]\nlonger = 1')({ language: 'ruby' }).code).toBe('x      = %w[a=b\nc=d]\nlonger = 1');
+        expect(align('x = ~s|a #{"b=c"}\nd|\nlonger = 1')({ language: 'elixir' }).code).toBe('x      = ~s|a #{"b=c"}\nd|\nlonger = 1');
+
+        const second = align('x      = %w[a=b\nc=d]\nlonger = 1')({ language: 'ruby' });
+        expect(second.changes).toBe(0);
+    });
+
     it('keeps hostile snippets intact and stable in every language', () => {
         // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
         const snippets = ['a = "x = y"\nlonger = \'p = q\'\n// c = d\nx := 1', 's = $"a {b=c} d"\nt = `o ${p=q} r`\ncat <<EOF\nkey = value\nEOF\nlast = 1', 'café = 1\n😀 = 😀\n# tag = v\n/* blk = w */\nif (a == b) {}'];
