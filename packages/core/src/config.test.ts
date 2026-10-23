@@ -203,6 +203,21 @@ describe('glob patterns', () => {
         expect(languageOf(config, 'src/nested/main.py')).toBe('python');
     });
 
+    it('combines a question mark with a double star', () => {
+        const config = parseConfig({ overrides: { '**/?.ts': { language: 'typescript' } } });
+
+        expect(languageOf(config, 'a.ts')).toBe('typescript');
+        expect(languageOf(config, 'ab.ts')).toBeUndefined();
+        expect(languageOf(config, 'src/a.ts')).toBe('typescript');
+    });
+
+    it('does not let a question mark cross a directory separator next to a double star', () => {
+        const config = parseConfig({ overrides: { 'a?**b': { language: 'python' } } });
+
+        expect(languageOf(config, 'axb')).toBe('python');
+        expect(languageOf(config, 'a/xb')).toBeUndefined();
+    });
+
     it('matches exactly one character with a question mark', () => {
         const config = parseConfig({ overrides: { 'a?c.py': { language: 'python' } } });
 
