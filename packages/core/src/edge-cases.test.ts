@@ -562,6 +562,20 @@ describe('already formatted code stays untouched', () => {
         expect(third.code).toBe(first.code);
     });
 
+    it('falls back to the leading symbol when symbols conflict across lines', () => {
+        const first = align('a = 1 : x\nbb : 22 = y\nccc = 333 : zzz')({ symbols: ['=', ':'] });
+
+        expect(first.code).toBe('a       = 1 : x\nbb : 22 = y\nccc     = 333 : zzz');
+        expect(first.changes).toBe(2);
+
+        const second = align(first.code)({ symbols: ['=', ':'] });
+        const third = align(second.code)({ symbols: ['=', ':'] });
+
+        expect(second.code).toBe(first.code);
+        expect(second.changes).toBe(0);
+        expect(third.code).toBe(first.code);
+    });
+
     it('is stable for prefix padding in reverse order', () => {
         const first = align('const bb   = 2;\nexport const a = 1;')({ symbols: ['export', '='] });
         const second = align(first.code)({ symbols: ['export', '='] });
