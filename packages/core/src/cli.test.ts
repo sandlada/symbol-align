@@ -377,6 +377,16 @@ describe('runCli', () => {
         });
     });
 
+    it('returns 0 with no output for an empty standard input', async () => {
+        const streams = createStreams('');
+
+        const code = await runCli(['node', 'cli.js'], streams);
+
+        expect(code).toBe(0);
+        expect(streams.stdoutText()).toBe('');
+        expect(streams.stderrText()).toBe('');
+    });
+
     it('writes the aligned code to the file given with --output', async () => {
         await withTempDir(async (directory) => {
             await writeFile(join(directory, 'input.ts'), 'a = 1\nbb = 2\n', 'utf-8');

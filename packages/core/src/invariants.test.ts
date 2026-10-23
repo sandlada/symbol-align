@@ -126,6 +126,44 @@ describe('invariants', () => {
         });
     });
 
+    it.each(languages)('%s holds its invariants across scopes, ranges and symbol orders', (language) => {
+        const profile = languageProfile(language);
+        const defaults = profile.defaultSymbols;
+        const symbolSets = [defaults, [...defaults].reverse()];
+        const scopes = ['block', 'indent', 'file'] as const;
+        const ranges = [undefined, { start: 0, end: 2 }, { start: 2, end: 1 }] as const;
+
+        buildCorpus(language)
+            .slice(0, 4)
+            .forEach((code) => {
+                for (const scope of scopes) {
+                    for (const range of ranges) {
+                        for (const symbols of symbolSets) {
+                            const options = { language, scope, ...(range === undefined ? {} : { range }), symbols };
+                            const first = align(code)(options);
+                            const second = align(first.code)(options);
+
+                            expect(withoutWhitespace(first.code)).toBe(withoutWhitespace(code));
+                            expect(first.code.length).toBeGreaterThanOrEqual(code.length);
+                            expect(second.code).toBe(first.code);
+                            expect(second.changes).toBe(0);
+
+                            if (range !== undefined) {
+                                const before = code.split('\n');
+                                const after = first.code.split('\n');
+
+                                before.forEach((line, index) => {
+                                    if (index < range.start || index >= range.end) {
+                                        expect(after[index]).toBe(line);
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+            });
+    });
+
     it.each(languages)('%s aligns every symbol of a block to one column', (language) => {
         const symbol = languageProfile(language).defaultSymbols[0];
 
