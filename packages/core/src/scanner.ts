@@ -330,6 +330,18 @@ const isHeredocTerminator = (line: string, terminator: string): boolean => {
     return trimmed === terminator || trimmed === `${terminator};`;
 };
 
+/** Whether `profile` nests its `open`/`close` block comment pair. */
+const isNestingBlockComment = (profile: LanguageProfile, open: string, close: string): boolean =>
+    (profile.id === 'haskell' && open === '{-' && close === '-}') || (profile.id === 'julia' && open === '#=' && close === '=#') || ((profile.id === 'swift' || profile.id === 'rust') && open === '/*' && close === '*/');
+
+/** Block comment that is currently open, tracking nesting depth. */
+interface OpenBlock {
+    readonly open: string;
+    readonly close: string;
+    readonly nesting: boolean;
+    depth: number;
+}
+
 /** Python f-string delimiter that opens at `index`, or `null`. */
 const matchPythonFString = (line: string, index: number): StringDelimiter | null => {
     if (index > 0 && isScannerWordChar(line[index - 1])) return null;
@@ -438,8 +450,8 @@ export const scanSource =
         const codeRegions: CodeRegion[][] = [];
         const lineComments: (LineComment | undefined)[] = [];
 
-        /** Closing delimiter of the block comment that is currently open. */
-        let openBlock: string | null = null;
+        /** Block comment that is currently open, if any. */
+        let openBlock: OpenBlock | null = null;
         /** String literal that is currently open — it may span several lines. */
         let openString: StringDelimiter | null = null;
         /** Brace depth inside an interpolated string (`${}` or `{}` holes). */
@@ -471,13 +483,31 @@ export const scanSource =
 
             while (index < line.length) {
                 if (openBlock !== null) {
-                    const found = line.indexOf(openBlock, index);
-                    if (found < 0) {
-                        index = line.length;
-                        break;
+                    if (!openBlock.nesting) {
+                        const found = line.indexOf(openBlock.close, index);
+                        if (found < 0) {
+                            index = line.length;
+                            break;
+                        }
+                        index = found + openBlock.close.length;
+                        openBlock = null;
+                        continue;
                     }
-                    index = found + openBlock.length;
-                    openBlock = null;
+
+                    if (line.startsWith(openBlock.open, index)) {
+                        openBlock.depth += 1;
+                        index += openBlock.open.length;
+                        continue;
+                    }
+
+                    if (line.startsWith(openBlock.close, index)) {
+                        openBlock.depth -= 1;
+                        index += openBlock.close.length;
+                        if (openBlock.depth === 0) openBlock = null;
+                        continue;
+                    }
+
+                    index += 1;
                     continue;
                 }
 
@@ -528,7 +558,7 @@ export const scanSource =
                 if (block !== null) {
                     closeRegion(index);
                     index += block[0].length;
-                    openBlock = block[1];
+                    openBlock = { open: block[0], close: block[1], nesting: isNestingBlockComment(profile, block[0], block[1]), depth: 1 };
                     continue;
                 }
 

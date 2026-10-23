@@ -175,6 +175,19 @@ describe('strings are never touched', () => {
         expect(align(outer.code)({ language: 'swift' }).changes).toBe(0);
     });
 
+    it('hides nested block comments where the language nests them', () => {
+        const nested = align('{- a = b {- c = d -} e = f -}\nx = 1\nyy = 2')({ language: 'haskell' });
+        expect(nested.code).toBe('{- a = b {- c = d -} e = f -}\nx  = 1\nyy = 2');
+        expect(align(nested.code)({ language: 'haskell' }).changes).toBe(0);
+
+        const julia = align('#= a #= b =# c =#\nx = 1\nyy = 2')({ language: 'julia' });
+        expect(julia.code).toBe('#= a #= b =# c =#\nx  = 1\nyy = 2');
+    });
+
+    it('keeps non-nesting block comments closing at the first terminator', () => {
+        expect(align('/* a /* b */\nx = 1\nyy = 2')({ language: 'c' }).code).toBe('/* a /* b */\nx  = 1\nyy = 2');
+    });
+
     it('treats TOML literal strings as escape-free', () => {
         const backslash = align("key = 'C:\\path = x'\nlongkey = 2")({ language: 'toml' });
         expect(backslash.code).toBe("key     = 'C:\\path = x'\nlongkey = 2");
