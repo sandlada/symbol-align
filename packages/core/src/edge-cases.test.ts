@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { align } from './aligner.js';
+import { allLanguages, languageProfile } from './language.js';
 import { scanSource } from './scanner.js';
-import { languageProfile } from './language.js';
 
 describe('strings are never touched', () => {
     it('ignores a nested template literal', () => {
@@ -304,6 +304,23 @@ describe('strings are never touched', () => {
         expect(align('x = `a ${b')({ language: 'javascript' }).changes).toBe(0);
         expect(align('a = 1\rbb = 2')({}).changes).toBe(0);
         expect(align('cat <<EOF // note\nkey = value\nEOF\nx = 1\nyy = 2')({ language: 'shell' }).code).toBe('cat <<EOF // note\nkey = value\nEOF\nx  = 1\nyy = 2');
+    });
+
+    it('keeps hostile snippets intact and stable in every language', () => {
+        const snippets = ['a = "x = y"\nlonger = \'p = q\'\n// c = d\nx := 1', 's = $"a {b=c} d"\nt = `o ${p=q} r`\ncat <<EOF\nkey = value\nEOF\nlast = 1', 'café = 1\n😀 = 😀\n# tag = v\n/* blk = w */\nif (a == b) {}'];
+        const withoutWhitespace = (text: string): string => text.replace(/\s/g, '');
+
+        for (const profile of allLanguages) {
+            for (const code of snippets) {
+                const first = align(code)({ language: profile.id });
+                const second = align(first.code)({ language: profile.id });
+
+                expect(withoutWhitespace(first.code)).toBe(withoutWhitespace(code));
+                expect(first.code.length).toBeGreaterThanOrEqual(code.length);
+                expect(second.code).toBe(first.code);
+                expect(second.changes).toBe(0);
+            }
+        }
     });
 });
 
