@@ -175,6 +175,16 @@ describe('strings are never touched', () => {
         expect(align(outer.code)({ language: 'swift' }).changes).toBe(0);
     });
 
+    it('treats TOML literal strings as escape-free', () => {
+        const backslash = align("key = 'C:\\path = x'\nlongkey = 2")({ language: 'toml' });
+        expect(backslash.code).toBe("key     = 'C:\\path = x'\nlongkey = 2");
+        expect(align(backslash.code)({ language: 'toml' }).changes).toBe(0);
+
+        const multiline = align("a = '''\nx = 1\n'''\nbb = 2")({ language: 'toml' });
+        expect(multiline.code).toContain('x = 1');
+        expect(align(multiline.code)({ language: 'toml' }).changes).toBe(0);
+    });
+
     it('hides Groovy, Kotlin and Dart interpolation holes with nested quotes', () => {
         for (const language of ['groovy', 'kotlin', 'dart'] as const) {
             // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes

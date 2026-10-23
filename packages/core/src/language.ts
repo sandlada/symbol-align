@@ -31,6 +31,8 @@ const luaLongStringLevel1: StringDelimiter = { open: '[=[', close: ']=]', escape
 const luaLongStringLevel2: StringDelimiter = { open: '[==[', close: ']==]', escape: 'none', multiline: true };
 const rustRawString: StringDelimiter = { open: 'r#"', close: '"#', escape: 'none', multiline: true };
 const rustRawStringLevel2: StringDelimiter = { open: 'r##"', close: '"##', escape: 'none', multiline: true };
+const tomlLiteralString: StringDelimiter = { open: "'", close: "'", escape: 'none', multiline: false };
+const tomlMultilineLiteralString: StringDelimiter = { open: "'''", close: "'''", escape: 'none', multiline: true };
 const powershellHereString: StringDelimiter = { open: '@"', close: '"@', escape: 'none', multiline: true };
 const powershellHereLiteral: StringDelimiter = { open: "@'", close: "'@", escape: 'none', multiline: true };
 const multilineDoubleQuote: StringDelimiter = { open: '"', close: '"', escape: 'backslash', multiline: true };
@@ -798,7 +800,7 @@ const profileTable = {
         extensions: ['toml'],
         lineComments: ['#'],
         blockComments: [],
-        strings: [singleQuote, doubleQuote, tripleSingleQuote, tripleDoubleQuote],
+        strings: [tomlLiteralString, doubleQuote, tomlMultilineLiteralString, tripleDoubleQuote],
         operators: keyValueOperators,
         defaultSymbols: ['='],
     },
