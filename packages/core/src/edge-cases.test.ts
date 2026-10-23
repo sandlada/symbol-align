@@ -278,6 +278,21 @@ describe('strings are never touched', () => {
         expect(align(outer.code)({ language: 'crystal' }).changes).toBe(0);
     });
 
+    it('hides both segments of Perl s/tr/y substitutions', () => {
+        expect(align('s{a=b}{c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s{a=b}{c=d}\nlonger = 1');
+        expect(align('s/a=b/c=d/\nx = 1')({ language: 'perl' }).changes).toBe(0);
+        expect(align('tr/a=b/c=d/\nx = 1')({ language: 'perl' }).changes).toBe(0);
+        expect(align('y{a=b}{c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('y{a=b}{c=d}\nlonger = 1');
+        expect(align('s{a=b} {c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s{a=b} {c=d}\nlonger = 1');
+        expect(align('s/a=b/c=d/g\nlonger = 1')({ language: 'perl' }).code).toBe('s/a=b/c=d/g\nlonger = 1');
+        expect(align('s{aa\nbb}{c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa\nbb}{c=d}\nlonger = 1');
+        expect(align('s{aa}{c\nd=e}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}{c\nd=e}\nlonger = 1');
+
+        const outer = align('$x =~ s{aa}{bb};\n$yy =~ s{c}{d};')({ language: 'perl', symbols: ['=~'] });
+        expect(outer.code).toBe('$x  =~ s{aa}{bb};\n$yy =~ s{c}{d};');
+        expect(align(outer.code)({ language: 'perl', symbols: ['=~'] }).changes).toBe(0);
+    });
+
     it('counts columns in UTF-16 code units and preserves line endings', () => {
         expect(align('あ = 1\nbb = 2')({}).code).toBe('あ  = 1\nbb = 2');
         expect(align('😀 = 1\nb = 2')({}).code).toBe('😀 = 1\nb  = 2');

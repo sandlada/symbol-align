@@ -443,6 +443,41 @@ const matchPerlQuote = (line: string, index: number): StringDelimiter | null => 
     return { open, close, escape: 'backslash', multiline: true };
 };
 
+/** Whether `delimiter` opens the pattern segment of a Perl `s`/`tr`/`y` substitution. */
+const isPerlSubst = (delimiter: StringDelimiter): boolean => /^(?:s|tr|y)([^A-Za-z0-9_\s])$/.test(delimiter.open);
+
+/** Replacement segment of a Perl substitution: its own delimiter plus content start. */
+interface PerlReplacement {
+    readonly delimiter: StringDelimiter;
+    readonly contentStart: number;
+}
+
+/**
+ * Locates the replacement segment of a Perl substitution.
+ *
+ * `from` follows the pattern close and `opener` is the pattern delimiter.
+ * A bracket pattern takes a fresh bracket (or delimiter) pair after optional
+ * blanks; a repeated-character pattern (`s///`) continues inline and closes
+ * at the next occurrence of the same character. Returns `null` when no
+ * replacement opens on this line.
+ */
+const matchPerlReplacement = (line: string, from: number, opener: string): PerlReplacement | null => {
+    const mirror: Readonly<Record<string, string>> = { '{': '}', '(': ')', '[': ']', '<': '>' };
+    if (opener in mirror) {
+        let start = from;
+        while (line[start] === ' ' || line[start] === '\t') start += 1;
+        if (start >= line.length) return null;
+        const second = line[start];
+        if (second in mirror) {
+            const close = mirror[second] ?? second;
+            return { delimiter: { open: second, close, escape: 'backslash', multiline: true }, contentStart: start + 1 };
+        }
+        if (/[^A-Za-z0-9_\s]/.test(second)) return { delimiter: { open: second, close: second, escape: 'backslash', multiline: true }, contentStart: start + 1 };
+        return null;
+    }
+    return { delimiter: { open: opener, close: opener, escape: 'backslash', multiline: true }, contentStart: from };
+};
+
 /** Whether `delimiter` is an Elixir sigil string. */
 const isElixirSigil = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => profile.id === 'elixir' && delimiter.open.startsWith('~');
 
@@ -793,6 +828,32 @@ export const scanSource =
                         escaped = false;
                         openDepth = 0;
                         index = search.index + openString.close.length;
+                        openString = null;
+                        continue;
+                    }
+
+                    if (profile.id === 'perl' && isPerlSubst(openString)) {
+                        const search = findClosing(line, index, openString, escaped);
+                        if (search.index < 0) {
+                            escaped = search.escaped;
+                            index = line.length;
+                            break;
+                        }
+                        escaped = false;
+                        const opener = openString.open.slice(-1);
+                        const replacement = matchPerlReplacement(line, search.index + openString.close.length, opener);
+                        if (replacement === null) {
+                            index = search.index + openString.close.length;
+                            openString = null;
+                            continue;
+                        }
+                        const closing = findClosing(line, replacement.contentStart, replacement.delimiter, false);
+                        if (closing.index < 0) {
+                            openString = replacement.delimiter;
+                            index = line.length;
+                            break;
+                        }
+                        index = closing.index + replacement.delimiter.close.length;
                         openString = null;
                         continue;
                     }
