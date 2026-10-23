@@ -311,6 +311,19 @@ describe('strings are never touched', () => {
         expect(align('s{aa}\nfoo = 1\nlonger = 2')({ language: 'perl' }).code).toBe('s{aa}\nfoo    = 1\nlonger = 2');
     });
 
+    it('hides a bare Perl match after a filehandle verb', () => {
+        expect(align('print FH /a=b/;\nlonger = 1')({ language: 'perl' }).code).toBe('print FH /a=b/;\nlonger = 1');
+        expect(align('printf FH /a=b/;\nlonger = 1')({ language: 'perl' }).code).toBe('printf FH /a=b/;\nlonger = 1');
+        expect(align('say FH /a=b/;\nlonger = 1')({ language: 'perl' }).code).toBe('say FH /a=b/;\nlonger = 1');
+        expect(align('elsif (/a=b/) {}\nlonger = 1')({ language: 'perl' }).code).toBe('elsif (/a=b/) {}\nlonger = 1');
+        expect(align('print $fh / 2\nlonger = 1')({ language: 'perl' }).code).toBe('print $fh / 2\nlonger = 1');
+    });
+
+    it('treats a Perl comment between substitution parts as a comment', () => {
+        expect(align('s{aa} # c=d\nx = 1\nyy = 2')({ language: 'perl' }).code).toBe('s{aa} # c=d\nx  = 1\nyy = 2');
+        expect(align('s{aa} # c\n{c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa} # c\n{c=d}\nlonger = 1');
+        expect(align('s{aa}\n# note\n{c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}\n# note\n{c=d}\nlonger = 1');
+    });
     it('honours backslash escapes inside Perl quote-like segments', () => {
         expect(align('qq{a\\}b=c}\nlonger = 1')({ language: 'perl' }).code).toBe('qq{a\\}b=c}\nlonger = 1');
         expect(align('qq{a\\\\}b=c}\nlonger = 1')({ language: 'perl' }).code).toBe('qq{a\\\\}b=c}\nlonger  = 1');

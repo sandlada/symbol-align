@@ -520,10 +520,32 @@ const matchBareSlash = (line: string, index: number): StringDelimiter | null => 
         let start = back;
         while (start >= 0 && /[A-Za-z0-9_]/.test(line[start])) start -= 1;
         const word = line.slice(start + 1, back + 1);
-        if (/^(?:return|split|grep|map|print|say|die|warn|if|unless|while|until|for|foreach|given|when)$/.test(word)) {
+        if (/^(?:return|split|grep|map|print|say|die|warn|if|elsif|unless|while|until|for|foreach|given|when)$/.test(word)) {
             const before = start >= 0 ? line[start] : '';
             if (before !== '$' && before !== '@' && before !== '%' && before !== '&' && before !== '>') {
                 return { open: '/', close: '/', escape: 'backslash', multiline: true };
+            }
+        }
+
+        // `print FH /pat/`: a bareword handle after a print-like verb re-opens
+        // term position, so the `/` starts a match. A sigiled handle stays
+        // code instead — after a complete term the `/` divides.
+        const handleBefore = start >= 0 ? line[start] : '';
+        if (handleBefore !== '$' && handleBefore !== '@' && handleBefore !== '%' && handleBefore !== '&' && handleBefore !== '>') {
+            let verbEnd = start;
+            while (line[verbEnd] === ' ' || line[verbEnd] === '\t') verbEnd -= 1;
+            if (verbEnd >= 0) {
+                let verbStart = verbEnd;
+                while (verbStart >= 0 && /[A-Za-z0-9_]/.test(line[verbStart])) verbStart -= 1;
+                const verb = line.slice(verbStart + 1, verbEnd + 1);
+                if (verb === 'print' || verb === 'printf' || verb === 'say') {
+                    let verbBefore = verbStart;
+                    while (verbBefore >= 0 && (line[verbBefore] === ' ' || line[verbBefore] === '\t')) verbBefore -= 1;
+                    const marker = verbBefore >= 0 ? line[verbBefore] : '';
+                    if (marker === '' || marker === ';' || marker === '{' || marker === '}' || marker === '(' || marker === '&' || marker === '|' || marker === '!') {
+                        return { open: '/', close: '/', escape: 'backslash', multiline: true };
+                    }
+                }
             }
         }
     }
@@ -614,6 +636,9 @@ const matchPerlReplacement = (line: string, from: number, opener: string): PerlR
         while (line[start] === ' ' || line[start] === '\t') start += 1;
         if (start >= line.length) return null;
         const second = line[start];
+        // A `#` after blanks starts a comment (perlop "Gory details"), so the
+        // replacement is still pending; a glued `#` opens a `#...#` segment.
+        if (start > from && second === '#') return null;
         if (isBracketOpener(second)) {
             const close = mirror[second] ?? second;
             return { delimiter: { open: second, close, escape: 'backslash', multiline: true }, contentStart: start + 1 };
@@ -867,13 +892,18 @@ export const scanSource =
                     lineComments.push(undefined);
                     continue;
                 }
-                const opener = pendingPerlReplacement;
-                pendingPerlReplacement = null;
-                const following = matchPerlReplacement(line, 0, opener);
-                if (following !== null && isPerlLineHeadOpener(following.delimiter.open)) {
-                    openString = following.delimiter;
-                    openDepth = 0;
-                    index = following.contentStart;
+                // A comment-only line cannot hold the replacement, but per
+                // perlop it may sit between the two parts — scan it normally
+                // and keep waiting on the next line.
+                if (!/^\s*#/.test(line)) {
+                    const opener = pendingPerlReplacement;
+                    pendingPerlReplacement = null;
+                    const following = matchPerlReplacement(line, 0, opener);
+                    if (following !== null && isPerlLineHeadOpener(following.delimiter.open)) {
+                        openString = following.delimiter;
+                        openDepth = 0;
+                        index = following.contentStart;
+                    }
                 }
             }
 
@@ -1017,7 +1047,8 @@ export const scanSource =
                         }
                         const replacement = matchPerlReplacement(line, afterFirst, opener);
                         if (replacement === null) {
-                            pendingPerlReplacement = line.slice(afterFirst).trim().length === 0 ? opener : null;
+                            const rest = line.slice(afterFirst);
+                            pendingPerlReplacement = rest.trim().length === 0 || /^\s*#/.test(rest) ? opener : null;
                             index = afterFirst;
                             openString = null;
                             continue;
