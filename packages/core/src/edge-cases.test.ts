@@ -153,6 +153,21 @@ describe('strings are never touched', () => {
         expect(align("'a = 1\n'bb = 2")({ language: 'clojure' }).changes).toBe(0);
         expect(align('﻿a = 1\nbb = 2')({}).changes).toBe(0);
     });
+
+    it('hides Groovy, Kotlin and Dart interpolation holes with nested quotes', () => {
+        for (const language of ['groovy', 'kotlin', 'dart'] as const) {
+            // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+            const leaked = align('"a ${"b=c"}"\nxx = 1')({ language });
+            // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+            expect(leaked.code).toBe('"a ${"b=c"}"\nxx = 1');
+            expect(leaked.changes).toBe(0);
+
+            // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+            const nested = align('val s = "a ${"b=c"} d"\nval longer = 1')({ language });
+            expect(nested.code).toContain('"b=c"');
+            expect(align(nested.code)({ language }).changes).toBe(0);
+        }
+    });
 });
 
 describe('already formatted code stays untouched', () => {

@@ -201,6 +201,60 @@ const isPythonFString = (delimiter: StringDelimiter, profile: LanguageProfile): 
 /** Whether `delimiter` carries `{}` holes that must stay opaque (C# or Python). */
 const isBraceInterpolated = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => isCSharpInterpolated(delimiter) || isPythonFString(delimiter, profile);
 
+/** Whether `delimiter` is a Groovy/Kotlin/Dart quoted string with `${}` holes. */
+const isDollarBraceString = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => (profile.id === 'groovy' || profile.id === 'kotlin' || profile.id === 'dart') && (delimiter.open === '"' || delimiter.open === "'");
+
+/**
+ * Scans a quoted string with `${}` holes, keeping the holes opaque.
+ *
+ * Plain content without `${` behaves exactly like {@link findClosing}; holes
+ * may nest quotes, which never close the outer literal while a hole is open.
+ */
+const findDollarBraceClose = (line: string, from: number, delimiter: StringDelimiter, depth: number, escapedFirst: boolean): InterpolatedSearch => {
+    const close = delimiter.close;
+    let index = from;
+    let currentDepth = depth;
+    let escaped = escapedFirst;
+
+    while (index < line.length) {
+        if (escaped) {
+            escaped = false;
+            index += 1;
+            continue;
+        }
+
+        if (delimiter.escape === 'backslash' && line[index] === '\\') {
+            if (index + 1 >= line.length) return { index: -1, depth: currentDepth, escaped: true };
+            index += 2;
+            continue;
+        }
+
+        if (line[index] === '$' && line[index + 1] === '{') {
+            currentDepth += 1;
+            index += 2;
+            continue;
+        }
+
+        if (line[index] === '}' && currentDepth > 0) {
+            currentDepth -= 1;
+            index += 1;
+            continue;
+        }
+
+        if (currentDepth === 0 && line.startsWith(close, index)) {
+            if (delimiter.escape === 'doubled' && line.startsWith(close, index + close.length)) {
+                index += close.length * 2;
+                continue;
+            }
+            return { index, depth: currentDepth, escaped: false };
+        }
+
+        index += 1;
+    }
+
+    return { index: -1, depth: currentDepth, escaped: false };
+};
+
 /** Whether `character` is a word character (letter, digit, or underscore). */
 const isScannerWordChar = (character: string): boolean => (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') || (character >= '0' && character <= '9') || character === '_';
 
@@ -425,6 +479,15 @@ export const scanSource =
                     }
                     if (isBraceInterpolated(delimiter, profile)) {
                         const search = findCSharpInterpolatedClose(line, index, delimiter, 0, false);
+                        if (search.index < 0) {
+                            index = line.length;
+                            break;
+                        }
+                        index = search.index + delimiter.close.length;
+                        continue;
+                    }
+                    if (isDollarBraceString(delimiter, profile)) {
+                        const search = findDollarBraceClose(line, index, delimiter, 0, false);
                         if (search.index < 0) {
                             index = line.length;
                             break;
