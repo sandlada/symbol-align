@@ -456,6 +456,27 @@ describe('strings are never touched', () => {
         expect(second.changes).toBe(0);
     });
 
+    it('keeps quote-like and document constructs intact and stable in every language', () => {
+        const snippets = [
+            's{a{b}c}{d=e}\nprint FH /a=b/;\nmy $longer = 2;',
+            '=pod\ndoc = here\n=cut\nx = 1\nyy = 2',
+            '--[=[\na = b\n]=]\nformat STDOUT =\nkey = value\n.\nlonger = 1',
+            's{aa}\n# note\n{c=d}\n=begin\ndoc\n=end\n__END__\ntail = data',
+        ];
+        const withoutWhitespace = (text: string): string => text.replace(/\s/g, '');
+
+        for (const profile of allLanguages) {
+            for (const code of snippets) {
+                const first = align(code)({ language: profile.id });
+                const second = align(first.code)({ language: profile.id });
+
+                expect(withoutWhitespace(first.code)).toBe(withoutWhitespace(code));
+                expect(first.code.length).toBeGreaterThanOrEqual(code.length);
+                expect(second.code).toBe(first.code);
+                expect(second.changes).toBe(0);
+            }
+        }
+    });
     it('keeps hostile snippets intact and stable in every language', () => {
         // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
         const snippets = ['a = "x = y"\nlonger = \'p = q\'\n// c = d\nx := 1', 's = $"a {b=c} d"\nt = `o ${p=q} r`\ncat <<EOF\nkey = value\nEOF\nlast = 1', 'café = 1\n😀 = 😀\n# tag = v\n/* blk = w */\nif (a == b) {}'];
