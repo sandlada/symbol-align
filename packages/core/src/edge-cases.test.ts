@@ -289,6 +289,14 @@ describe('strings are never touched', () => {
         expect(align('x ??= 1\nlonger = 2')({ language: 'csharp' }).code).toBe('x ??= 1\nlonger = 2');
         expect(align('x = a?.b\nxx = c')({ language: 'csharp', symbols: ['?'] }).code).toBe('x = a?.b\nxx = c');
     });
+
+    it('keeps comment and string openers from leaking into each other', () => {
+        expect(align('x = "//" // real\nxx = 1')({ symbols: ['//'] }).code).toBe('x = "//" // real\nxx = 1');
+        expect(align('x = "/*" /* real */\nxx = 1')({}).code).toBe('x  = "/*" /* real */\nxx = 1');
+        expect(align('/* " */\nx = 1\nyy = 2')({}).code).toBe('/* " */\nx  = 1\nyy = 2');
+        expect(align('x = /**/ 1\nxx = 2')({}).code).toBe('x  = /**/ 1\nxx = 2');
+        expect(align("x = 'it''s = y'\nxx = 1")({ language: 'sql' }).code).toBe("x  = 'it''s = y'\nxx = 1");
+    });
 });
 
 describe('already formatted code stays untouched', () => {
