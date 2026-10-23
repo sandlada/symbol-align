@@ -415,6 +415,16 @@ describe('strings are never touched', () => {
         expect(align('readonlyx = 1\nvalue = 2')({ symbols: ['readonly', '='] }).code).toBe('readonlyx = 1\nvalue     = 2');
     });
 
+    it('aligns word operators without matching them inside longer words', () => {
+        expect(align('x in a\nyy in b')({ language: 'nim', symbols: ['in'] }).code).toBe('x  in a\nyy in b');
+        expect(align('x notin a\nyy in b')({ language: 'nim', symbols: ['in', 'notin'] }).code).toBe('x notin a\nyy in b');
+        expect(align('x notin a\nyy notin b')({ language: 'nim', symbols: ['notin'] }).code).toBe('x  notin a\nyy notin b');
+        expect(align('x of a\nyy of b')({ language: 'nim', symbols: ['of'] }).code).toBe('x  of a\nyy of b');
+        expect(align('within x\nlonger = 1')({ language: 'nim', symbols: ['in'] }).code).toBe('within x\nlonger = 1');
+
+        const aligned = align('x in a\nyy in b')({ language: 'nim', symbols: ['in'] });
+        expect(align(aligned.code)({ language: 'nim', symbols: ['in'] }).changes).toBe(0);
+    });
     it('never claims a keyword inside a longer Unicode identifier', () => {
         expect(align('exporté = 1\nvalue = 2')({ symbols: ['export', '='] }).code).toBe('exporté = 1\nvalue   = 2');
         expect(align('export变量 = 1\nvalue = 2')({ symbols: ['export', '='] }).code).toBe('export变量 = 1\nvalue    = 2');
