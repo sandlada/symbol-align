@@ -307,6 +307,7 @@ describe('strings are never touched', () => {
     });
 
     it('keeps hostile snippets intact and stable in every language', () => {
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
         const snippets = ['a = "x = y"\nlonger = \'p = q\'\n// c = d\nx := 1', 's = $"a {b=c} d"\nt = `o ${p=q} r`\ncat <<EOF\nkey = value\nEOF\nlast = 1', 'café = 1\n😀 = 😀\n# tag = v\n/* blk = w */\nif (a == b) {}'];
         const withoutWhitespace = (text: string): string => text.replace(/\s/g, '');
 
