@@ -295,4 +295,18 @@ describe('glob patterns', () => {
 
         expect(languageOf(config, 'src\\main.py')).toBe('python');
     });
+
+    it('matches a windows separator in the pattern', () => {
+        const config = parseConfig({ overrides: { 'src\\*.py': { language: 'python' } } });
+
+        expect(languageOf(config, 'src/main.py')).toBe('python');
+        expect(languageOf(config, 'src\\main.py')).toBe('python');
+    });
+
+    it('matches nested windows separators in the pattern', () => {
+        const config = parseConfig({ overrides: { 'src\\**\\*.py': { language: 'python' } } });
+
+        expect(languageOf(config, 'src/a/main.py')).toBe('python');
+        expect(languageOf(config, 'src\\a\\main.py')).toBe('python');
+    });
 });

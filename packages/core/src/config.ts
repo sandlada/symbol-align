@@ -147,11 +147,13 @@ const escapeRegExpCharacter = (character: string): string => character.replace(R
  *   a file in a sub directory
  * - runs of three or more stars collapse into one globstar, so `***` behaves
  *   like `**` instead of depending on whether the run is even or odd
+ * - a backslash in the pattern is a directory separator, so windows style
+ *   patterns match the same files as their POSIX counterparts
  * - `?` matches exactly one character that is not `/`
  * - every other character matches itself
  */
 const globToRegExp = (pattern: string): RegExp => {
-    const collapsed = pattern.replace(/\*{3,}/g, '**');
+    const collapsed = pattern.replace(/\*{3,}/g, '**').replace(/\\/g, '/');
     let source = '';
     let index = 0;
 
