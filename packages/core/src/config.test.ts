@@ -56,7 +56,7 @@ describe('parseConfig', () => {
     });
 
     it('rejects an unknown scope', () => {
-        expect(() => parseConfig({ scope: 'chunk' })).toThrow('Invalid configuration: "scope" must be "block" or "file"');
+        expect(() => parseConfig({ scope: 'chunk' })).toThrow('Invalid configuration: "scope" must be "block", "indent" or "file"');
     });
 
     it('rejects overrides that are not an object', () => {
@@ -68,15 +68,15 @@ describe('parseConfig', () => {
     });
 
     it('rejects an override with invalid symbols', () => {
-        expect(() => parseConfig({ overrides: { '*.py': { symbols: '=' } } })).toThrow('Invalid configuration: invalid override "*.py"');
+        expect(() => parseConfig({ overrides: { '*.py': { symbols: '=' } } })).toThrow('Invalid configuration: invalid override "*.py": "symbols" must be an array of strings');
     });
 
     it('rejects an override with an unknown language', () => {
-        expect(() => parseConfig({ overrides: { '*.py': { language: 'cobol' } } })).toThrow('Invalid configuration: invalid override "*.py"');
+        expect(() => parseConfig({ overrides: { '*.py': { language: 'cobol' } } })).toThrow('Invalid configuration: invalid override "*.py": unknown language "cobol"');
     });
 
     it('rejects an override with an unknown scope', () => {
-        expect(() => parseConfig({ overrides: { '*.py': { scope: 'chunk' } } })).toThrow('Invalid configuration: invalid override "*.py"');
+        expect(() => parseConfig({ overrides: { '*.py': { scope: 'chunk' } } })).toThrow('Invalid configuration: invalid override "*.py": "scope" must be "block", "indent" or "file"');
     });
 
     it('ignores unknown keys', () => {
@@ -191,10 +191,10 @@ describe('glob patterns', () => {
         expect(languageOf(config, 'ac.py')).toBeUndefined();
     });
 
-    it('lets a trailing question mark match an empty string', () => {
+    it('does not match an empty string with a trailing question mark', () => {
         const config = parseConfig({ overrides: { 'main.py?': { language: 'python' } } });
 
-        expect(languageOf(config, 'main.py')).toBe('python');
+        expect(languageOf(config, 'main.py')).toBeUndefined();
     });
 
     it('matches a single character with a trailing question mark', () => {

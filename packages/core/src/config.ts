@@ -81,7 +81,7 @@ const readScope = (source: Record<string, unknown>): AlignmentScope | undefined 
     }
 
     if (!isScope(value)) {
-        throw new Error('Invalid configuration: "scope" must be "block" or "file"');
+        throw new Error('Invalid configuration: "scope" must be "block", "indent" or "file"');
     }
 
     return value;
@@ -103,8 +103,10 @@ const readOverride = (pattern: string, value: unknown): ConfigOverride => {
             ...(language === undefined ? {} : { language }),
             ...(scope === undefined ? {} : { scope }),
         };
-    } catch {
-        throw new Error(`Invalid configuration: invalid override "${pattern}"`);
+    } catch (error) {
+        const detail = (error as Error).message.replace(/^Invalid configuration: /, '');
+
+        throw new Error(`Invalid configuration: invalid override "${pattern}": ${detail}`);
     }
 };
 
@@ -141,8 +143,7 @@ const escapeRegExpCharacter = (character: string): string => character.replace(R
  * - a globstar that is followed by a slash also matches zero directories, so a
  *   pattern that starts with a globstar matches a file in the root as well as
  *   a file in a sub directory
- * - `?` matches exactly one character that is not `/`; a trailing `?` also
- *   matches the empty string
+ * - `?` matches exactly one character that is not `/`
  * - every other character matches itself
  */
 const globToRegExp = (pattern: string): RegExp => {
@@ -167,7 +168,7 @@ const globToRegExp = (pattern: string): RegExp => {
         }
 
         if (character === '?') {
-            source += index === pattern.length - 1 ? '[^/]?' : '[^/]';
+            source += '[^/]';
             index += 1;
             continue;
         }
@@ -252,7 +253,8 @@ export const parseConfig = (raw: unknown): SymbolAlignConfig => {
  *
  * The top level options are the base. Every override whose pattern matches
  * the file name or the full path is applied afterwards, in the order the
- * patterns appear in the configuration — a later override wins.
+ * patterns appear in the configuration — a later override wins for each key
+ * it defines, so overrides merge per key rather than replacing each other.
  */
 export const resolveConfig =
     (config: SymbolAlignConfig) =>
