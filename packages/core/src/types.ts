@@ -162,7 +162,11 @@ export interface LineRange {
 
 /** Options accepted by {@link align}. */
 export interface AlignOptions {
-    /** Symbols to align. Defaults to the language profile's `defaultSymbols`. */
+    /**
+     * Symbols to align. Defaults to the language profile's `defaultSymbols`.
+     *
+     * An explicit empty list aligns nothing.
+     */
     readonly symbols?: readonly AlignSymbol[];
     /** Language profile that drives string and comment handling. Defaults to `generic`. */
     readonly language?: LanguageId;

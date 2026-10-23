@@ -15,6 +15,7 @@ import type { AlignOptions, AlignSymbol, AlignmentScope, LanguageId } from './ty
 
 /** A per file pattern override of the configuration. */
 export interface ConfigOverride {
+    /** Symbols to align — an explicit empty list aligns nothing. */
     readonly symbols?: readonly AlignSymbol[];
     readonly language?: LanguageId;
     readonly scope?: AlignmentScope;
@@ -22,6 +23,7 @@ export interface ConfigOverride {
 
 /** The parsed content of a `symbol-align.config.json` file. */
 export interface SymbolAlignConfig {
+    /** Symbols to align — an explicit empty list aligns nothing. */
     readonly symbols?: readonly AlignSymbol[];
     readonly language?: LanguageId;
     readonly scope?: AlignmentScope;

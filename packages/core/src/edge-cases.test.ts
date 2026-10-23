@@ -412,6 +412,7 @@ describe('strings are never touched', () => {
         expect(align('x := 1\nyy = 2')({ symbols: [':', '='], language: 'go' }).code).toBe('x := 1\nyy = 2');
         expect(align('a = 1\nbb = 2')({ symbols: ['=', '='] }).code).toBe('a  = 1\nbb = 2');
         expect(align('a = 1')({ symbols: [''] }).changes).toBe(0);
+        expect(align('a = 1\nbb = 2')({ symbols: [] }).code).toBe('a = 1\nbb = 2');
         expect(align('readonlyx = 1\nvalue = 2')({ symbols: ['readonly', '='] }).code).toBe('readonlyx = 1\nvalue     = 2');
     });
 

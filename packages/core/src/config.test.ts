@@ -140,6 +140,16 @@ describe('resolveConfig', () => {
 
         expect(resolveConfig(config)()).toEqual({ symbols: ['='] });
     });
+
+    it('keeps an explicit empty symbol list as align nothing', () => {
+        expect(resolveConfig(parseConfig({ symbols: [] }))()).toEqual({ symbols: [] });
+    });
+
+    it('lets an override disable alignment with an empty symbol list', () => {
+        const config = parseConfig({ symbols: ['='], overrides: { '*.py': { symbols: [] } } });
+
+        expect(resolveConfig(config)('main.py')).toEqual({ symbols: [] });
+    });
 });
 
 describe('glob patterns', () => {
