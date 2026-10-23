@@ -197,6 +197,30 @@ describe('strings are never touched', () => {
         expect(align(mixed.code)({}).changes).toBe(0);
     });
 
+    it('hides Delphi, Erlang, Clojure and VB comment bodies', () => {
+        expect(align('{ a = b }\nx = 1\nyy = 2')({ language: 'delphi' }).code).toBe('{ a = b }\nx  = 1\nyy = 2');
+        expect(align('(* a = b *)\nx = 1\nyy = 2')({ language: 'delphi' }).code).toBe('(* a = b *)\nx  = 1\nyy = 2');
+        expect(align('%% a = b\nx = 1\nyy = 2')({ language: 'erlang' }).code).toBe('%% a = b\nx  = 1\nyy = 2');
+        expect(align('; a = b\nx = 1\nyy = 2')({ language: 'clojure' }).code).toBe('; a = b\nx  = 1\nyy = 2');
+        expect(align("' a = b\nx = 1\nyy = 2")({ language: 'vb' }).code).toBe("' a = b\nx  = 1\nyy = 2");
+    });
+
+    it('hides deeply nested holes and comments', () => {
+        expect(align('{- a {- b {- c -} d -} e -}\nx = 1\nyy = 2')({ language: 'haskell' }).code).toBe('{- a {- b {- c -} d -} e -}\nx  = 1\nyy = 2');
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        expect(align('"${"${"x=y"}"}"\nxx = 1')({ language: 'javascript' }).changes).toBe(0);
+    });
+
+    it('never treats heredoc markers inside strings as openers', () => {
+        const quoted = align('x = "cat <<EOF"\nxx = 1')({ language: 'shell' });
+        expect(quoted.code).toBe('x  = "cat <<EOF"\nxx = 1');
+
+        const opener = align('cat <<EOF "a=b"\nkey = value\nEOF\nx = 1\nyy = 2')({ language: 'shell' });
+        expect(opener.code).toContain('"a=b"');
+        expect(opener.code).toContain('key = value');
+        expect(align(opener.code)({ language: 'shell' }).changes).toBe(0);
+    });
+
     it('treats TOML literal strings as escape-free', () => {
         const backslash = align("key = 'C:\\path = x'\nlongkey = 2")({ language: 'toml' });
         expect(backslash.code).toBe("key     = 'C:\\path = x'\nlongkey = 2");
