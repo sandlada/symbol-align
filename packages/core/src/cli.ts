@@ -711,7 +711,13 @@ export const validatePath = (filePath: string): string => {
     const cwd = process.cwd();
     const resolvedPath = resolve(cwd, filePath);
 
-    if (resolvedPath !== cwd && !resolvedPath.startsWith(cwd + sep)) {
+    // Windows file systems ignore ASCII case, so the comparison folds it
+    // there while staying exact everywhere else.
+    const foldCase = (value: string): string => (process.platform === 'win32' ? value.toLowerCase() : value);
+    const wanted = foldCase(resolvedPath);
+    const home = foldCase(cwd);
+
+    if (wanted !== home && !wanted.startsWith(`${home}${sep}`)) {
         throw new Error(`Path traversal detected: ${filePath} resolves outside of current working directory`);
     }
 

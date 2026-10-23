@@ -279,6 +279,20 @@ describe('validatePath', () => {
         expect(() => validatePath('../../etc/passwd')).toThrow(/Path traversal detected/);
         expect(() => validatePath('/etc/passwd')).toThrow(/Path traversal detected/);
     });
+
+    it('allows dot segments that stay within the working directory', () => {
+        const cwd = process.cwd();
+
+        expect(validatePath(join('a', '..', 'input.ts'))).toBe(resolve(cwd, 'input.ts'));
+        expect(validatePath(join('sub', '..', 'input.ts'))).toBe(resolve(cwd, 'input.ts'));
+    });
+
+    it.runIf(process.platform === 'win32')('ignores ASCII case when comparing with the working directory', () => {
+        const cwd = process.cwd();
+        const recased = cwd.charAt(0).toLowerCase() + cwd.slice(1);
+
+        expect(validatePath(join(recased, 'input.ts'))).toBe(resolve(recased, 'input.ts'));
+    });
 });
 
 describe('readPackageVersion', () => {
