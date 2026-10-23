@@ -133,6 +133,26 @@ describe('strings are never touched', () => {
         expect(herestring.code).toContain('"a=b"');
         expect(herestring.changes).toBe(0);
     });
+
+    it('hides ruby, perl and php heredoc bodies', () => {
+        const ruby = align('cat <<~EOS\nkey = value\nEOS\nshort=1\nlonger_var=2')({ language: 'ruby' });
+        expect(ruby.code).toContain('key = value');
+        expect(align(ruby.code)({ language: 'ruby' }).changes).toBe(0);
+
+        const perl = align('print <<EOF;\nkey = value\nEOF\nshort=1\nlonger_var=2')({ language: 'perl' });
+        expect(perl.code).toContain('key = value');
+        expect(align(perl.code)({ language: 'perl' }).changes).toBe(0);
+
+        const php = align('$x = <<<EOF\nkey = value\nEOF;\n$short=1\n$longer_var=2')({ language: 'php' });
+        expect(php.code).toContain('key = value');
+        expect(align(php.code)({ language: 'php' }).changes).toBe(0);
+    });
+
+    it('leaves Haskell primes, Clojure quotes and BOM lines stable and untouched', () => {
+        expect(align("foo' = 1\nfoobar = 2")({ language: 'haskell' }).changes).toBe(0);
+        expect(align("'a = 1\n'bb = 2")({ language: 'clojure' }).changes).toBe(0);
+        expect(align('﻿a = 1\nbb = 2')({}).changes).toBe(0);
+    });
 });
 
 describe('already formatted code stays untouched', () => {

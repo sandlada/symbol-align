@@ -205,14 +205,21 @@ const isBraceInterpolated = (delimiter: StringDelimiter, profile: LanguageProfil
 const isScannerWordChar = (character: string): boolean => (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') || (character >= '0' && character <= '9') || character === '_';
 
 /** Whether `profile` supports `<<WORD` heredocs whose body stays opaque. */
-const isHeredocProfile = (profile: LanguageProfile): boolean => profile.id === 'shell';
+const isHeredocProfile = (profile: LanguageProfile): boolean => profile.id === 'shell' || profile.id === 'ruby' || profile.id === 'perl' || profile.id === 'php';
 
 /** Heredoc terminator that opens at `index`, or `null`. */
 const matchHeredocOpener = (line: string, index: number): string | null => {
-    const match = /^<<-?\s*['"]?([A-Za-z_]\w*)['"]?/.exec(line.slice(index));
+    const match = /^<<<-?\s*['"`]?([A-Za-z_]\w*)['"`]?|^<<[-~]?\s*['"`]?([A-Za-z_]\w*)['"`]?/.exec(line.slice(index));
     if (match === null) return null;
 
-    return match[1];
+    return match[1] ?? match[2] ?? null;
+};
+
+/** Whether `line` terminates the heredoc closed by `terminator`. */
+const isHeredocTerminator = (line: string, terminator: string): boolean => {
+    const trimmed = line.trim();
+
+    return trimmed === terminator || trimmed === `${terminator};`;
 };
 
 /** Python f-string delimiter that opens at `index`, or `null`. */
@@ -318,7 +325,7 @@ export const scanSource =
 
         for (const line of lines) {
             if (openHeredoc !== null) {
-                if (line.trim() === openHeredoc) openHeredoc = null;
+                if (isHeredocTerminator(line, openHeredoc)) openHeredoc = null;
                 codeRegions.push([]);
                 lineComments.push(undefined);
                 continue;
