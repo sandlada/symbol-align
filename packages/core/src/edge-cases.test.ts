@@ -256,6 +256,17 @@ describe('strings are never touched', () => {
         expect(align('   \n  \n')({}).changes).toBe(0);
         expect(align('a = 1\n   \nbb = 2')({}).changes).toBe(0);
     });
+
+    it('keeps comment and string markers from leaking into each other', () => {
+        expect(align('/* // a = b */\nx = 1\nyy = 2')({}).code).toBe('/* // a = b */\nx  = 1\nyy = 2');
+        expect(align('x = 1 // /* a = b\nxx = 2')({}).code).toBe('x  = 1 // /* a = b\nxx = 2');
+        expect(align('x = "// a = b"\nxx = 2')({}).code).toBe('x  = "// a = b"\nxx = 2');
+        expect(align('// "a = b\nx = 1\nxx = 2')({}).code).toBe('// "a = b\nx  = 1\nxx = 2');
+        expect(align('x = "a = b\nxx = 2')({}).code).toBe('x  = "a = b\nxx = 2');
+        expect(align('/* a = b\nx = 1\nyy = 2')({}).changes).toBe(0);
+        expect(align('x = ""\nxx = 2')({}).code).toBe('x  = ""\nxx = 2');
+        expect(align('x = "a" "b=c"\nxx = 2')({}).code).toBe('x  = "a" "b=c"\nxx = 2');
+    });
 });
 
 describe('already formatted code stays untouched', () => {
