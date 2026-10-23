@@ -1,4 +1,4 @@
-import { isLanguageId } from '@sandlada/symbol-align';
+import { allLanguages, isLanguageId } from '@sandlada/symbol-align';
 import { describe, expect, it } from 'vitest';
 
 import { resolveLanguage } from './language.js';
@@ -11,68 +11,71 @@ import { resolveLanguage } from './language.js';
  */
 const supportedProfile = (profile: string): string | undefined => (isLanguageId(profile) ? profile : undefined);
 
+/** Every VS Code id the extension maps, with its expected profile. */
+const mappedIds: ReadonlyArray<readonly [string, string]> = [
+    ['javascript', 'javascript'],
+    ['javascriptreact', 'javascript'],
+    ['typescript', 'typescript'],
+    ['typescriptreact', 'typescript'],
+    ['json', 'json'],
+    ['jsonc', 'json'],
+    ['python', 'python'],
+    ['go', 'go'],
+    ['rust', 'rust'],
+    ['java', 'java'],
+    ['kotlin', 'kotlin'],
+    ['swift', 'swift'],
+    ['csharp', 'csharp'],
+    ['cpp', 'cpp'],
+    ['c', 'c'],
+    ['objectivec', 'objectivec'],
+    ['ruby', 'ruby'],
+    ['php', 'php'],
+    ['dart', 'dart'],
+    ['delphi', 'delphi'],
+    ['sql', 'sql'],
+    ['yaml', 'yaml'],
+    ['css', 'css'],
+    ['scss', 'css'],
+    ['less', 'css'],
+    ['html', 'html'],
+    ['xml', 'xml'],
+    ['markdown', 'markdown'],
+    ['plaintext', 'plaintext'],
+    ['elixir', 'elixir'],
+    ['haskell', 'haskell'],
+    ['lua', 'lua'],
+    ['scala', 'scala'],
+    ['perl', 'perl'],
+    ['julia', 'julia'],
+    ['zig', 'zig'],
+    ['powershell', 'powershell'],
+    ['clojure', 'clojure'],
+    ['erlang', 'erlang'],
+    ['fortran', 'fortran'],
+    ['r', 'r'],
+    ['nim', 'nim'],
+    ['crystal', 'crystal'],
+    ['gleam', 'gleam'],
+    ['odin', 'odin'],
+    ['solidity', 'solidity'],
+    ['groovy', 'groovy'],
+    ['terraform', 'terraform'],
+    ['toml', 'toml'],
+    ['ini', 'ini'],
+    ['makefile', 'makefile'],
+    ['dockerfile', 'dockerfile'],
+    ['graphql', 'graphql'],
+    ['protobuf', 'protobuf'],
+    ['vb', 'vb'],
+    ['vue', 'vue'],
+    ['svelte', 'svelte'],
+    ['astro', 'astro'],
+    ['v', 'v'],
+];
+
 describe('resolveLanguage', () => {
-    it.each([
-        ['javascript', 'javascript'],
-        ['javascriptreact', 'javascript'],
-        ['typescript', 'typescript'],
-        ['typescriptreact', 'typescript'],
-        ['json', 'json'],
-        ['jsonc', 'json'],
-        ['python', 'python'],
-        ['go', 'go'],
-        ['rust', 'rust'],
-        ['java', 'java'],
-        ['kotlin', 'kotlin'],
-        ['swift', 'swift'],
-        ['csharp', 'csharp'],
-        ['cpp', 'cpp'],
-        ['c', 'c'],
-        ['objectivec', 'objectivec'],
-        ['ruby', 'ruby'],
-        ['php', 'php'],
-        ['dart', 'dart'],
-        ['delphi', 'delphi'],
-        ['sql', 'sql'],
-        ['yaml', 'yaml'],
-        ['css', 'css'],
-        ['scss', 'css'],
-        ['less', 'css'],
-        ['html', 'html'],
-        ['xml', 'xml'],
-        ['markdown', 'markdown'],
-        ['plaintext', 'plaintext'],
-        ['elixir', 'elixir'],
-        ['haskell', 'haskell'],
-        ['lua', 'lua'],
-        ['scala', 'scala'],
-        ['perl', 'perl'],
-        ['julia', 'julia'],
-        ['zig', 'zig'],
-        ['powershell', 'powershell'],
-        ['clojure', 'clojure'],
-        ['erlang', 'erlang'],
-        ['fortran', 'fortran'],
-        ['r', 'r'],
-        ['nim', 'nim'],
-        ['crystal', 'crystal'],
-        ['gleam', 'gleam'],
-        ['odin', 'odin'],
-        ['solidity', 'solidity'],
-        ['groovy', 'groovy'],
-        ['terraform', 'terraform'],
-        ['toml', 'toml'],
-        ['ini', 'ini'],
-        ['makefile', 'makefile'],
-        ['dockerfile', 'dockerfile'],
-        ['graphql', 'graphql'],
-        ['protobuf', 'protobuf'],
-        ['vb', 'vb'],
-        ['vue', 'vue'],
-        ['svelte', 'svelte'],
-        ['astro', 'astro'],
-        ['v', 'v'],
-    ])('maps the %s id to the %s profile', (languageId, profile) => {
+    it.each(mappedIds)('maps the %s id to the %s profile', (languageId, profile) => {
         expect(resolveLanguage(languageId)).toBe(supportedProfile(profile));
     });
 
@@ -102,5 +105,33 @@ describe('resolveLanguage', () => {
 
     it('returns undefined for a language that is not mapped', () => {
         expect(resolveLanguage('git-commit')).toBeUndefined();
+    });
+
+    it('reaches every profile of the core library except generic', () => {
+        const reachable = new Set<string>();
+
+        for (const [languageId] of mappedIds) {
+            const profile = resolveLanguage(languageId);
+
+            if (profile !== undefined) {
+                reachable.add(profile);
+            }
+        }
+
+        for (const extra of ['shellscript', 'objective-c', 'pascal', 'fortran-free-form', 'proto']) {
+            const profile = resolveLanguage(extra);
+
+            if (profile !== undefined) {
+                reachable.add(profile);
+            }
+        }
+
+        for (const profile of allLanguages) {
+            if (profile.id === 'generic') {
+                continue;
+            }
+
+            expect(reachable.has(profile.id)).toBe(true);
+        }
     });
 });
