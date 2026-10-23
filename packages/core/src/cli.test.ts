@@ -112,8 +112,8 @@ describe('parseArgs', () => {
         expect(parseArgs(['node', 'cli.js', '--symbols', ':,,=,']).symbols).toEqual([':', '=']);
     });
 
-    it('keeps the default symbols when the symbol list is empty', () => {
-        expect(parseArgs(['node', 'cli.js', '--symbols=']).symbols).toBeUndefined();
+    it('treats an empty symbol list as align nothing', () => {
+        expect(parseArgs(['node', 'cli.js', '--symbols=']).symbols).toEqual([]);
     });
 
     it('reads the language from --language', () => {
@@ -564,6 +564,26 @@ describe('runCli with a project configuration', () => {
 
             expect(code).toBe(0);
             expect(streams.stdoutText()).toBe('a : 1\nbb: 2\n');
+        });
+    });
+
+    it('treats an explicitly empty symbol list as align nothing', async () => {
+        const streams = createStreams('a = 1\nbb = 2');
+
+        const code = await runCli(['node', 'cli.js', '--symbols', ''], streams);
+
+        expect(code).toBe(0);
+        expect(streams.stdoutText()).toBe('a = 1\nbb = 2\n');
+    });
+
+    it('rejects a configuration file outside of the working directory', async () => {
+        await withTempDir(async () => {
+            const streams = createStreams('a = 1');
+
+            const code = await runCli(['node', 'cli.js', '--config', '../outside.json'], streams);
+
+            expect(code).toBe(1);
+            expect(streams.stderrText()).toContain('Path traversal detected');
         });
     });
 

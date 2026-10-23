@@ -169,16 +169,18 @@ const matchOption = (token: string): OptionMatch | undefined => {
 /**
  * Parses a comma separated symbol list.
  *
- * Entries are trimmed and empty entries are dropped. An empty list keeps the
- * default of the language profile.
+ * Entries are trimmed and empty entries are dropped. An explicitly empty list
+ * means "align nothing" — it matches the core library, where an empty symbol
+ * list leaves the input untouched, and the configuration file, where
+ * `"symbols": []` is a quiet no-op.
  */
-const parseSymbols = (value: string): readonly string[] | undefined => {
+const parseSymbols = (value: string): readonly string[] => {
     const symbols = value
         .split(',')
         .map((entry) => entry.trim())
         .filter((entry) => entry.length > 0);
 
-    return symbols.length > 0 ? symbols : undefined;
+    return symbols;
 };
 
 /** Parses a language id — an unknown id is an error. */
@@ -435,7 +437,7 @@ const targetPathOf = (args: CliArgs, filePath: string | undefined): string | und
  */
 const loadConfiguration = (args: CliArgs): SymbolAlignConfig | undefined => {
     if (args.config !== undefined) {
-        return loadConfigFile(resolve(process.cwd(), args.config));
+        return loadConfigFile(validatePath(args.config));
     }
 
     return loadConfig(process.cwd());
