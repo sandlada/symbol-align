@@ -297,6 +297,14 @@ describe('strings are never touched', () => {
         expect(align('x = /**/ 1\nxx = 2')({}).code).toBe('x  = /**/ 1\nxx = 2');
         expect(align("x = 'it''s = y'\nxx = 1")({ language: 'sql' }).code).toBe("x  = 'it''s = y'\nxx = 1");
     });
+
+    it('handles unclosed inputs and exotic line content without throwing', () => {
+        expect(align('x = "a = b\nxx = 2')({}).code).toBe('x  = "a = b\nxx = 2');
+        expect(align('/* a = b\nx = 1\nyy = 2')({}).changes).toBe(0);
+        expect(align('x = `a ${b')({ language: 'javascript' }).changes).toBe(0);
+        expect(align('a = 1\rbb = 2')({}).changes).toBe(0);
+        expect(align('cat <<EOF // note\nkey = value\nEOF\nx = 1\nyy = 2')({ language: 'shell' }).code).toBe('cat <<EOF // note\nkey = value\nEOF\nx  = 1\nyy = 2');
+    });
 });
 
 describe('already formatted code stays untouched', () => {
