@@ -428,15 +428,37 @@ const matchNimFmtString = (line: string, index: number): StringDelimiter | null 
     return { open: 'fmt"', close: '"', escape: 'backslash', multiline: false };
 };
 
-/** Perl quote-like operator delimiter that opens at `index`, or `null`. */
+/**
+ * Perl quote-like operator delimiter that opens at `index`, or `null`.
+ *
+ * Blanks may sit between the operator and its delimiter (`s {foo} {bar}`,
+ * documented in perlop), except that `#` after blanks starts a comment and
+ * `=`, `<`, `>` after blanks would be a fat comma or comparison — those
+ * stay code. A `sub`/`package`/`class` name before the operator (`sub s {`)
+ * and a sigil or `&`/`>` before it (`$m / 2`, `->s {`) also stay code.
+ */
 const matchPerlQuote = (line: string, index: number): StringDelimiter | null => {
     if (index > 0 && isScannerWordChar(line[index - 1])) return null;
 
-    const match = /^(qq|qx|qw|qr|q|m|s|tr|y)([^A-Za-z0-9_\s])/.exec(line.slice(index));
+    const match = /^(qq|qx|qw|qr|q|m|s|tr|y)([ \t]*)([^A-Za-z0-9_\s])/.exec(line.slice(index));
     if (match === null) return null;
 
-    const open = line.slice(index, index + match[1].length + 1);
-    const opener = match[2];
+    const opener = match[3];
+    if (match[2].length > 0) {
+        if (opener === '#' || opener === '=' || opener === '<' || opener === '>') return null;
+        const before = index > 0 ? line[index - 1] : '';
+        if (before === '$' || before === '@' || before === '%' || before === '&' || before === '>') return null;
+        let end = index - 1;
+        while (line[end] === ' ' || line[end] === '\t') end -= 1;
+        if (end >= 0) {
+            let start = end;
+            while (start >= 0 && /[A-Za-z0-9_]/.test(line[start])) start -= 1;
+            const word = line.slice(start + 1, end + 1);
+            if (word === 'sub' || word === 'package' || word === 'class') return null;
+        }
+    }
+
+    const open = line.slice(index, index + match[1].length + match[2].length + 1);
     const mirror: Readonly<Record<string, string>> = { '{': '}', '(': ')', '[': ']', '<': '>' };
     const close = mirror[opener] ?? opener;
 
@@ -447,10 +469,67 @@ const matchPerlQuote = (line: string, index: number): StringDelimiter | null => 
 const isBracketOpener = (character: string): boolean => character === '{' || character === '(' || character === '[' || character === '<';
 
 /** Whether `delimiter` opens any Perl quote-like operator (`q`, `qq`, `m`, `s`, `tr`, …). */
-const isPerlQuote = (delimiter: StringDelimiter): boolean => /^(?:qq|qx|qw|qr|q|m|s|tr|y)([^A-Za-z0-9_\s])$/.test(delimiter.open);
+const isPerlQuote = (delimiter: StringDelimiter): boolean => /^(?:qq|qx|qw|qr|q|m|s|tr|y)[ \t]*([^A-Za-z0-9_\s])$/.test(delimiter.open);
 
 /** Whether `delimiter` opens the pattern segment of a Perl `s`/`tr`/`y` substitution. */
-const isPerlSubst = (delimiter: StringDelimiter): boolean => /^(?:s|tr|y)([^A-Za-z0-9_\s])$/.test(delimiter.open);
+const isPerlSubst = (delimiter: StringDelimiter): boolean => /^(?:s|tr|y)[ \t]*([^A-Za-z0-9_\s])$/.test(delimiter.open);
+
+/**
+ * Bare `/.../` match delimiter that opens at `index`, or `null`.
+ *
+ * A `/` only starts a match where division is impossible: the next character
+ * is glued to it (excluding `//` and `/=`) and a same-line close exists, so
+ * an unterminated `/2` can never swallow the rest of the file. The previous
+ * non-blank character must open a term position (`(`, `,`, `=`, `~`, …) or
+ * end a match keyword (`return`, `if`, …); anything else — including a `$`
+ * sigil before the keyword — stays code, keeping `$m / 2` division safe.
+ */
+const matchBareSlash = (line: string, index: number): StringDelimiter | null => {
+    if (!line.startsWith('/', index)) return null;
+    const next = line[index + 1];
+    if (next === undefined || next === ' ' || next === '\t' || next === '/' || next === '=') return null;
+    const closing = findClosing(line, index + 1, { open: '/', close: '/', escape: 'backslash', multiline: false }, false);
+    if (closing.index < 0) return null;
+
+    let back = index - 1;
+    while (line[back] === ' ' || line[back] === '\t') back -= 1;
+    if (back < 0) return { open: '/', close: '/', escape: 'backslash', multiline: true };
+    const prev = line[back];
+    if (
+        prev === '(' ||
+        prev === ',' ||
+        prev === ';' ||
+        prev === '{' ||
+        prev === '[' ||
+        prev === '=' ||
+        prev === '!' ||
+        prev === '~' ||
+        prev === '?' ||
+        prev === ':' ||
+        prev === '|' ||
+        prev === '&' ||
+        prev === '+' ||
+        prev === '-' ||
+        prev === '*' ||
+        prev === '%'
+    ) {
+        return { open: '/', close: '/', escape: 'backslash', multiline: true };
+    }
+
+    if (/[A-Za-z0-9_]/.test(prev)) {
+        let start = back;
+        while (start >= 0 && /[A-Za-z0-9_]/.test(line[start])) start -= 1;
+        const word = line.slice(start + 1, back + 1);
+        if (/^(?:return|split|grep|map|print|say|die|warn|if|unless|while|until|for|foreach|given|when)$/.test(word)) {
+            const before = start >= 0 ? line[start] : '';
+            if (before !== '$' && before !== '@' && before !== '%' && before !== '&' && before !== '>') {
+                return { open: '/', close: '/', escape: 'backslash', multiline: true };
+            }
+        }
+    }
+
+    return null;
+};
 
 /** Whether `delimiter` is the bracketed replacement segment of a Perl substitution. */
 const isPerlReplacement = (delimiter: StringDelimiter): boolean => /^[{([<]$/.test(delimiter.open);
@@ -669,6 +748,8 @@ const matchString = (line: string, index: number, profile: LanguageProfile): Str
     if (profile.id === 'perl') {
         const quote = matchPerlQuote(line, index);
         if (quote !== null) return quote;
+        const bare = matchBareSlash(line, index);
+        if (bare !== null) return bare;
     }
 
     if (profile.id === 'elixir') {

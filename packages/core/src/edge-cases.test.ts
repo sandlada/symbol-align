@@ -317,6 +317,30 @@ describe('strings are never touched', () => {
         expect(align('qq{a\\{b}c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('qq{a\\{b}c=d}\nlonger   = 1');
     });
 
+    it('hides bare Perl matches but leaves division alone', () => {
+        expect(align('/a=b/\nlonger = 1')({ language: 'perl' }).code).toBe('/a=b/\nlonger = 1');
+        expect(align('if (/a=b/) {}\nlonger = 1')({ language: 'perl' }).code).toBe('if (/a=b/) {}\nlonger = 1');
+        expect(align('x =~ /a=b/;\nlonger_var = 1')({ language: 'perl' }).code).toBe('x =~ /a=b/;\nlonger_var = 1');
+        expect(align('x = a / b\nlonger = 1')({ language: 'perl' }).code).toBe('x      = a / b\nlonger = 1');
+        expect(align('x = a/2\nlonger = 1')({ language: 'perl' }).code).toBe('x      = a/2\nlonger = 1');
+        expect(align('x = a /2\nlonger = 1')({ language: 'perl' }).code).toBe('x      = a /2\nlonger = 1');
+        expect(align('x = $a // $b\nlonger = 1')({ language: 'perl' }).code).toBe('x      = $a // $b\nlonger = 1');
+        expect(align('x /= 2\nlonger = 3')({ language: 'perl' }).code).toBe('x /= 2\nlonger = 3');
+        expect(align('($x) / 2\nlonger = 1')({ language: 'perl' }).code).toBe('($x) / 2\nlonger = 1');
+    });
+
+    it('hides spaced Perl quote-like openers except comments, fat commas and sub names', () => {
+        expect(align('s {a=b} {c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s {a=b} {c=d}\nlonger = 1');
+        expect(align('m /a=b/\nlonger = 1')({ language: 'perl' }).code).toBe('m /a=b/\nlonger = 1');
+        expect(align('qq {a=b}\nlonger = 1')({ language: 'perl' }).code).toBe('qq {a=b}\nlonger = 1');
+        expect(align('tr /a=b/c=d/\nlonger = 1')({ language: 'perl' }).code).toBe('tr /a=b/c=d/\nlonger = 1');
+        expect(align('q #foo#\nlonger = 1')({ language: 'perl' }).code).toBe('q #foo#\nlonger = 1');
+        expect(align('my %h = (s => 1);\nmy $longer = 2;')({ language: 'perl' }).code).toBe('my %h      = (s => 1);\nmy $longer = 2;');
+        expect(align('sub s { $x = 1 }\nsub longer { $y = 2 }')({ language: 'perl' }).code).toBe('sub s { $x      = 1 }\nsub longer { $y = 2 }');
+        expect(align('package s { $x = 1 }\npackage longer { $y = 2 }')({ language: 'perl' }).code).toBe('package s { $x      = 1 }\npackage longer { $y = 2 }');
+        expect(align('my $m = 4;\n$x = $m / 2;')({ language: 'perl' }).code).toBe('my $m = 4;\n$x    = $m / 2;');
+    });
+
     it('counts columns in UTF-16 code units and preserves line endings', () => {
         expect(align('あ = 1\nbb = 2')({}).code).toBe('あ  = 1\nbb = 2');
         expect(align('😀 = 1\nb = 2')({}).code).toBe('😀 = 1\nb  = 2');
