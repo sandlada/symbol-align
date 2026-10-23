@@ -62,8 +62,172 @@ const isRustCharLiteral = (line: string, index: number): boolean => {
     return line[index + 2] === "'";
 };
 
+/** Whether `delimiter` is a JavaScript-style template literal with `${}` holes. */
+const isJsTemplate = (delimiter: StringDelimiter): boolean => delimiter.open === '`' && delimiter.close === '`' && delimiter.escape === 'backslash' && delimiter.multiline;
+
+/** Whether `delimiter` is a C# interpolated string with `{}` holes. */
+const isCSharpInterpolated = (delimiter: StringDelimiter): boolean => delimiter.open.startsWith('$') || delimiter.open === '@$"';
+
+/** Result of scanning an interpolated string across a single line. */
+interface InterpolatedSearch {
+    /** Index of the closing delimiter, or `-1` when the literal stays open. */
+    readonly index: number;
+    /** Brace depth at the end of the line (carried into the next line). */
+    readonly depth: number;
+    /** Whether the first character of the next line is escaped. */
+    readonly escaped: boolean;
+}
+
+/**
+ * Scans a JavaScript template literal, keeping `${}` holes opaque.
+ *
+ * The whole template — holes included — stays a string, so symbols inside
+ * never reach the aligner. Nested backticks inside holes are ignored on
+ * purpose: they must not close the outer template and leak string content.
+ */
+const findTemplateClose = (line: string, from: number, depth: number, escapedFirst: boolean): InterpolatedSearch => {
+    let index = from;
+    let currentDepth = depth;
+    let escaped = escapedFirst;
+
+    while (index < line.length) {
+        if (escaped) {
+            escaped = false;
+            index += 1;
+            continue;
+        }
+
+        if (line[index] === '\\') {
+            if (index + 1 >= line.length) return { index: -1, depth: currentDepth, escaped: true };
+            index += 2;
+            continue;
+        }
+
+        if (line[index] === '$' && line[index + 1] === '{') {
+            currentDepth += 1;
+            index += 2;
+            continue;
+        }
+
+        if (line[index] === '}' && currentDepth > 0) {
+            currentDepth -= 1;
+            index += 1;
+            continue;
+        }
+
+        if (line[index] === '`' && currentDepth === 0) {
+            return { index, depth: currentDepth, escaped: false };
+        }
+
+        index += 1;
+    }
+
+    return { index: -1, depth: currentDepth, escaped: false };
+};
+
+/**
+ * Scans a C# interpolated string, keeping `{}` holes opaque.
+ *
+ * `{{` and `}}` in the literal part are escapes and never change the depth.
+ * A quote only closes the literal when no hole is open, so nested quotes
+ * inside holes cannot end the string early and leak string content.
+ */
+const findCSharpInterpolatedClose = (line: string, from: number, delimiter: StringDelimiter, depth: number, escapedFirst: boolean): InterpolatedSearch => {
+    const close = delimiter.close;
+    let index = from;
+    let currentDepth = depth;
+    let escaped = escapedFirst;
+
+    while (index < line.length) {
+        if (escaped) {
+            escaped = false;
+            index += 1;
+            continue;
+        }
+
+        if (delimiter.escape === 'backslash' && line[index] === '\\') {
+            if (index + 1 >= line.length) return { index: -1, depth: currentDepth, escaped: true };
+            index += 2;
+            continue;
+        }
+
+        if (delimiter.escape === 'doubled' && currentDepth === 0 && line.startsWith(close, index)) {
+            if (line.startsWith(close, index + close.length)) {
+                index += close.length * 2;
+                continue;
+            }
+        }
+
+        if (currentDepth === 0 && line[index] === '{' && line[index + 1] === '{') {
+            index += 2;
+            continue;
+        }
+
+        if (currentDepth === 0 && line[index] === '}' && line[index + 1] === '}') {
+            index += 2;
+            continue;
+        }
+
+        if (line[index] === '{') {
+            currentDepth += 1;
+            index += 1;
+            continue;
+        }
+
+        if (line[index] === '}' && currentDepth > 0) {
+            currentDepth -= 1;
+            index += 1;
+            continue;
+        }
+
+        if (currentDepth === 0 && line.startsWith(close, index)) {
+            return { index, depth: currentDepth, escaped: false };
+        }
+
+        index += 1;
+    }
+
+    return { index: -1, depth: currentDepth, escaped: false };
+};
+
+/** Whether `delimiter` is a Python f-string with `{}` holes. */
+const isPythonFString = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => {
+    if (profile.id !== 'python') return false;
+    const open = delimiter.open.toLowerCase();
+
+    return open.startsWith('f"') || open.startsWith("f'") || open.startsWith('fr"') || open.startsWith("fr'") || open.startsWith('rf"') || open.startsWith("rf'");
+};
+
+/** Whether `delimiter` carries `{}` holes that must stay opaque (C# or Python). */
+const isBraceInterpolated = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => isCSharpInterpolated(delimiter) || isPythonFString(delimiter, profile);
+
+/** Whether `character` is a word character (letter, digit, or underscore). */
+const isScannerWordChar = (character: string): boolean => (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') || (character >= '0' && character <= '9') || character === '_';
+
+/** Python f-string delimiter that opens at `index`, or `null`. */
+const matchPythonFString = (line: string, index: number): StringDelimiter | null => {
+    if (index > 0 && isScannerWordChar(line[index - 1])) return null;
+
+    const match = /^([rRbBuUfF]*)("""|'''|"|')/.exec(line.slice(index));
+    if (match === null) return null;
+
+    const prefix = match[1];
+    const quote = match[2];
+    if (!/[fF]/.test(prefix)) return null;
+
+    const open = line.slice(index, index + prefix.length + quote.length);
+    const escapeMode = /[rR]/.test(prefix) ? 'none' : 'backslash';
+
+    return { open, close: quote, escape: escapeMode, multiline: quote.length === 3 };
+};
+
 /** Longest string delimiter that opens at `index`, or `null`. */
 const matchString = (line: string, index: number, profile: LanguageProfile): StringDelimiter | null => {
+    if (profile.id === 'python') {
+        const fString = matchPythonFString(line, index);
+        if (fString !== null) return fString;
+    }
+
     let best: StringDelimiter | null = null;
 
     for (const delimiter of profile.strings) {
@@ -134,6 +298,8 @@ export const scanSource =
         let openBlock: string | null = null;
         /** String literal that is currently open — it may span several lines. */
         let openString: StringDelimiter | null = null;
+        /** Brace depth inside an interpolated string (`${}` or `{}` holes). */
+        let openDepth = 0;
         /** Whether the first character of the current line is escaped. */
         let escaped = false;
 
@@ -162,6 +328,36 @@ export const scanSource =
                 }
 
                 if (openString !== null) {
+                    if (isJsTemplate(openString)) {
+                        const search = findTemplateClose(line, index, openDepth, escaped);
+                        if (search.index < 0) {
+                            escaped = search.escaped;
+                            openDepth = search.depth;
+                            index = line.length;
+                            break;
+                        }
+                        escaped = false;
+                        openDepth = 0;
+                        index = search.index + openString.close.length;
+                        openString = null;
+                        continue;
+                    }
+
+                    if (isBraceInterpolated(openString, profile)) {
+                        const search = findCSharpInterpolatedClose(line, index, openString, openDepth, escaped);
+                        if (search.index < 0) {
+                            escaped = search.escaped;
+                            openDepth = search.depth;
+                            index = line.length;
+                            break;
+                        }
+                        escaped = false;
+                        openDepth = 0;
+                        index = search.index + openString.close.length;
+                        openString = null;
+                        continue;
+                    }
+
                     const search = findClosing(line, index, openString, escaped);
                     if (search.index < 0) {
                         escaped = search.escaped;
@@ -174,14 +370,6 @@ export const scanSource =
                     continue;
                 }
 
-                const marker = matchLongest(line, index, profile.lineComments);
-                if (marker !== null) {
-                    closeRegion(index);
-                    comment = { column: index, marker };
-                    index = line.length;
-                    break;
-                }
-
                 const block = matchBlockComment(line, index, profile.blockComments);
                 if (block !== null) {
                     closeRegion(index);
@@ -190,12 +378,30 @@ export const scanSource =
                     continue;
                 }
 
+                const marker = matchLongest(line, index, profile.lineComments);
+                if (marker !== null) {
+                    closeRegion(index);
+                    comment = { column: index, marker };
+                    index = line.length;
+                    break;
+                }
+
                 const delimiter = matchString(line, index, profile);
                 if (delimiter !== null) {
                     closeRegion(index);
                     index += delimiter.open.length;
                     if (delimiter.multiline) {
                         openString = delimiter;
+                        openDepth = 0;
+                        continue;
+                    }
+                    if (isBraceInterpolated(delimiter, profile)) {
+                        const search = findCSharpInterpolatedClose(line, index, delimiter, 0, false);
+                        if (search.index < 0) {
+                            index = line.length;
+                            break;
+                        }
+                        index = search.index + delimiter.close.length;
                         continue;
                     }
                     const search = findClosing(line, index, delimiter, false);

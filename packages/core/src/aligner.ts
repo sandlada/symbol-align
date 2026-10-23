@@ -298,6 +298,16 @@ export const align =
  * Builds an aligner from a fixed set of options.
  *
  * `alignWith({ symbols: ['=', ':'] })(code)`
+ *
+ * The passes run to a fixpoint so a single call never returns a result that
+ * would change again on a second run. A conflicting symbol order (for example
+ * `=` before `:` on one line but `:` before `=` on another) can ratchet the
+ * columns wider on every run; when no fixpoint is reached the aligner falls
+ * back to the leading symbol only, which is always stable. A single symbol
+ * that still moves after several passes (prefix padding combined with the
+ * `indent` scope can climb) falls back to leaving the input untouched.
+ * Under-aligning is always preferred over mutating string content or
+ * diverging.
  */
 export const alignWith =
     (options: AlignOptions) =>
@@ -313,17 +323,45 @@ export const alignWith =
         }
 
         const ordered = orderByFirstOccurrence(symbols, profile, range)(lines);
-        const changed = new Set<number>();
 
-        const aligned = ordered.reduce((current, symbol) => {
-            const pass = alignSymbol(symbol, profile, scope, range)(current);
-            pass.changed.forEach((index) => {
-                changed.add(index);
-            });
-            return pass.lines;
-        }, lines);
+        /** Runs one full sequence of symbol passes over `input`. */
+        const runPasses = (symbolsToAlign: readonly AlignSymbol[], input: readonly string[]): readonly string[] => symbolsToAlign.reduce((current, symbol) => alignSymbol(symbol, profile, scope, range)(current).lines, input);
 
-        return { code: aligned.join('\n'), changes: changed.size };
+        /** Whether two line arrays hold the same text. */
+        const sameLines = (left: readonly string[], right: readonly string[]): boolean => left.length === right.length && left.every((line, index) => line === right[index]);
+
+        /**
+         * Repeats `runPasses` until the output stops changing.
+         * Returns `null` when no fixpoint is reached within `limit` runs.
+         */
+        const toFixpoint = (symbolsToAlign: readonly AlignSymbol[], input: readonly string[], limit: number): readonly string[] | null => {
+            let current = input;
+
+            for (let iteration = 0; iteration < limit; iteration += 1) {
+                const next = runPasses(symbolsToAlign, current);
+                if (sameLines(next, current)) return next;
+                current = next;
+            }
+
+            return null;
+        };
+
+        /** Distinct lines that differ from the original input. */
+        const changedAgainst = (finalLines: readonly string[]): number => finalLines.filter((line, index) => line !== lines[index]).length;
+
+        const stable = toFixpoint(ordered, lines, 5);
+        if (stable !== null) {
+            return { code: stable.join('\n'), changes: changedAgainst(stable) };
+        }
+
+        if (ordered.length > 1) {
+            const leading = toFixpoint([ordered[0]], lines, 5);
+            if (leading !== null) {
+                return { code: leading.join('\n'), changes: changedAgainst(leading) };
+            }
+        }
+
+        return { code, changes: 0 };
     };
 
 /**

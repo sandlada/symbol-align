@@ -19,7 +19,20 @@ const tripleSingleQuote: StringDelimiter = { open: "'''", close: "'''", escape: 
 const tripleDoubleQuote: StringDelimiter = { open: '"""', close: '"""', escape: 'backslash', multiline: true };
 const goRawString: StringDelimiter = { open: '`', close: '`', escape: 'none', multiline: true };
 const csharpVerbatimString: StringDelimiter = { open: '@"', close: '"', escape: 'doubled', multiline: true };
+const csharpInterpolatedString: StringDelimiter = { open: '$"', close: '"', escape: 'backslash', multiline: false };
+const csharpInterpolatedVerbatimString: StringDelimiter = { open: '$@"', close: '"', escape: 'doubled', multiline: true };
+const csharpVerbatimInterpolatedString: StringDelimiter = { open: '@$"', close: '"', escape: 'doubled', multiline: true };
+const csharpInterpolatedRawString: StringDelimiter = { open: '$"""', close: '"""', escape: 'none', multiline: true };
+const csharpDoubleInterpolatedRawString: StringDelimiter = { open: '$$"""', close: '"""', escape: 'none', multiline: true };
 const csharpRawString: StringDelimiter = { open: '"""', close: '"""', escape: 'none', multiline: true };
+const sqlSingleQuote: StringDelimiter = { open: "'", close: "'", escape: 'doubled', multiline: true };
+const sqlDoubleQuote: StringDelimiter = { open: '"', close: '"', escape: 'doubled', multiline: true };
+const luaLongStringLevel1: StringDelimiter = { open: '[=[', close: ']=]', escape: 'none', multiline: true };
+const luaLongStringLevel2: StringDelimiter = { open: '[==[', close: ']==]', escape: 'none', multiline: true };
+const rustRawString: StringDelimiter = { open: 'r#"', close: '"#', escape: 'none', multiline: true };
+const rustRawStringLevel2: StringDelimiter = { open: 'r##"', close: '"##', escape: 'none', multiline: true };
+const powershellHereString: StringDelimiter = { open: '@"', close: '"@', escape: 'none', multiline: true };
+const powershellHereLiteral: StringDelimiter = { open: "@'", close: "'@", escape: 'none', multiline: true };
 const multilineDoubleQuote: StringDelimiter = { open: '"', close: '"', escape: 'backslash', multiline: true };
 const doubledDoubleQuote: StringDelimiter = { open: '"', close: '"', escape: 'doubled', multiline: false };
 const backtickSingleLine: StringDelimiter = { open: '`', close: '`', escape: 'backslash', multiline: false };
@@ -385,7 +398,7 @@ const profileTable = {
         extensions: ['rs'],
         lineComments: ['//'],
         blockComments: [['/*', '*/']],
-        strings: [singleQuote, doubleQuote],
+        strings: [rustRawStringLevel2, rustRawString, singleQuote, doubleQuote],
         operators: rustOperators,
         defaultSymbols: ['='],
     },
@@ -395,7 +408,7 @@ const profileTable = {
         extensions: ['java'],
         lineComments: ['//'],
         blockComments: [['/*', '*/']],
-        strings: [singleQuote, doubleQuote],
+        strings: [singleQuote, doubleQuote, tripleDoubleQuote],
         operators: cFamilyOperators,
         defaultSymbols: ['='],
     },
@@ -405,7 +418,7 @@ const profileTable = {
         extensions: ['kt', 'kts'],
         lineComments: ['//'],
         blockComments: [['/*', '*/']],
-        strings: [singleQuote, doubleQuote],
+        strings: [singleQuote, doubleQuote, tripleDoubleQuote],
         operators: cFamilyOperators,
         defaultSymbols: ['='],
     },
@@ -415,7 +428,7 @@ const profileTable = {
         extensions: ['swift'],
         lineComments: ['//'],
         blockComments: [['/*', '*/']],
-        strings: [singleQuote, doubleQuote],
+        strings: [singleQuote, doubleQuote, tripleDoubleQuote],
         operators: cFamilyOperators,
         defaultSymbols: ['='],
     },
@@ -425,7 +438,17 @@ const profileTable = {
         extensions: ['cs', 'csx'],
         lineComments: ['//'],
         blockComments: [['/*', '*/']],
-        strings: [singleQuote, doubleQuote, csharpVerbatimString, csharpRawString],
+        strings: [
+            singleQuote,
+            doubleQuote,
+            csharpInterpolatedVerbatimString,
+            csharpVerbatimInterpolatedString,
+            csharpDoubleInterpolatedRawString,
+            csharpInterpolatedRawString,
+            csharpInterpolatedString,
+            csharpVerbatimString,
+            csharpRawString,
+        ],
         operators: cFamilyOperators,
         defaultSymbols: ['='],
     },
@@ -495,7 +518,7 @@ const profileTable = {
         extensions: ['sql'],
         lineComments: ['--'],
         blockComments: [['/*', '*/']],
-        strings: [singleQuote],
+        strings: [sqlSingleQuote, sqlDoubleQuote],
         operators: sqlOperators,
         defaultSymbols: ['='],
     },
@@ -575,7 +598,7 @@ const profileTable = {
         extensions: ['ex', 'exs', 'eex', 'heex'],
         lineComments: ['#'],
         blockComments: [],
-        strings: [singleQuote, doubleQuote, tripleSingleQuote],
+        strings: [singleQuote, doubleQuote, tripleSingleQuote, tripleDoubleQuote],
         operators: elixirOperators,
         defaultSymbols: ['='],
     },
@@ -595,7 +618,7 @@ const profileTable = {
         extensions: ['lua'],
         lineComments: ['--'],
         blockComments: [['--[[', ']]']],
-        strings: [singleQuote, doubleQuote, luaLongString],
+        strings: [singleQuote, doubleQuote, luaLongStringLevel2, luaLongStringLevel1, luaLongString],
         operators: luaOperators,
         defaultSymbols: ['='],
     },
@@ -605,7 +628,7 @@ const profileTable = {
         extensions: ['scala', 'sc', 'sbt'],
         lineComments: ['//'],
         blockComments: [['/*', '*/']],
-        strings: [singleQuote, doubleQuote, tripleSingleQuote],
+        strings: [singleQuote, doubleQuote, tripleDoubleQuote],
         operators: scalaOperators,
         defaultSymbols: ['='],
     },
@@ -655,7 +678,7 @@ const profileTable = {
         extensions: ['ps1', 'psm1', 'psd1'],
         lineComments: ['#'],
         blockComments: [['<#', '#>']],
-        strings: [singleQuote, doubledDoubleQuote],
+        strings: [powershellHereString, powershellHereLiteral, singleQuote, doubledDoubleQuote],
         operators: powershellOperators,
         defaultSymbols: ['='],
     },
@@ -775,7 +798,7 @@ const profileTable = {
         extensions: ['toml'],
         lineComments: ['#'],
         blockComments: [],
-        strings: [singleQuote, doubleQuote, tripleSingleQuote],
+        strings: [singleQuote, doubleQuote, tripleSingleQuote, tripleDoubleQuote],
         operators: keyValueOperators,
         defaultSymbols: ['='],
     },
@@ -815,7 +838,7 @@ const profileTable = {
         extensions: ['graphql', 'gql'],
         lineComments: ['#'],
         blockComments: [],
-        strings: [singleQuote, doubleQuote],
+        strings: [singleQuote, doubleQuote, tripleDoubleQuote],
         operators: graphqlOperators,
         defaultSymbols: [':'],
     },
