@@ -67,3 +67,33 @@ export const formatText = (request: FormatRequest): FormatResponse => {
 
     return { text: result.code, changes: result.changes };
 };
+
+/** A zero-based position of an editor selection, without the editor attached. */
+export interface SelectionPosition {
+    /** The zero-based line number. */
+    readonly line: number;
+    /** The zero-based character offset within the line. */
+    readonly character: number;
+}
+
+/** An editor selection with a normalized direction. */
+export interface SelectionLines {
+    /** The anchor of the selection — never after `end`. */
+    readonly start: SelectionPosition;
+    /** The caret of the selection. */
+    readonly end: SelectionPosition;
+}
+
+/**
+ * The lines that are covered by a selection.
+ *
+ * The end of the range stays exclusive. A caret that rests at character zero
+ * of a later line does not pull that line into the range.
+ */
+export const selectionLineRange = (selection: SelectionLines): LineRange => ({
+    start: selection.start.line,
+    end: selection.end.character === 0 && selection.end.line > selection.start.line ? selection.end.line : selection.end.line + 1,
+});
+
+/** The lines of an aligned text that belong to the line range. */
+export const linesOfRange = (text: string, range: LineRange): string => text.split('\n').slice(range.start, range.end).join('\n');

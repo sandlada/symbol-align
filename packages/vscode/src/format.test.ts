@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatText } from './format.js';
+import { formatText, linesOfRange, selectionLineRange } from './format.js';
 
 describe('formatText', () => {
     it('aligns the equals signs of a typescript snippet', () => {
@@ -178,5 +178,33 @@ describe('formatText with a range', () => {
 
         expect(result.text.split('\n')[2]).toBe('const bbbb = 22;');
         expect(result.changes).toBe(0);
+    });
+});
+
+describe('selectionLineRange', () => {
+    it('covers every touched line', () => {
+        expect(selectionLineRange({ start: { line: 1, character: 2 }, end: { line: 3, character: 5 } })).toEqual({ start: 1, end: 4 });
+    });
+
+    it('covers a single line selected in full', () => {
+        expect(selectionLineRange({ start: { line: 1, character: 0 }, end: { line: 1, character: 9 } })).toEqual({ start: 1, end: 2 });
+    });
+
+    it('covers the line of a collapsed cursor', () => {
+        expect(selectionLineRange({ start: { line: 2, character: 0 }, end: { line: 2, character: 0 } })).toEqual({ start: 2, end: 3 });
+    });
+
+    it('excludes a trailing line that only holds the caret', () => {
+        expect(selectionLineRange({ start: { line: 0, character: 0 }, end: { line: 2, character: 0 } })).toEqual({ start: 0, end: 2 });
+    });
+});
+
+describe('linesOfRange', () => {
+    it('returns the lines of the range', () => {
+        expect(linesOfRange('a = 1\nbb = 2\nccc = 3', { start: 1, end: 3 })).toBe('bb = 2\nccc = 3');
+    });
+
+    it('returns an empty text for an empty range', () => {
+        expect(linesOfRange('a = 1\nbb = 2', { start: 1, end: 1 })).toBe('');
     });
 });

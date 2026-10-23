@@ -9,7 +9,7 @@ import type { AlignmentScope, LanguageId, LineRange } from '@sandlada/symbol-ali
 import { isLanguageId } from '@sandlada/symbol-align';
 import * as vscode from 'vscode';
 import type { FormatResponse } from './format.js';
-import { formatText } from './format.js';
+import { formatText, linesOfRange, selectionLineRange } from './format.js';
 import { resolveLanguage } from './language.js';
 
 /** The settings of the extension as they are stored in the workspace. */
@@ -69,25 +69,12 @@ const resolveTargetLanguage = (configured: string, languageId: string): Language
 /** The range that covers the whole document. */
 const fullRange = (document: vscode.TextDocument): vscode.Range => new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length));
 
-/**
- * The lines that are covered by a selection.
- *
- * The end of the selection is inclusive, the end of the range is exclusive.
- */
-const selectionLineRange = (selection: vscode.Selection): LineRange => ({
-    start: selection.start.line,
-    end: selection.end.line + 1,
-});
-
 /** The range of the editor that covers the lines of a line range. */
 const lineRange = (document: vscode.TextDocument, range: LineRange): vscode.Range => {
     const lastLine = Math.min(range.end, document.lineCount) - 1;
 
     return new vscode.Range(new vscode.Position(range.start, 0), new vscode.Position(lastLine, document.lineAt(lastLine).text.length));
 };
-
-/** The lines of an aligned text that belong to the line range. */
-const linesOfRange = (text: string, range: LineRange): string => text.split('\n').slice(range.start, range.end).join('\n');
 
 /** Aligns a text with the settings of the extension. */
 const alignText = (text: string, document: vscode.TextDocument, settings: SymbolAlignSettings, language: LanguageId, range?: LineRange): FormatResponse =>
