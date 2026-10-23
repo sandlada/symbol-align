@@ -188,6 +188,15 @@ describe('strings are never touched', () => {
         expect(align('/* a /* b */\nx = 1\nyy = 2')({ language: 'c' }).code).toBe('/* a /* b */\nx  = 1\nyy = 2');
     });
 
+    it('leaves documentation comments untouched while aligning nearby code', () => {
+        expect(align('/// a = b\n/// aa = bb\n')({}).code).toBe('/// a = b\n/// aa = bb\n');
+        expect(align('/** a = b */\n/** aa = bb */\n')({}).code).toBe('/** a = b */\n/** aa = bb */\n');
+
+        const mixed = align('a=1\n/// a = b\nbb=2\n')({});
+        expect(mixed.code).toBe('a =1\n/// a = b\nbb=2\n');
+        expect(align(mixed.code)({}).changes).toBe(0);
+    });
+
     it('treats TOML literal strings as escape-free', () => {
         const backslash = align("key = 'C:\\path = x'\nlongkey = 2")({ language: 'toml' });
         expect(backslash.code).toBe("key     = 'C:\\path = x'\nlongkey = 2");
