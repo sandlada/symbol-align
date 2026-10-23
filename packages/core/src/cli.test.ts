@@ -341,6 +341,13 @@ describe('runCli', () => {
         expect(streams.stdoutText().trim()).toBe(readPackageVersion());
     });
 
+    it('keeps the README CLI reference in sync with the usage text', async () => {
+        const readme = await readFile(new URL('../../../README.md', import.meta.url), 'utf-8');
+        const block = readme.match(/## CLI reference\n\n```\n([\s\S]*?)```/);
+
+        expect(block?.[1]).toBe(usage);
+    });
+
     it('aligns the code read from stdin', async () => {
         const streams = createStreams('a = 1\nbb = 2');
 

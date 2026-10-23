@@ -46,6 +46,7 @@ This repository is a [pnpm](https://pnpm.io) workspace (`packages/*`).
 | Package                                                   | Description                          |
 | --------------------------------------------------------- | ------------------------------------ |
 | [`@sandlada/symbol-align`](packages/core)                 | Core library + CLI (published to npm) |
+| [Symbol Align](packages/vscode)                            | VS Code extension                     |
 
 ## Install
 
@@ -357,8 +358,8 @@ const bb = 22; // longer
 </td><td>
 
 ```ts
-const a = 1;    // short
-const bb = 22;  // longer
+const a = 1;   // short
+const bb = 22; // longer
 ```
 
 </td></tr>
@@ -380,7 +381,7 @@ const yy: number;
 </td><td>
 
 ```ts
-const x : string;
+const x :  string;
 const yy: number;
 ```
 
@@ -420,7 +421,7 @@ Vertically align punctuation symbols in a code snippet.
 Reads from stdin or from one or more files and writes to stdout.
 
 Options:
-  -f, --file <path>         Read from file instead of stdin (may be repeated)
+  -f, --file <path>         Read from file instead of stdin (repeat it or list several paths)
   -o, --output <path>       Write to file instead of stdout
       --write               Write the aligned code back into the file that was read
       --diff                Print a unified diff of the input and the aligned result
@@ -438,6 +439,7 @@ Notes:
   --write only inserts spaces, the line endings of the file are kept
   --output cannot be used with several files
   --diff cannot be combined with --check and never writes a file
+  --check and --diff only report and cannot be combined with --write or --output
 
 Examples:
   echo "a = 1\nbb = 2" | symbol-align
@@ -492,12 +494,12 @@ specific one.
 }
 ```
 
-| Key         | Type              | Description                                                    |
-| ----------- | ----------------- | -------------------------------------------------------------- |
-| `symbols`   | `string[]`        | Symbols to align                                                |
-| `language`  | `LanguageId`      | Language profile to use                                         |
-| `scope`     | `'block'\|'file'` | Grouping strategy                                               |
-| `overrides` | `object`          | Per file pattern overrides of `symbols`, `language` and `scope`  |
+| Key         | Type                      | Description                                                     |
+| ----------- | ------------------------- | --------------------------------------------------------------- |
+| `symbols`   | `string[]`                | Symbols to align (an empty list aligns nothing)                 |
+| `language`  | `LanguageId`              | Language profile to use                                         |
+| `scope`     | `'block'|'indent'|'file'` | Grouping strategy                                               |
+| `overrides` | `object`                  | Per file pattern overrides of `symbols`, `language` and `scope` |
 
 The patterns are matched against the file name and against the full path. `*`
 does not cross a directory separator, `**` does, and a leading `**` also
@@ -567,7 +569,7 @@ language. Pass `--stdin-filepath $FilePath$` so the language is detected.
 ```json
 {
     "lint-staged": {
-        "*.{ts,tsx,js,jsx,py,go,rs,java,cs,cpp,c,rb,php}": ["symbol-align --file"]
+        "*.{ts,tsx,js,jsx,py,go,rs,java,cs,cpp,c,rb,php}": ["symbol-align --write --file"]
     }
 }
 ```
@@ -589,7 +591,8 @@ writing anything, so it can guard a repository:
 
 ## Limitations
 
-- Regular expressions are not detected — symbols inside a `/…/` literal may
+- Regular expressions are not detected, except for Perl matches and
+  substitutions — symbols inside a `/…/` literal of any other language may
   still be aligned
 - Only the **first** occurrence of a symbol per line is used for alignment
 - The aligner never removes spaces, so it cannot un-align a snippet
@@ -604,9 +607,12 @@ writing anything, so it can guard a repository:
 ```
 symbol-align/
 ├── packages/
-│   └── core/               # @sandlada/symbol-align — the published package
-│       ├── src/            # library + CLI sources
-│       └── package.json
+│   ├── core/               # @sandlada/symbol-align — the published package
+│   │   ├── src/            # library + CLI sources
+│   │   └── package.json
+│   ├── vscode/             # Symbol Align — the VS Code extension
+│   │   ├── src/            # extension sources
+│   │   └── package.json
 ├── scripts/
 │   └── sync-docs.mjs       # materializes / restores the linked doc files
 ├── biome.json              # lint + format configuration
