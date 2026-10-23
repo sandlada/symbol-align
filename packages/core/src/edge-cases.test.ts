@@ -317,6 +317,18 @@ describe('strings are never touched', () => {
         expect(align('format STDOUT =\n$name\n.\nmy $x = 1;\nmy $longer = 2;')({ language: 'perl' }).code).toBe('format STDOUT =\n$name\n.\nmy $x      = 1;\nmy $longer = 2;');
         expect(align('my $x = 1.\nmy $longer = 2;')({ language: 'perl' }).code).toBe('my $x      = 1.\nmy $longer = 2;');
     });
+    it('hides Ruby embedded documents and trailing data', () => {
+        expect(align('=begin\na = b\n=end\nx = 1\nyy = 2')({ language: 'ruby' }).code).toBe('=begin\na = b\n=end\nx  = 1\nyy = 2');
+        expect(align('x = 1\n__END__\na = b\nlonger = 2')({ language: 'ruby' }).code).toBe('x = 1\n__END__\na = b\nlonger = 2');
+        expect(align('  =begin\na = b\n  =end\nx = 1\nyy = 2')({ language: 'ruby' }).code).toBe('   =begin\na  = b\n   =end\nx  = 1\nyy = 2');
+    });
+
+    it('balances leveled Lua long brackets', () => {
+        expect(align('--[=[\na = b\n]=]\nx = 1\nyy = 2')({ language: 'lua' }).code).toBe('--[=[\na = b\n]=]\nx  = 1\nyy = 2');
+        expect(align('--[==[\na = b\n]==]\nx = 1\nyy = 2')({ language: 'lua' }).code).toBe('--[==[\na = b\n]==]\nx  = 1\nyy = 2');
+        expect(align('--[=[\na ]] b\n]=]\nx = 1\nyy = 2')({ language: 'lua' }).code).toBe('--[=[\na ]] b\n]=]\nx  = 1\nyy = 2');
+        expect(align('x = [=[a=b]=]\nlonger = 1')({ language: 'lua' }).code).toBe('x      = [=[a=b]=]\nlonger = 1');
+    });
     it('hides Perl POD and data sections', () => {
         expect(align('=head1 FOO=BAR\nlonger = 1')({ language: 'perl' }).code).toBe('=head1 FOO=BAR\nlonger = 1');
         expect(align('=pod\na = b\n=cut\nx = 1\nyy = 2')({ language: 'perl' }).code).toBe('=pod\na = b\n=cut\nx  = 1\nyy = 2');

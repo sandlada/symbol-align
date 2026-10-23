@@ -978,7 +978,11 @@ const profileTable = {
         name: 'Lua',
         extensions: ['lua'],
         lineComments: ['--'],
-        blockComments: [['--[[', ']]']],
+        blockComments: [
+            ['--[==[', ']==]'],
+            ['--[=[', ']=]'],
+            ['--[[', ']]'],
+        ],
         strings: [singleQuote, doubleQuote, luaLongStringLevel2, luaLongStringLevel1, luaLongString],
         operators: luaOperators,
         defaultSymbols: ['='],

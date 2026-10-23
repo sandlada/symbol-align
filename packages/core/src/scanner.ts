@@ -869,6 +869,8 @@ export const scanSource =
         let openPod = false;
         /** Whether the scanner passed Perl `__END__`/`__DATA__` (only data follows). */
         let openDataSection = false;
+        /** Whether the scanner is inside a Ruby `=begin` document (through `=end`). */
+        let openRubyDoc = false;
         /** Whether the scanner is inside a Perl `format` block (through a lone `.`). */
         let openFormat = false;
 
@@ -913,6 +915,29 @@ export const scanSource =
                 } else if (/^format\s+\S+\s+=\s*$/.test(line)) {
                     openFormat = true;
                     pendingPerlReplacement = null;
+                    codeRegions.push([]);
+                    lineComments.push(undefined);
+                    continue;
+                }
+            }
+
+            // Ruby embedded documents (`=begin` at column zero through `=end`)
+            // and post-`__END__` data are never code. Indented `=begin` is a
+            // syntax error in Ruby, so it stays code here as well.
+            if (profile.id === 'ruby' && openString === null && openBlock === null) {
+                if (openDataSection) {
+                    codeRegions.push([]);
+                    lineComments.push(undefined);
+                    continue;
+                }
+                if (/^__END__/.test(line)) openDataSection = true;
+                else if (openRubyDoc || /^=end\b/.test(line)) {
+                    if (/^=end\b/.test(line)) openRubyDoc = false;
+                    codeRegions.push([]);
+                    lineComments.push(undefined);
+                    continue;
+                } else if (/^=begin\b/.test(line)) {
+                    openRubyDoc = true;
                     codeRegions.push([]);
                     lineComments.push(undefined);
                     continue;
