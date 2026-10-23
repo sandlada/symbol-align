@@ -273,6 +273,12 @@ describe('strings are never touched', () => {
         expect(align('a = 1')({ range: { start: 5, end: 9 } }).changes).toBe(0);
         expect(align('a = 1\nbb = 2')({ range: { start: 0, end: 1 } }).changes).toBe(0);
     });
+
+    it('never aligns the `=` inside a longer operator', () => {
+        expect(align('x := 1\nlonger = 2')({ language: 'python' }).code).toBe('x := 1\nlonger = 2');
+        expect(align('#{a := 1}\nxx = 1')({ language: 'erlang' }).code).toBe('#{a := 1}\nxx = 1');
+        expect(align('a::before\nxx: 1')({ language: 'css', symbols: [':'] }).code).toBe('a::before\nxx: 1');
+    });
 });
 
 describe('already formatted code stays untouched', () => {

@@ -132,6 +132,75 @@ describe('allLanguages', () => {
         expect(violations).toEqual([]);
     });
 
+    it('covers compound operators that contain an alignable symbol', () => {
+        const required: Readonly<Record<LanguageId, readonly string[]>> = {
+            generic: ['=>', '==', '==='],
+            javascript: ['=>', '===', '>>>='],
+            typescript: ['=>', '===', '>>>='],
+            python: [':=', '@=', '**=', '//='],
+            go: [':=', '&^=', '<<=', '>>='],
+            rust: ['->', '=>', '::', '..=', '<<=', '>>='],
+            java: ['=>', '>>>', '>>>='],
+            kotlin: ['=>', '->'],
+            swift: ['->'],
+            csharp: ['=>'],
+            cpp: ['=>', '::', '<<', '>>'],
+            c: ['<<', '>>', '<<=', '>>='],
+            ruby: ['=>', '::', '->', '===', '<=>'],
+            php: ['=>', '::', '??=', '?->', '**='],
+            dart: ['=>'],
+            shell: ['=~', '&&', '||', ':='],
+            sql: ['::', ':='],
+            yaml: [],
+            json: [],
+            css: ['::'],
+            html: [],
+            xml: [],
+            markdown: [],
+            plaintext: [],
+            elixir: ['=>', '|>'],
+            haskell: ['=<<', '=>', '->'],
+            lua: ['...', '::'],
+            scala: ['=>', '->'],
+            objectivec: ['=>'],
+            perl: ['=>', '->', '~~', '...'],
+            julia: ['=>', '->', '::', '...', '.=='],
+            zig: ['->', '<<=', '>>='],
+            powershell: ['::', '++', '--'],
+            clojure: ['->', '->>', '::'],
+            erlang: [':=', '->'],
+            r: ['<-', '->', '::', ':::', '%>%', ':='],
+            fortran: ['//', '=>', '::'],
+            nim: ['->', '..'],
+            crystal: ['=>', '->', '::', '**', '//', '...', '..'],
+            gleam: ['=>'],
+            odin: [':=', '->', '=>'],
+            solidity: ['=>'],
+            groovy: ['=>', '->', '::', '<=>', '==~', '?.'],
+            terraform: ['=>', '...'],
+            toml: [],
+            ini: [],
+            makefile: ['::=', ':=', '::'],
+            dockerfile: [],
+            graphql: ['...'],
+            vb: ['<>'],
+            delphi: [':='],
+            vue: ['=>'],
+            svelte: ['=>'],
+            astro: ['=>'],
+            protobuf: [],
+            v: [':='],
+        };
+
+        for (const [id, operators] of Object.entries(required)) {
+            const profile = languageProfile(id as LanguageId);
+
+            for (const operator of operators) {
+                expect(profile.operators).toContain(operator);
+            }
+        }
+    });
+
     it('never lists `=` before any longer operator that starts with `=`', () => {
         const violations = allLanguages.flatMap((profile) => {
             const assignmentIndex = profile.operators.indexOf('=');
