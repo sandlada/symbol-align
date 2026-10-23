@@ -256,6 +256,28 @@ describe('strings are never touched', () => {
         }
     });
 
+    it('hides holes and quote-likes of the remaining interpolated languages', () => {
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        expect(align('"a ${"b=c"}"\nxx = 1')({ language: 'powershell' }).code).toBe('"a ${"b=c"}"\nxx = 1');
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        expect(align('"a ${"b=c"}"\nxx = 1')({ language: 'terraform' }).code).toBe('"a ${"b=c"}"\nxx = 1');
+        expect(align('"a #{"b=c"}"\nxx = 1')({ language: 'crystal' }).code).toBe('"a #{"b=c"}"\nxx = 1');
+        expect(align('"a $("b=c")" d"\nxx = 1')({ language: 'julia' }).code).toBe('"a $("b=c")" d"\nxx = 1');
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        expect(align('"a ${"b=c"} d"\nxx = 1')({ language: 'php' }).code).toBe('"a ${"b=c"} d"\nxx = 1');
+        expect(align('fmt"a {"b=c"} d"\nxx = 1')({ language: 'nim' }).code).toBe('fmt"a {"b=c"} d"\nxx = 1');
+        expect(align('qq{a = b}\nxx = 1')({ language: 'perl' }).code).toBe('qq{a = b}\nxx = 1');
+        expect(align('s/a=b/c/\nxx = 1')({ language: 'perl' }).code).toBe('s/a=b/c/\nxx = 1');
+        expect(align('~s|a #{"b=c"} d|\nxx = 1')({ language: 'elixir' }).code).toBe('~s|a #{"b=c"} d|\nxx = 1');
+        expect(align('%w[a=b c]\nxx = 1')({ language: 'ruby' }).code).toBe('%w[a=b c]\nxx = 1');
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        expect(align('$/a ${"b=c"} d/$\nxx = 1')({ language: 'groovy' }).code).toBe('$/a ${"b=c"} d/$\nxx = 1');
+
+        const outer = align('s = "a #{"b=c"} d"\nlonger = 1')({ language: 'crystal' });
+        expect(outer.code).toContain('"b=c"');
+        expect(align(outer.code)({ language: 'crystal' }).changes).toBe(0);
+    });
+
     it('counts columns in UTF-16 code units and preserves line endings', () => {
         expect(align('あ = 1\nbb = 2')({}).code).toBe('あ  = 1\nbb = 2');
         expect(align('😀 = 1\nb = 2')({}).code).toBe('😀 = 1\nb  = 2');

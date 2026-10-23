@@ -201,8 +201,9 @@ const isPythonFString = (delimiter: StringDelimiter, profile: LanguageProfile): 
 /** Whether `delimiter` carries `{}` holes that must stay opaque (C# or Python). */
 const isBraceInterpolated = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => isCSharpInterpolated(delimiter) || isPythonFString(delimiter, profile);
 
-/** Whether `delimiter` is a Groovy/Kotlin/Dart quoted string with `${}` holes. */
-const isDollarBraceString = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => (profile.id === 'groovy' || profile.id === 'kotlin' || profile.id === 'dart') && (delimiter.open === '"' || delimiter.open === "'");
+/** Whether `delimiter` is a Groovy/Kotlin/Dart/PowerShell/Terraform quoted string with `${}` holes. */
+const isDollarBraceString = (delimiter: StringDelimiter, profile: LanguageProfile): boolean =>
+    (profile.id === 'groovy' || profile.id === 'kotlin' || profile.id === 'dart' || profile.id === 'powershell' || profile.id === 'terraform') && (delimiter.open === '"' || delimiter.open === "'" || delimiter.open === '$/');
 
 /**
  * Scans a quoted string with `${}` holes, keeping the holes opaque.
@@ -258,8 +259,8 @@ const findDollarBraceClose = (line: string, from: number, delimiter: StringDelim
 /** Whether `delimiter` is a Scala interpolated string with `${}` holes. */
 const isScalaInterpolated = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => profile.id === 'scala' && /^(s|f|raw)"$/.test(delimiter.open);
 
-/** Whether `delimiter` is a Ruby/Elixir double-quoted string with `#{}` holes. */
-const isHashBraceString = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => (profile.id === 'ruby' || profile.id === 'elixir') && delimiter.open === '"';
+/** Whether `delimiter` is a Ruby/Elixir/Crystal double-quoted string with `#{}` holes. */
+const isHashBraceString = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => (profile.id === 'ruby' || profile.id === 'elixir' || profile.id === 'crystal') && delimiter.open === '"';
 
 /**
  * Scans a quoted string with `#{}` holes, keeping the holes opaque.
@@ -363,6 +364,119 @@ const findSwiftClose = (line: string, from: number, delimiter: StringDelimiter, 
     return { index: -1, depth: currentDepth, escaped: false };
 };
 
+/** Whether `delimiter` is a Julia quoted string with `$()` holes. */
+const isDollarParenString = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => profile.id === 'julia' && delimiter.open === '"';
+
+/**
+ * Scans a quoted string with `$()` holes, keeping the holes opaque.
+ *
+ * Plain content without `$(` behaves like {@link findClosing}; holes may
+ * nest quotes, which never close the outer literal while a hole is open.
+ */
+const findDollarParenClose = (line: string, from: number, delimiter: StringDelimiter, depth: number, escapedFirst: boolean): InterpolatedSearch => {
+    const close = delimiter.close;
+    let index = from;
+    let currentDepth = depth;
+    let escaped = escapedFirst;
+
+    while (index < line.length) {
+        if (escaped) {
+            escaped = false;
+            index += 1;
+            continue;
+        }
+
+        if (delimiter.escape === 'backslash' && line[index] === '\\') {
+            if (index + 1 >= line.length) return { index: -1, depth: currentDepth, escaped: true };
+            index += 2;
+            continue;
+        }
+
+        if (line[index] === '$' && line[index + 1] === '(') {
+            currentDepth += 1;
+            index += 2;
+            continue;
+        }
+
+        if (line[index] === ')' && currentDepth > 0) {
+            currentDepth -= 1;
+            index += 1;
+            continue;
+        }
+
+        if (currentDepth === 0 && line.startsWith(close, index)) {
+            return { index, depth: currentDepth, escaped: false };
+        }
+
+        index += 1;
+    }
+
+    return { index: -1, depth: currentDepth, escaped: false };
+};
+
+/** Whether `delimiter` is a PHP double-quoted string with `{}` holes. */
+const isPhpString = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => profile.id === 'php' && delimiter.open === '"';
+
+/** Whether `delimiter` is a Nim `fmt` interpolated string with `{}` holes. */
+const isNimFmtString = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => profile.id === 'nim' && /^fmt"$/.test(delimiter.open);
+
+/** Nim `fmt` interpolated string delimiter that opens at `index`, or `null`. */
+const matchNimFmtString = (line: string, index: number): StringDelimiter | null => {
+    if (index > 0 && isScannerWordChar(line[index - 1])) return null;
+    if (!line.startsWith('fmt"', index) || line.startsWith('fmt"""', index)) return null;
+
+    return { open: 'fmt"', close: '"', escape: 'backslash', multiline: false };
+};
+
+/** Perl quote-like operator delimiter that opens at `index`, or `null`. */
+const matchPerlQuote = (line: string, index: number): StringDelimiter | null => {
+    if (index > 0 && isScannerWordChar(line[index - 1])) return null;
+
+    const match = /^(qq|qx|qw|qr|q|m|s|tr|y)([^A-Za-z0-9_\s])/.exec(line.slice(index));
+    if (match === null) return null;
+
+    const open = line.slice(index, index + match[1].length + 1);
+    const opener = match[2];
+    const mirror: Readonly<Record<string, string>> = { '{': '}', '(': ')', '[': ']', '<': '>' };
+    const close = mirror[opener] ?? opener;
+
+    return { open, close, escape: 'backslash', multiline: true };
+};
+
+/** Whether `delimiter` is an Elixir sigil string. */
+const isElixirSigil = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => profile.id === 'elixir' && delimiter.open.startsWith('~');
+
+/** Elixir sigil delimiter that opens at `index`, or `null`. */
+const matchElixirSigil = (line: string, index: number): StringDelimiter | null => {
+    if (index > 0 && isScannerWordChar(line[index - 1])) return null;
+
+    const match = /^~([A-Za-z])([^A-Za-z0-9_\s])/.exec(line.slice(index));
+    if (match === null) return null;
+
+    const open = line.slice(index, index + 3);
+    const mirror: Readonly<Record<string, string>> = { '{': '}', '(': ')', '[': ']', '<': '>' };
+    const close = mirror[match[2]] ?? match[2];
+
+    return { open, close, escape: 'backslash', multiline: true };
+};
+
+/** Whether `delimiter` is a Ruby/Crystal percent literal. */
+const isPercentString = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => (profile.id === 'ruby' || profile.id === 'crystal') && /^%[qQiIwWsxr]?[{(<[]$/.test(delimiter.open);
+
+/** Ruby/Crystal percent literal delimiter that opens at `index`, or `null`. */
+const matchPercentString = (line: string, index: number, profile: LanguageProfile): StringDelimiter | null => {
+    if (profile.id !== 'ruby' && profile.id !== 'crystal') return null;
+    if (index > 0 && isScannerWordChar(line[index - 1])) return null;
+
+    const match = /^%([qQiIwWsxr])?([{(<[])/.exec(line.slice(index));
+    if (match === null) return null;
+
+    const open = line.slice(index, index + (match[1]?.length ?? 0) + 2);
+    const mirror: Readonly<Record<string, string>> = { '{': '}', '(': ')', '[': ']', '<': '>' };
+
+    return { open, close: mirror[match[2]] ?? match[2], escape: 'backslash', multiline: true };
+};
+
 /** Whether `character` is a word character (letter, digit, or underscore). */
 const isScannerWordChar = (character: string): boolean => (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') || (character >= '0' && character <= '9') || character === '_';
 
@@ -436,6 +550,26 @@ const matchString = (line: string, index: number, profile: LanguageProfile): Str
     if (profile.id === 'scala') {
         const interpolated = matchScalaInterpolated(line, index);
         if (interpolated !== null) return interpolated;
+    }
+
+    if (profile.id === 'nim') {
+        const interpolated = matchNimFmtString(line, index);
+        if (interpolated !== null) return interpolated;
+    }
+
+    if (profile.id === 'perl') {
+        const quote = matchPerlQuote(line, index);
+        if (quote !== null) return quote;
+    }
+
+    if (profile.id === 'elixir') {
+        const sigil = matchElixirSigil(line, index);
+        if (sigil !== null) return sigil;
+    }
+
+    if (profile.id === 'ruby' || profile.id === 'crystal') {
+        const percent = matchPercentString(line, index, profile);
+        if (percent !== null) return percent;
     }
 
     let best: StringDelimiter | null = null;
@@ -581,8 +715,68 @@ export const scanSource =
                         continue;
                     }
 
-                    if (isBraceInterpolated(openString, profile)) {
+                    if (isBraceInterpolated(openString, profile) || isNimFmtString(openString, profile) || isPhpString(openString, profile)) {
                         const search = findCSharpInterpolatedClose(line, index, openString, openDepth, escaped);
+                        if (search.index < 0) {
+                            escaped = search.escaped;
+                            openDepth = search.depth;
+                            index = line.length;
+                            break;
+                        }
+                        escaped = false;
+                        openDepth = 0;
+                        index = search.index + openString.close.length;
+                        openString = null;
+                        continue;
+                    }
+
+                    if (isDollarBraceString(openString, profile) || isScalaInterpolated(openString, profile)) {
+                        const search = findDollarBraceClose(line, index, openString, openDepth, escaped);
+                        if (search.index < 0) {
+                            escaped = search.escaped;
+                            openDepth = search.depth;
+                            index = line.length;
+                            break;
+                        }
+                        escaped = false;
+                        openDepth = 0;
+                        index = search.index + openString.close.length;
+                        openString = null;
+                        continue;
+                    }
+
+                    if (isHashBraceString(openString, profile) || isPercentString(openString, profile) || isElixirSigil(openString, profile)) {
+                        const search = findHashBraceClose(line, index, openString, openDepth, escaped);
+                        if (search.index < 0) {
+                            escaped = search.escaped;
+                            openDepth = search.depth;
+                            index = line.length;
+                            break;
+                        }
+                        escaped = false;
+                        openDepth = 0;
+                        index = search.index + openString.close.length;
+                        openString = null;
+                        continue;
+                    }
+
+                    if (isSwiftString(openString, profile)) {
+                        const search = findSwiftClose(line, index, openString, openDepth, escaped);
+                        if (search.index < 0) {
+                            escaped = search.escaped;
+                            openDepth = search.depth;
+                            index = line.length;
+                            break;
+                        }
+                        escaped = false;
+                        openDepth = 0;
+                        index = search.index + openString.close.length;
+                        openString = null;
+                        continue;
+                    }
+
+                    if (isDollarParenString(openString, profile)) {
+                        const search = findDollarParenClose(line, index, openString, openDepth, escaped);
                         if (search.index < 0) {
                             escaped = search.escaped;
                             openDepth = search.depth;
@@ -633,7 +827,7 @@ export const scanSource =
                         openDepth = 0;
                         continue;
                     }
-                    if (isBraceInterpolated(delimiter, profile)) {
+                    if (isBraceInterpolated(delimiter, profile) || isNimFmtString(delimiter, profile) || isPhpString(delimiter, profile)) {
                         const search = findCSharpInterpolatedClose(line, index, delimiter, 0, false);
                         if (search.index < 0) {
                             index = line.length;
@@ -651,6 +845,15 @@ export const scanSource =
                         index = search.index + delimiter.close.length;
                         continue;
                     }
+                    if (isDollarParenString(delimiter, profile)) {
+                        const search = findDollarParenClose(line, index, delimiter, 0, false);
+                        if (search.index < 0) {
+                            index = line.length;
+                            break;
+                        }
+                        index = search.index + delimiter.close.length;
+                        continue;
+                    }
                     if (isSwiftString(delimiter, profile)) {
                         const search = findSwiftClose(line, index, delimiter, 0, false);
                         if (search.index < 0) {
@@ -660,7 +863,7 @@ export const scanSource =
                         index = search.index + delimiter.close.length;
                         continue;
                     }
-                    if (isHashBraceString(delimiter, profile)) {
+                    if (isHashBraceString(delimiter, profile) || isPercentString(delimiter, profile) || isElixirSigil(delimiter, profile)) {
                         const search = findHashBraceClose(line, index, delimiter, 0, false);
                         if (search.index < 0) {
                             index = line.length;

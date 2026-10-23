@@ -39,6 +39,7 @@ const multilineDoubleQuote: StringDelimiter = { open: '"', close: '"', escape: '
 const doubledDoubleQuote: StringDelimiter = { open: '"', close: '"', escape: 'doubled', multiline: false };
 const backtickSingleLine: StringDelimiter = { open: '`', close: '`', escape: 'backslash', multiline: false };
 const luaLongString: StringDelimiter = { open: '[[', close: ']]', escape: 'backslash', multiline: true };
+const groovyDollarSlashyString: StringDelimiter = { open: '$/', close: '/$', escape: 'backslash', multiline: true };
 
 /* -------------------------------------------------------------------------- */
 /* Shared operator tables (always sorted longest-first)                        */
@@ -1138,7 +1139,7 @@ const profileTable = {
         extensions: ['groovy', 'gvy', 'gradle'],
         lineComments: ['//'],
         blockComments: [['/*', '*/']],
-        strings: [singleQuote, doubleQuote, tripleSingleQuote, tripleDoubleQuote],
+        strings: [singleQuote, doubleQuote, tripleSingleQuote, tripleDoubleQuote, groovyDollarSlashyString],
         operators: groovyOperators,
         defaultSymbols: ['='],
     },
