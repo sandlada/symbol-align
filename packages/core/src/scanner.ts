@@ -865,6 +865,10 @@ export const scanSource =
         let escaped = false;
         /** Pattern opener awaiting its replacement on a later line (`s{pat}` then EOL). */
         let pendingPerlReplacement: string | null = null;
+        /** Whether the scanner is inside Perl documentation (`=pod` through `=cut`). */
+        let openPod = false;
+        /** Whether the scanner passed Perl `__END__`/`__DATA__` (only data follows). */
+        let openDataSection = false;
 
         for (const line of lines) {
             if (openHeredoc !== null) {
@@ -872,6 +876,34 @@ export const scanSource =
                 codeRegions.push([]);
                 lineComments.push(undefined);
                 continue;
+            }
+
+            // Perl documentation and post-code data are never code: a `=word`
+            // directive hides through `=cut` (a lone `=cut` hides itself),
+            // and nothing after `__END__`/`__DATA__` is parsed. Strings and
+            // block comments win over all of this — `=head1` inside a string
+            // stays string content either way.
+            if (profile.id === 'perl' && openString === null && openBlock === null) {
+                if (openDataSection) {
+                    codeRegions.push([]);
+                    lineComments.push(undefined);
+                    continue;
+                }
+                if (/^__(END|DATA)__/.test(line)) openDataSection = true;
+                else if (openPod) {
+                    if (/^=cut(?![A-Za-z0-9_])/.test(line)) openPod = false;
+                    codeRegions.push([]);
+                    lineComments.push(undefined);
+                    continue;
+                } else if (/^=[A-Za-z]/.test(line)) {
+                    // A lone `=cut` hides itself; anything else opens pod.
+                    // Pending replacements survive: pod may sit between the
+                    // two parts of a substitution.
+                    if (!/^=cut(?![A-Za-z0-9_])/.test(line)) openPod = true;
+                    codeRegions.push([]);
+                    lineComments.push(undefined);
+                    continue;
+                }
             }
 
             const regions: CodeRegion[] = [];

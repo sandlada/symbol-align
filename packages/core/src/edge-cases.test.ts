@@ -311,6 +311,13 @@ describe('strings are never touched', () => {
         expect(align('s{aa}\nfoo = 1\nlonger = 2')({ language: 'perl' }).code).toBe('s{aa}\nfoo    = 1\nlonger = 2');
     });
 
+    it('hides Perl POD and data sections', () => {
+        expect(align('=head1 FOO=BAR\nlonger = 1')({ language: 'perl' }).code).toBe('=head1 FOO=BAR\nlonger = 1');
+        expect(align('=pod\na = b\n=cut\nx = 1\nyy = 2')({ language: 'perl' }).code).toBe('=pod\na = b\n=cut\nx  = 1\nyy = 2');
+        expect(align('my $x = 1;\n=pod\nnote = here\n=cut\nmy $longer = 2;')({ language: 'perl' }).code).toBe('my $x      = 1;\n=pod\nnote = here\n=cut\nmy $longer = 2;');
+        expect(align('x = 1\n__END__\na = b\nlonger = 2')({ language: 'perl' }).code).toBe('x = 1\n__END__\na = b\nlonger = 2');
+        expect(align('s{aa}\n=head1 x\n=cut\n{c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}\n=head1 x\n=cut\n{c=d}\nlonger = 1');
+    });
     it('hides a bare Perl match after a filehandle verb', () => {
         expect(align('print FH /a=b/;\nlonger = 1')({ language: 'perl' }).code).toBe('print FH /a=b/;\nlonger = 1');
         expect(align('printf FH /a=b/;\nlonger = 1')({ language: 'perl' }).code).toBe('printf FH /a=b/;\nlonger = 1');
