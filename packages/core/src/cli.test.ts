@@ -80,6 +80,21 @@ describe('parseArgs', () => {
         expect(parseArgs(['node', 'cli.js', '-f', 'first.ts', '--file=second.ts']).files).toEqual(['first.ts', 'second.ts']);
     });
 
+    it('collects several file paths from a single --file', () => {
+        expect(parseArgs(['node', 'cli.js', '--file', 'first.ts', 'second.ts']).files).toEqual(['first.ts', 'second.ts']);
+    });
+
+    it('collects several file paths from a single --file=value', () => {
+        expect(parseArgs(['node', 'cli.js', '--file=first.ts', 'second.ts']).files).toEqual(['first.ts', 'second.ts']);
+    });
+
+    it('stops collecting file paths at the next option', () => {
+        const args = parseArgs(['node', 'cli.js', '--file', 'first.ts', 'second.ts', '--diff']);
+
+        expect(args.files).toEqual(['first.ts', 'second.ts']);
+        expect(args.diff).toBe(true);
+    });
+
     it('reads the output path from --output', () => {
         expect(parseArgs(['node', 'cli.js', '--output', 'output.ts']).output).toBe('output.ts');
     });
@@ -420,6 +435,21 @@ describe('runCli', () => {
             const streams = createStreams();
 
             const code = await runCli(['node', 'cli.js', '--file', 'first.ts', '--file', 'second.ts', '--write'], streams);
+
+            expect(code).toBe(0);
+            expect(streams.stdoutText()).toBe('');
+            expect(await readFile(join(directory, 'first.ts'), 'utf-8')).toBe('a  = 1\nbb = 2\n');
+            expect(await readFile(join(directory, 'second.ts'), 'utf-8')).toBe('c  = 3\ndd = 4\n');
+        });
+    });
+
+    it('writes several files given to a single --file', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'first.ts'), 'a = 1\nbb = 2\n', 'utf-8');
+            await writeFile(join(directory, 'second.ts'), 'c = 3\ndd = 4\n', 'utf-8');
+            const streams = createStreams();
+
+            const code = await runCli(['node', 'cli.js', '--write', '--file', 'first.ts', 'second.ts'], streams);
 
             expect(code).toBe(0);
             expect(streams.stdoutText()).toBe('');

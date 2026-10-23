@@ -71,7 +71,7 @@ Vertically align punctuation symbols in a code snippet.
 Reads from stdin or from one or more files and writes to stdout.
 
 Options:
-  -f, --file <path>         Read from file instead of stdin (may be repeated)
+  -f, --file <path>         Read from file instead of stdin (repeat it or list several paths)
   -o, --output <path>       Write to file instead of stdout
       --write               Write the aligned code back into the file that was read
       --diff                Print a unified diff of the input and the aligned result
@@ -236,6 +236,26 @@ const applyOption =
         }
     };
 
+/**
+ * Splits the paths of a repeated `--file` from the remaining tokens.
+ *
+ * Option-like tokens (starting with `-`) end the list, so `--file a.ts b.ts
+ * --diff` collects both files and still enables the diff mode. A lone `-`
+ * also ends the list — it keeps its meaning from the single value form,
+ * where only a `--` prefixed token counts as missing.
+ */
+const takeFileValues = (tokens: readonly string[]): readonly [readonly string[], readonly string[]] => {
+    const values: string[] = [];
+    let rest = tokens;
+
+    while (rest.length > 0 && !rest[0].startsWith('-')) {
+        values.push(rest[0]);
+        rest = rest.slice(1);
+    }
+
+    return [values, rest];
+};
+
 /** The arguments of a command line without any option. */
 const defaultArgs: CliArgs = {
     check: false,
@@ -287,6 +307,13 @@ const parseTokens = (tokens: readonly string[], args: CliArgs): CliArgs => {
     }
 
     if (option.inline !== undefined) {
+        if (option.name === 'file') {
+            const head = requirePath(option.name)(option.inline);
+            const [extra, afterExtra] = takeFileValues(rest);
+
+            return parseTokens(afterExtra, { ...args, files: [...args.files, head, ...extra.map((entry) => requirePath(option.name)(entry))] });
+        }
+
         return parseTokens(rest, applyOption(option.name)(option.inline)(args));
     }
 
@@ -294,6 +321,12 @@ const parseTokens = (tokens: readonly string[], args: CliArgs): CliArgs => {
 
     if (value === undefined || (value.startsWith('--') && value.length > 2)) {
         throw new Error(`Missing value for ${option.name}`);
+    }
+
+    if (option.name === 'file') {
+        const [extra, remaining] = takeFileValues(afterValue);
+
+        return parseTokens(remaining, { ...args, files: [...args.files, requirePath(option.name)(value), ...extra.map((entry) => requirePath(option.name)(entry))] });
     }
 
     return parseTokens(afterValue, applyOption(option.name)(value)(args));
