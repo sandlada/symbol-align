@@ -443,6 +443,9 @@ const matchPerlQuote = (line: string, index: number): StringDelimiter | null => 
     return { open, close, escape: 'backslash', multiline: true };
 };
 
+/** Whether `character` opens a bracket pair (`{`, `(`, `[`, `<`). */
+const isBracketOpener = (character: string): boolean => character === '{' || character === '(' || character === '[' || character === '<';
+
 /** Whether `delimiter` opens any Perl quote-like operator (`q`, `qq`, `m`, `s`, `tr`, …). */
 const isPerlQuote = (delimiter: StringDelimiter): boolean => /^(?:qq|qx|qw|qr|q|m|s|tr|y)([^A-Za-z0-9_\s])$/.test(delimiter.open);
 
@@ -451,6 +454,15 @@ const isPerlSubst = (delimiter: StringDelimiter): boolean => /^(?:s|tr|y)([^A-Za
 
 /** Whether `delimiter` is the bracketed replacement segment of a Perl substitution. */
 const isPerlReplacement = (delimiter: StringDelimiter): boolean => /^[{([<]$/.test(delimiter.open);
+
+/**
+ * Whether `character` can open a Perl replacement on the next line.
+ *
+ * A bracket always can; a `/` can too — it starts a regex-style segment and
+ * can be neither a comment nor a unary operator. Any other character
+ * (`#` starts a comment, `!` negates) stays code.
+ */
+const isPerlLineHeadOpener = (character: string): boolean => isBracketOpener(character) || character === '/';
 
 /**
  * Closes one Perl quote-like segment, balancing bracket delimiters.
@@ -518,12 +530,12 @@ interface PerlReplacement {
  */
 const matchPerlReplacement = (line: string, from: number, opener: string): PerlReplacement | null => {
     const mirror: Readonly<Record<string, string>> = { '{': '}', '(': ')', '[': ']', '<': '>' };
-    if (opener in mirror) {
+    if (isBracketOpener(opener)) {
         let start = from;
         while (line[start] === ' ' || line[start] === '\t') start += 1;
         if (start >= line.length) return null;
         const second = line[start];
-        if (second in mirror) {
+        if (isBracketOpener(second)) {
             const close = mirror[second] ?? second;
             return { delimiter: { open: second, close, escape: 'backslash', multiline: true }, contentStart: start + 1 };
         }
@@ -745,6 +757,8 @@ export const scanSource =
         let openHeredoc: string | null = null;
         /** Whether the first character of the current line is escaped. */
         let escaped = false;
+        /** Pattern opener awaiting its replacement on a later line (`s{pat}` then EOL). */
+        let pendingPerlReplacement: string | null = null;
 
         for (const line of lines) {
             if (openHeredoc !== null) {
@@ -765,6 +779,22 @@ export const scanSource =
                 regions.push({ start: regionStart, end });
                 regionStart = -1;
             };
+
+            if (pendingPerlReplacement !== null && openString === null) {
+                if (line.trim().length === 0) {
+                    codeRegions.push([]);
+                    lineComments.push(undefined);
+                    continue;
+                }
+                const opener = pendingPerlReplacement;
+                pendingPerlReplacement = null;
+                const following = matchPerlReplacement(line, 0, opener);
+                if (following !== null && isPerlLineHeadOpener(following.delimiter.open)) {
+                    openString = following.delimiter;
+                    openDepth = 0;
+                    index = following.contentStart;
+                }
+            }
 
             while (index < line.length) {
                 if (openBlock !== null) {
@@ -906,6 +936,7 @@ export const scanSource =
                         }
                         const replacement = matchPerlReplacement(line, afterFirst, opener);
                         if (replacement === null) {
+                            pendingPerlReplacement = line.slice(afterFirst).trim().length === 0 ? opener : null;
                             index = afterFirst;
                             openString = null;
                             continue;

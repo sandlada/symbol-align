@@ -302,6 +302,21 @@ describe('strings are never touched', () => {
         expect(align('s{aa}{b{c\nd}e}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}{b{c\nd}e}\nlonger = 1');
     });
 
+    it('hides a Perl replacement that starts on the next line', () => {
+        expect(align('s{aa}\n{c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}\n{c=d}\nlonger = 1');
+        expect(align('s{aa}\n\n{c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}\n\n{c=d}\nlonger = 1');
+        expect(align('s{aa}\n{c\nd=e}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}\n{c\nd=e}\nlonger = 1');
+        expect(align('s{aa}\n/c=d/\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}\n/c=d/\nlonger = 1');
+        expect(align('s{aa}\n# note\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}\n# note\nlonger = 1');
+        expect(align('s{aa}\nfoo = 1\nlonger = 2')({ language: 'perl' }).code).toBe('s{aa}\nfoo    = 1\nlonger = 2');
+    });
+
+    it('honours backslash escapes inside Perl quote-like segments', () => {
+        expect(align('qq{a\\}b=c}\nlonger = 1')({ language: 'perl' }).code).toBe('qq{a\\}b=c}\nlonger = 1');
+        expect(align('qq{a\\\\}b=c}\nlonger = 1')({ language: 'perl' }).code).toBe('qq{a\\\\}b=c}\nlonger  = 1');
+        expect(align('qq{a\\{b}c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('qq{a\\{b}c=d}\nlonger   = 1');
+    });
+
     it('counts columns in UTF-16 code units and preserves line endings', () => {
         expect(align('あ = 1\nbb = 2')({}).code).toBe('あ  = 1\nbb = 2');
         expect(align('😀 = 1\nb = 2')({}).code).toBe('😀 = 1\nb  = 2');
