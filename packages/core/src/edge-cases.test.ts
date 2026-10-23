@@ -245,6 +245,17 @@ describe('strings are never touched', () => {
             expect(align(nested.code)({ language }).changes).toBe(0);
         }
     });
+
+    it('counts columns in UTF-16 code units and preserves line endings', () => {
+        expect(align('あ = 1\nbb = 2')({}).code).toBe('あ  = 1\nbb = 2');
+        expect(align('😀 = 1\nb = 2')({}).code).toBe('😀 = 1\nb  = 2');
+        expect(align('\ta = 1\n\t\tbb = 2')({}).code).toBe('\ta   = 1\n\t\tbb = 2');
+        expect(align('a = 1\r\nbb = 22')({}).code).toBe('a  = 1\r\nbb = 22');
+
+        expect(align('a ＝ 1\nbb = 2')({}).changes).toBe(0);
+        expect(align('   \n  \n')({}).changes).toBe(0);
+        expect(align('a = 1\n   \nbb = 2')({}).changes).toBe(0);
+    });
 });
 
 describe('already formatted code stays untouched', () => {
