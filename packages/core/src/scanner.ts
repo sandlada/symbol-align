@@ -255,6 +255,60 @@ const findDollarBraceClose = (line: string, from: number, delimiter: StringDelim
     return { index: -1, depth: currentDepth, escaped: false };
 };
 
+/** Whether `delimiter` is a Scala interpolated string with `${}` holes. */
+const isScalaInterpolated = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => profile.id === 'scala' && /^(s|f|raw)"$/.test(delimiter.open);
+
+/** Whether `delimiter` is a Swift quoted string with `\()` holes. */
+const isSwiftString = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => profile.id === 'swift' && delimiter.open === '"';
+
+/**
+ * Scans a Swift quoted string with `\()` holes, keeping the holes opaque.
+ *
+ * A `\(` sequence opens a hole even though a lone backslash escapes the next
+ * character, so the hole check runs before the generic backslash escape. A
+ * quote never closes the literal while a hole is open.
+ */
+const findSwiftClose = (line: string, from: number, delimiter: StringDelimiter, depth: number, escapedFirst: boolean): InterpolatedSearch => {
+    const close = delimiter.close;
+    let index = from;
+    let currentDepth = depth;
+    let escaped = escapedFirst;
+
+    while (index < line.length) {
+        if (escaped) {
+            escaped = false;
+            index += 1;
+            continue;
+        }
+
+        if (line[index] === '\\' && line[index + 1] === '(') {
+            currentDepth += 1;
+            index += 2;
+            continue;
+        }
+
+        if (delimiter.escape === 'backslash' && line[index] === '\\') {
+            if (index + 1 >= line.length) return { index: -1, depth: currentDepth, escaped: true };
+            index += 2;
+            continue;
+        }
+
+        if (line[index] === ')' && currentDepth > 0) {
+            currentDepth -= 1;
+            index += 1;
+            continue;
+        }
+
+        if (currentDepth === 0 && line.startsWith(close, index)) {
+            return { index, depth: currentDepth, escaped: false };
+        }
+
+        index += 1;
+    }
+
+    return { index: -1, depth: currentDepth, escaped: false };
+};
+
 /** Whether `character` is a word character (letter, digit, or underscore). */
 const isScannerWordChar = (character: string): boolean => (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') || (character >= '0' && character <= '9') || character === '_';
 
@@ -293,11 +347,29 @@ const matchPythonFString = (line: string, index: number): StringDelimiter | null
     return { open, close: quote, escape: escapeMode, multiline: quote.length === 3 };
 };
 
+/** Scala interpolated string delimiter that opens at `index`, or `null`. */
+const matchScalaInterpolated = (line: string, index: number): StringDelimiter | null => {
+    if (index > 0 && isScannerWordChar(line[index - 1])) return null;
+
+    const match = /^(s|f|raw)(")/.exec(line.slice(index));
+    if (match === null) return null;
+    if (line.slice(index + match[1].length, index + match[1].length + 3) === '"""') return null;
+
+    const open = line.slice(index, index + match[1].length + 1);
+
+    return { open, close: '"', escape: match[1] === 'raw' ? 'none' : 'backslash', multiline: false };
+};
+
 /** Longest string delimiter that opens at `index`, or `null`. */
 const matchString = (line: string, index: number, profile: LanguageProfile): StringDelimiter | null => {
     if (profile.id === 'python') {
         const fString = matchPythonFString(line, index);
         if (fString !== null) return fString;
+    }
+
+    if (profile.id === 'scala') {
+        const interpolated = matchScalaInterpolated(line, index);
+        if (interpolated !== null) return interpolated;
     }
 
     let best: StringDelimiter | null = null;
@@ -486,8 +558,17 @@ export const scanSource =
                         index = search.index + delimiter.close.length;
                         continue;
                     }
-                    if (isDollarBraceString(delimiter, profile)) {
+                    if (isDollarBraceString(delimiter, profile) || isScalaInterpolated(delimiter, profile)) {
                         const search = findDollarBraceClose(line, index, delimiter, 0, false);
+                        if (search.index < 0) {
+                            index = line.length;
+                            break;
+                        }
+                        index = search.index + delimiter.close.length;
+                        continue;
+                    }
+                    if (isSwiftString(delimiter, profile)) {
+                        const search = findSwiftClose(line, index, delimiter, 0, false);
                         if (search.index < 0) {
                             index = line.length;
                             break;

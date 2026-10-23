@@ -154,6 +154,27 @@ describe('strings are never touched', () => {
         expect(align('﻿a = 1\nbb = 2')({}).changes).toBe(0);
     });
 
+    it('hides Scala interpolated strings with nested quotes', () => {
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        expect(align('s"a ${"b=c"} d"\nxx = 1')({ language: 'scala' }).code).toBe('s"a ${"b=c"} d"\nxx = 1');
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        expect(align('f"a ${x} c"\nxx = 1')({ language: 'scala' }).changes).toBe(0);
+        expect(align('raw"a=b"\nxx = 1')({ language: 'scala' }).changes).toBe(0);
+
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        const outer = align('val s = s"a ${"b=c"} d"\nval longer = 1')({ language: 'scala' });
+        expect(outer.code).toContain('"b=c"');
+        expect(align(outer.code)({ language: 'scala' }).changes).toBe(0);
+    });
+
+    it('hides Swift interpolation holes with nested quotes', () => {
+        expect(align('"a \\("b=c") d"\nxx = 1')({ language: 'swift' }).code).toBe('"a \\("b=c") d"\nxx = 1');
+
+        const outer = align('let s = "a \\("b=c") d"\nlet longer = 1')({ language: 'swift' });
+        expect(outer.code).toContain('"b=c"');
+        expect(align(outer.code)({ language: 'swift' }).changes).toBe(0);
+    });
+
     it('hides Groovy, Kotlin and Dart interpolation holes with nested quotes', () => {
         for (const language of ['groovy', 'kotlin', 'dart'] as const) {
             // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
