@@ -869,6 +869,8 @@ export const scanSource =
         let openPod = false;
         /** Whether the scanner passed Perl `__END__`/`__DATA__` (only data follows). */
         let openDataSection = false;
+        /** Whether the scanner is inside a Perl `format` block (through a lone `.`). */
+        let openFormat = false;
 
         for (const line of lines) {
             if (openHeredoc !== null) {
@@ -900,6 +902,17 @@ export const scanSource =
                     // Pending replacements survive: pod may sit between the
                     // two parts of a substitution.
                     if (!/^=cut(?![A-Za-z0-9_])/.test(line)) openPod = true;
+                    codeRegions.push([]);
+                    lineComments.push(undefined);
+                    continue;
+                } else if (openFormat) {
+                    if (/^\.\s*$/.test(line)) openFormat = false;
+                    codeRegions.push([]);
+                    lineComments.push(undefined);
+                    continue;
+                } else if (/^format\s+\S+\s+=\s*$/.test(line)) {
+                    openFormat = true;
+                    pendingPerlReplacement = null;
                     codeRegions.push([]);
                     lineComments.push(undefined);
                     continue;

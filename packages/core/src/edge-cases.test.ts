@@ -311,6 +311,12 @@ describe('strings are never touched', () => {
         expect(align('s{aa}\nfoo = 1\nlonger = 2')({ language: 'perl' }).code).toBe('s{aa}\nfoo    = 1\nlonger = 2');
     });
 
+    it('hides Perl format blocks', () => {
+        expect(align('format STDOUT =\nName: @<<<<\n$name\n.\nmy $longer = 2;')({ language: 'perl' }).code).toBe('format STDOUT =\nName: @<<<<\n$name\n.\nmy $longer = 2;');
+        expect(align('format STDOUT =\nkey = value\n.\nmy $longer = 2;')({ language: 'perl' }).code).toBe('format STDOUT =\nkey = value\n.\nmy $longer = 2;');
+        expect(align('format STDOUT =\n$name\n.\nmy $x = 1;\nmy $longer = 2;')({ language: 'perl' }).code).toBe('format STDOUT =\n$name\n.\nmy $x      = 1;\nmy $longer = 2;');
+        expect(align('my $x = 1.\nmy $longer = 2;')({ language: 'perl' }).code).toBe('my $x      = 1.\nmy $longer = 2;');
+    });
     it('hides Perl POD and data sections', () => {
         expect(align('=head1 FOO=BAR\nlonger = 1')({ language: 'perl' }).code).toBe('=head1 FOO=BAR\nlonger = 1');
         expect(align('=pod\na = b\n=cut\nx = 1\nyy = 2')({ language: 'perl' }).code).toBe('=pod\na = b\n=cut\nx  = 1\nyy = 2');
