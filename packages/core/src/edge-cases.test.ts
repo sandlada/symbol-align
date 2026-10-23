@@ -293,6 +293,15 @@ describe('strings are never touched', () => {
         expect(align(outer.code)({ language: 'perl', symbols: ['=~'] }).changes).toBe(0);
     });
 
+    it('balances nested brackets inside Perl quote-like segments', () => {
+        expect(align('s{a{b}c}{d=e}\nlonger = 1')({ language: 'perl' }).code).toBe('s{a{b}c}{d=e}\nlonger = 1');
+        expect(align('s{aa}{b{c}d=e}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}{b{c}d=e}\nlonger = 1');
+        expect(align('qq{a{b}c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('qq{a{b}c=d}\nlonger = 1');
+        expect(align('m{a{b}c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('m{a{b}c=d}\nlonger = 1');
+        expect(align('s{a{b\nc}d}{e=f}\nlonger = 1')({ language: 'perl' }).code).toBe('s{a{b\nc}d}{e=f}\nlonger = 1');
+        expect(align('s{aa}{b{c\nd}e}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}{b{c\nd}e}\nlonger = 1');
+    });
+
     it('counts columns in UTF-16 code units and preserves line endings', () => {
         expect(align('あ = 1\nbb = 2')({}).code).toBe('あ  = 1\nbb = 2');
         expect(align('😀 = 1\nb = 2')({}).code).toBe('😀 = 1\nb  = 2');

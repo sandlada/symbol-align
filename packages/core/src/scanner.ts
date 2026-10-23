@@ -443,8 +443,63 @@ const matchPerlQuote = (line: string, index: number): StringDelimiter | null => 
     return { open, close, escape: 'backslash', multiline: true };
 };
 
+/** Whether `delimiter` opens any Perl quote-like operator (`q`, `qq`, `m`, `s`, `tr`, …). */
+const isPerlQuote = (delimiter: StringDelimiter): boolean => /^(?:qq|qx|qw|qr|q|m|s|tr|y)([^A-Za-z0-9_\s])$/.test(delimiter.open);
+
 /** Whether `delimiter` opens the pattern segment of a Perl `s`/`tr`/`y` substitution. */
 const isPerlSubst = (delimiter: StringDelimiter): boolean => /^(?:s|tr|y)([^A-Za-z0-9_\s])$/.test(delimiter.open);
+
+/** Whether `delimiter` is the bracketed replacement segment of a Perl substitution. */
+const isPerlReplacement = (delimiter: StringDelimiter): boolean => /^[{([<]$/.test(delimiter.open);
+
+/**
+ * Closes one Perl quote-like segment, balancing bracket delimiters.
+ *
+ * A bracket opener nests to the same depth, so `qq{a{b}}` closes at the
+ * final bracket; any other delimiter closes at its next unescaped
+ * occurrence. Depth carries across lines through the returned search.
+ */
+const findPerlSegmentClose = (line: string, from: number, opener: string, close: string, depth: number, escapedFirst: boolean): InterpolatedSearch => {
+    const nesting = opener === '{' || opener === '(' || opener === '[' || opener === '<';
+    let index = from;
+    let currentDepth = depth;
+    let escaped = escapedFirst;
+
+    while (index < line.length) {
+        if (escaped) {
+            escaped = false;
+            index += 1;
+            continue;
+        }
+
+        if (line[index] === '\\') {
+            if (index + 1 >= line.length) return { index: -1, depth: currentDepth, escaped: true };
+            index += 2;
+            continue;
+        }
+
+        if (nesting && line[index] === opener) {
+            currentDepth += 1;
+            index += 1;
+            continue;
+        }
+
+        if (!line.startsWith(close, index)) {
+            index += 1;
+            continue;
+        }
+
+        if (nesting && currentDepth > 0) {
+            currentDepth -= 1;
+            index += 1;
+            continue;
+        }
+
+        return { index, depth: currentDepth, escaped: false };
+    }
+
+    return { index: -1, depth: currentDepth, escaped: false };
+};
 
 /** Replacement segment of a Perl substitution: its own delimiter plus content start. */
 interface PerlReplacement {
@@ -832,28 +887,37 @@ export const scanSource =
                         continue;
                     }
 
-                    if (profile.id === 'perl' && isPerlSubst(openString)) {
-                        const search = findClosing(line, index, openString, escaped);
+                    if (profile.id === 'perl' && (isPerlQuote(openString) || isPerlReplacement(openString))) {
+                        const opener = openString.open.slice(-1);
+                        const search = findPerlSegmentClose(line, index, opener, openString.close, openDepth, escaped);
                         if (search.index < 0) {
                             escaped = search.escaped;
+                            openDepth = search.depth;
                             index = line.length;
                             break;
                         }
                         escaped = false;
-                        const opener = openString.open.slice(-1);
-                        const replacement = matchPerlReplacement(line, search.index + openString.close.length, opener);
-                        if (replacement === null) {
-                            index = search.index + openString.close.length;
+                        openDepth = 0;
+                        const afterFirst = search.index + openString.close.length;
+                        if (!isPerlSubst(openString)) {
+                            index = afterFirst;
                             openString = null;
                             continue;
                         }
-                        const closing = findClosing(line, replacement.contentStart, replacement.delimiter, false);
-                        if (closing.index < 0) {
+                        const replacement = matchPerlReplacement(line, afterFirst, opener);
+                        if (replacement === null) {
+                            index = afterFirst;
+                            openString = null;
+                            continue;
+                        }
+                        const second = findPerlSegmentClose(line, replacement.contentStart, replacement.delimiter.open, replacement.delimiter.close, 0, false);
+                        if (second.index < 0) {
                             openString = replacement.delimiter;
+                            openDepth = second.depth;
                             index = line.length;
                             break;
                         }
-                        index = closing.index + replacement.delimiter.close.length;
+                        index = second.index + replacement.delimiter.close.length;
                         openString = null;
                         continue;
                     }
