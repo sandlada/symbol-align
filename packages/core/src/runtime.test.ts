@@ -30,13 +30,13 @@ const readSource = (name: string): string => readFileSync(join(sourceDirectory, 
 
 /** The module specifiers that a source imports or re-exports. */
 const importedModules = (source: string): readonly string[] =>
-    Array.from(source.matchAll(/from\s*['"]([^'"]+)['"]/g))
+    Array.from(source.matchAll(/(?:from|import)\s*['"]([^'"]+)['"]/g))
         .map((match) => match[1])
         .filter((specifier) => specifier !== undefined);
 
 /** The module specifiers that a source re-exports. */
 const exportedModules = (source: string): readonly string[] =>
-    Array.from(source.matchAll(/export\s+(?:type\s+)?\{[^}]*\}\s*from\s*['"]([^'"]+)['"]/g))
+    Array.from(source.matchAll(/export\s+(?:type\s+)?(?:\{[^}]*\}|\*)\s*from\s*['"]([^'"]+)['"]/g))
         .map((match) => match[1])
         .filter((specifier) => specifier !== undefined);
 
@@ -77,8 +77,8 @@ const reachableModules = (entry: string): readonly string[] => {
     return [...visited];
 };
 
-/** The modules that import a Node.js builtin. */
-const modulesWithNodeImports = (names: readonly string[]): readonly string[] => names.filter((name) => /from\s*['"]node:/.test(readSource(name)));
+/** The modules that import a Node.js builtin — statically, dynamically, bare or through `require`. */
+const modulesWithNodeImports = (names: readonly string[]): readonly string[] => names.filter((name) => /(?:from\s*|import(?:\s*\(|\s+)|require\s*\()\s*['"]node:/.test(readSource(name)));
 
 describe('the modules of the public entry point', () => {
     it('do not import a Node.js builtin', () => {
