@@ -3,10 +3,10 @@
  *
  * Every fixture carries the input snippet, the expected output after alignment
  * and the number of lines that are expected to change. The optional
- * `symbols`, `language` and `scope` fields map directly onto
+ * `symbols`, `language`, `scope` and `range` fields map directly onto
  * `AlignOptions`.
  */
-import type { AlignSymbol, AlignmentScope, LanguageId } from './types.js';
+import type { AlignSymbol, AlignmentScope, LanguageId, LineRange } from './types.js';
 
 export interface CodeFixture {
     /** Stable identifier of the fixture. */
@@ -23,6 +23,8 @@ export interface CodeFixture {
     readonly language?: LanguageId;
     /** Grouping strategy used for the alignment. */
     readonly scope?: AlignmentScope;
+    /** The lines that are aligned. */
+    readonly range?: LineRange;
 }
 
 // ────────────────────────────
@@ -935,6 +937,35 @@ export const languageV: CodeFixture = {
 };
 
 // ────────────────────────────
+// range — which lines take part in the alignment
+// ────────────────────────────
+
+export const rangeMiddleLines: CodeFixture = {
+    name: 'range-middle-lines',
+    input: ['const a = 1;', 'const bb = 22;', 'const ccc = 333;', 'const dddd = 4444;'].join('\n'),
+    output: ['const a = 1;', 'const bb  = 22;', 'const ccc = 333;', 'const dddd = 4444;'].join('\n'),
+    changes: 1,
+    range: { start: 1, end: 3 },
+};
+
+export const rangeIgnoresOutsideLines: CodeFixture = {
+    name: 'range-ignores-outside-lines',
+    input: ['x = 1', 'AVeryLongVariableName = 2', 'y = 3'].join('\n'),
+    output: ['x = 1', 'AVeryLongVariableName = 2', 'y = 3'].join('\n'),
+    changes: 0,
+    range: { start: 0, end: 1 },
+};
+
+export const rangeInsideMultilineString: CodeFixture = {
+    name: 'range-inside-multiline-string',
+    input: ['x = """a', '= b"""', 'longerName = 1'].join('\n'),
+    output: ['x = """a', '= b"""', 'longerName = 1'].join('\n'),
+    changes: 0,
+    language: 'python',
+    range: { start: 1, end: 2 },
+};
+
+// ────────────────────────────
 // collect all fixtures for the batch test
 // ────────────────────────────
 
@@ -945,6 +976,9 @@ export const allFixtures: readonly CodeFixture[] = [
     eqMixedIndentation,
     scopeBlockSplitsAtBlankLines,
     scopeFileAlignsEverything,
+    rangeMiddleLines,
+    rangeIgnoresOutsideLines,
+    rangeInsideMultilineString,
     colonTypeAnnotations,
     colonObjectLiteral,
     arrowSimple,
