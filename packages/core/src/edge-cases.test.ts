@@ -267,6 +267,12 @@ describe('strings are never touched', () => {
         expect(align('x = ""\nxx = 2')({}).code).toBe('x  = ""\nxx = 2');
         expect(align('x = "a" "b=c"\nxx = 2')({}).code).toBe('x  = "a" "b=c"\nxx = 2');
     });
+
+    it('treats out-of-order, past-end and single-line ranges as no-ops', () => {
+        expect(align('a = 1\nbb = 2')({ range: { start: 2, end: 1 } }).changes).toBe(0);
+        expect(align('a = 1')({ range: { start: 5, end: 9 } }).changes).toBe(0);
+        expect(align('a = 1\nbb = 2')({ range: { start: 0, end: 1 } }).changes).toBe(0);
+    });
 });
 
 describe('already formatted code stays untouched', () => {
