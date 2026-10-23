@@ -204,6 +204,17 @@ const isBraceInterpolated = (delimiter: StringDelimiter, profile: LanguageProfil
 /** Whether `character` is a word character (letter, digit, or underscore). */
 const isScannerWordChar = (character: string): boolean => (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') || (character >= '0' && character <= '9') || character === '_';
 
+/** Whether `profile` supports `<<WORD` heredocs whose body stays opaque. */
+const isHeredocProfile = (profile: LanguageProfile): boolean => profile.id === 'shell';
+
+/** Heredoc terminator that opens at `index`, or `null`. */
+const matchHeredocOpener = (line: string, index: number): string | null => {
+    const match = /^<<-?\s*['"]?([A-Za-z_]\w*)['"]?/.exec(line.slice(index));
+    if (match === null) return null;
+
+    return match[1];
+};
+
 /** Python f-string delimiter that opens at `index`, or `null`. */
 const matchPythonFString = (line: string, index: number): StringDelimiter | null => {
     if (index > 0 && isScannerWordChar(line[index - 1])) return null;
@@ -300,14 +311,24 @@ export const scanSource =
         let openString: StringDelimiter | null = null;
         /** Brace depth inside an interpolated string (`${}` or `{}` holes). */
         let openDepth = 0;
+        /** Heredoc terminator that hides the following lines, or `null`. */
+        let openHeredoc: string | null = null;
         /** Whether the first character of the current line is escaped. */
         let escaped = false;
 
         for (const line of lines) {
+            if (openHeredoc !== null) {
+                if (line.trim() === openHeredoc) openHeredoc = null;
+                codeRegions.push([]);
+                lineComments.push(undefined);
+                continue;
+            }
+
             const regions: CodeRegion[] = [];
             let regionStart = -1;
             let comment: LineComment | undefined;
             let index = 0;
+            let pendingHeredoc: string | null = null;
 
             const closeRegion = (end: number): void => {
                 if (regionStart < 0) return;
@@ -414,12 +435,17 @@ export const scanSource =
                 }
 
                 if (regionStart < 0) regionStart = index;
+                if (isHeredocProfile(profile) && pendingHeredoc === null) {
+                    const terminator = matchHeredocOpener(line, index);
+                    if (terminator !== null) pendingHeredoc = terminator;
+                }
                 index += 1;
             }
 
             closeRegion(line.length);
             codeRegions.push(regions);
             lineComments.push(comment);
+            if (pendingHeredoc !== null && openHeredoc === null) openHeredoc = pendingHeredoc;
         }
 
         return { codeRegions, lineComments };

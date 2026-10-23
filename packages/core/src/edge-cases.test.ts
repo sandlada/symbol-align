@@ -116,6 +116,23 @@ describe('strings are never touched', () => {
         expect(result.code).toContain('key = value');
         expect(align(result.code)({ language: 'powershell' }).changes).toBe(0);
     });
+
+    it('hides shell heredoc bodies', () => {
+        const code = 'cat <<EOF\nkey = value\nEOF\nshort=1\nlonger_var=2';
+        const result = align(code)({ language: 'shell' });
+
+        expect(result.code).toContain('key = value');
+        expect(align(result.code)({ language: 'shell' }).changes).toBe(0);
+    });
+
+    it('hides quoted and indented shell heredocs without touching herestrings', () => {
+        const quoted = align("cat <<'EOF'\na=b\nEOF\nx=1\nyy=2")({ language: 'shell' });
+        expect(quoted.code).toContain('a=b');
+
+        const herestring = align('cat <<< "a=b"\nxx = 1')({ language: 'shell' });
+        expect(herestring.code).toContain('"a=b"');
+        expect(herestring.changes).toBe(0);
+    });
 });
 
 describe('already formatted code stays untouched', () => {
