@@ -39,8 +39,9 @@ const insertSpaces = (line: string, column: number, count: number): string => `$
 /**
  * Clamps a range to the lines of the input.
  *
- * A range that starts before the first line or ends behind the last one is
- * trimmed; an empty range covers the whole input.
+ * A missing range covers the whole input; a range that starts before the
+ * first line or ends behind the last one is trimmed. An explicitly empty
+ * range aligns nothing.
  */
 const normalizeRange = (range: LineRange | undefined, lineCount: number): LineRange => {
     if (range === undefined) {
