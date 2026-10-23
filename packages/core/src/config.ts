@@ -145,20 +145,23 @@ const escapeRegExpCharacter = (character: string): string => character.replace(R
  * - a globstar that is followed by a slash also matches zero directories, so a
  *   pattern that starts with a globstar matches a file in the root as well as
  *   a file in a sub directory
+ * - runs of three or more stars collapse into one globstar, so `***` behaves
+ *   like `**` instead of depending on whether the run is even or odd
  * - `?` matches exactly one character that is not `/`
  * - every other character matches itself
  */
 const globToRegExp = (pattern: string): RegExp => {
+    const collapsed = pattern.replace(/\*{3,}/g, '**');
     let source = '';
     let index = 0;
 
-    while (index < pattern.length) {
-        const character = pattern.charAt(index);
+    while (index < collapsed.length) {
+        const character = collapsed.charAt(index);
 
         if (character === '*') {
-            const isGlobStar = pattern.charAt(index + 1) === '*';
+            const isGlobStar = collapsed.charAt(index + 1) === '*';
 
-            if (isGlobStar && pattern.charAt(index + 2) === '/') {
+            if (isGlobStar && collapsed.charAt(index + 2) === '/') {
                 source += '(?:.*/)?';
                 index += 3;
                 continue;

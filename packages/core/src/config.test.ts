@@ -183,6 +183,20 @@ describe('glob patterns', () => {
         expect(languageOf(config, 'main.py')).toBe('python');
     });
 
+    it('treats three or more stars like a double star', () => {
+        const config = parseConfig({ overrides: { '***/main.py': { language: 'python' } } });
+
+        expect(languageOf(config, 'main.py')).toBe('python');
+        expect(languageOf(config, 'src/main.py')).toBe('python');
+    });
+
+    it('lets a mid pattern triple star match zero directories', () => {
+        const config = parseConfig({ overrides: { 'src/***/main.py': { language: 'python' } } });
+
+        expect(languageOf(config, 'src/main.py')).toBe('python');
+        expect(languageOf(config, 'src/nested/main.py')).toBe('python');
+    });
+
     it('matches every path with a double star', () => {
         const config = parseConfig({ overrides: { '**': { language: 'python' } } });
 
