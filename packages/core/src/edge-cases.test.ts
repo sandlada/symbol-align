@@ -429,6 +429,32 @@ describe('strings are never touched', () => {
         expect(align('x = a?.b\nxx = c')({ language: 'csharp', symbols: ['?'] }).code).toBe('x = a?.b\nxx = c');
     });
 
+    it('never fragments any operator of any language', () => {
+        for (const profile of allLanguages) {
+            const symbols = [...languageProfile(profile.id).defaultSymbols];
+
+            for (const operator of profile.operators) {
+                const hitsSymbol = symbols.some((symbol) => symbol.length > 0 && operator.includes(symbol));
+                if (!hitsSymbol || symbols.includes(operator)) continue;
+
+                expect(align(`a ${operator} b\nlongerName = 1`)({ language: profile.id }).code).toBe(`a ${operator} b\nlongerName = 1`);
+            }
+        }
+    });
+
+    it('resolves conflicting symbols without drifting', () => {
+        expect(align('a = 1\nbb == 2\nccc => 3')({ symbols: ['=', '==', '=>'] }).code).toBe('a = 1\nbb == 2\nccc => 3');
+        expect(align('x := 1\nyy = 2\nzzz == 3')({ symbols: [':=', '=', '=='] }).code).toBe('x := 1\nyy = 2\nzzz == 3');
+
+        const conflicted = align('a?.b = 1\ncc = d?.e')({ language: 'csharp', symbols: ['?', '?.', '='] });
+        expect(conflicted.code).toBe('a     ?.b = 1\ncc = d?.e');
+        expect(align(conflicted.code)({ language: 'csharp', symbols: ['?', '?.', '='] }).changes).toBe(0);
+
+        const prefixed = align('export const a = 1;\nreadonly b = 2;\nccc = 3;')({ symbols: ['export', 'readonly', '='] });
+        expect(prefixed.code).toBe('export const a             = 1;\n       readonly b          = 2;\n                ccc        = 3;');
+        expect(align(prefixed.code)({ symbols: ['export', 'readonly', '='] }).changes).toBe(0);
+    });
+
     it('keeps comment and string openers from leaking into each other', () => {
         expect(align('x = "//" // real\nxx = 1')({ symbols: ['//'] }).code).toBe('x = "//" // real\nxx = 1');
         expect(align('x = "/*" /* real */\nxx = 1')({}).code).toBe('x  = "/*" /* real */\nxx = 1');
