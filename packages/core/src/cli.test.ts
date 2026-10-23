@@ -428,6 +428,53 @@ describe('runCli', () => {
         expect(streams.stderrText()).toBe('Error: --write requires --file\n');
     });
 
+    it('reports an error for --check together with --write', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'input.ts'), 'a = 1\nbb = 2\n', 'utf-8');
+            const streams = createStreams();
+
+            const code = await runCli(['node', 'cli.js', '--file', 'input.ts', '--check', '--write'], streams);
+
+            expect(code).toBe(1);
+            expect(streams.stdoutText()).toBe('');
+            expect(streams.stderrText()).toBe('Error: --check cannot be combined with --write\n');
+            expect(await readFile(join(directory, 'input.ts'), 'utf-8')).toBe('a = 1\nbb = 2\n');
+        });
+    });
+
+    it('reports an error for --check together with --output', async () => {
+        const streams = createStreams('a = 1\nbb = 2\n');
+
+        const code = await runCli(['node', 'cli.js', '--check', '--output', 'output.ts'], streams);
+
+        expect(code).toBe(1);
+        expect(streams.stdoutText()).toBe('');
+        expect(streams.stderrText()).toBe('Error: --check cannot be combined with --output\n');
+    });
+
+    it('reports an error for --diff together with --write', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'input.ts'), 'a = 1\nbb = 2\n', 'utf-8');
+            const streams = createStreams();
+
+            const code = await runCli(['node', 'cli.js', '--file', 'input.ts', '--diff', '--write'], streams);
+
+            expect(code).toBe(1);
+            expect(streams.stdoutText()).toBe('');
+            expect(streams.stderrText()).toBe('Error: --diff cannot be combined with --write\n');
+            expect(await readFile(join(directory, 'input.ts'), 'utf-8')).toBe('a = 1\nbb = 2\n');
+        });
+    });
+
+    it('reports an error for --diff together with --output', async () => {
+        const streams = createStreams('a = 1\nbb = 2\n');
+
+        const code = await runCli(['node', 'cli.js', '--diff', '--output', 'output.ts'], streams);
+
+        expect(code).toBe(1);
+        expect(streams.stdoutText()).toBe('');
+        expect(streams.stderrText()).toBe('Error: --diff cannot be combined with --output\n');
+    });
     it('reports an error for --write together with --output', async () => {
         await withTempDir(async (directory) => {
             await writeFile(join(directory, 'input.ts'), 'a = 1\nbb = 2\n', 'utf-8');

@@ -89,6 +89,7 @@ Notes:
   --write only inserts spaces, the line endings of the file are kept
   --output cannot be used with several files
   --diff cannot be combined with --check and never writes a file
+  --check and --diff only report and cannot be combined with --write or --output
 
 Examples:
   echo "a = 1\\nbb = 2" | symbol-align
@@ -505,6 +506,22 @@ interface CliResult extends CliInput {
 const validateArgs = (args: CliArgs): void => {
     if (args.diff && args.check) {
         throw new Error('--diff cannot be combined with --check');
+    }
+
+    if (args.check && args.write) {
+        throw new Error('--check cannot be combined with --write');
+    }
+
+    if (args.check && args.output !== undefined) {
+        throw new Error('--check cannot be combined with --output');
+    }
+
+    if (args.diff && args.write) {
+        throw new Error('--diff cannot be combined with --write');
+    }
+
+    if (args.diff && args.output !== undefined) {
+        throw new Error('--diff cannot be combined with --output');
     }
 
     if (args.write && args.output !== undefined) {
