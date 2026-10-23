@@ -246,6 +246,16 @@ describe('strings are never touched', () => {
         }
     });
 
+    it('hides Ruby and Elixir interpolation holes with nested quotes', () => {
+        for (const language of ['ruby', 'elixir'] as const) {
+            expect(align('"a #{"b=c"}"\nxx = 1')({ language }).code).toBe('"a #{"b=c"}"\nxx = 1');
+
+            const nested = align('s = "a #{"b=c"} d"\nlonger = 1')({ language });
+            expect(nested.code).toContain('"b=c"');
+            expect(align(nested.code)({ language }).changes).toBe(0);
+        }
+    });
+
     it('counts columns in UTF-16 code units and preserves line endings', () => {
         expect(align('あ = 1\nbb = 2')({}).code).toBe('あ  = 1\nbb = 2');
         expect(align('😀 = 1\nb = 2')({}).code).toBe('😀 = 1\nb  = 2');
