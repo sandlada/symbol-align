@@ -274,6 +274,14 @@ describe('strings are never touched', () => {
         expect(align('a = 1\nbb = 2')({ range: { start: 0, end: 1 } }).changes).toBe(0);
     });
 
+    it('tolerates overlapping, duplicate and empty symbols', () => {
+        expect(align('a == 1\nbb = 2')({ symbols: ['=', '=='] }).code).toBe('a == 1\nbb = 2');
+        expect(align('x := 1\nyy = 2')({ symbols: [':', '='], language: 'go' }).code).toBe('x := 1\nyy = 2');
+        expect(align('a = 1\nbb = 2')({ symbols: ['=', '='] }).code).toBe('a  = 1\nbb = 2');
+        expect(align('a = 1')({ symbols: [''] }).changes).toBe(0);
+        expect(align('readonlyx = 1\nvalue = 2')({ symbols: ['readonly', '='] }).code).toBe('readonlyx = 1\nvalue     = 2');
+    });
+
     it('never aligns the `=` inside a longer operator', () => {
         expect(align('x := 1\nlonger = 2')({ language: 'python' }).code).toBe('x := 1\nlonger = 2');
         expect(align('#{a := 1}\nxx = 1')({ language: 'erlang' }).code).toBe('#{a := 1}\nxx = 1');
