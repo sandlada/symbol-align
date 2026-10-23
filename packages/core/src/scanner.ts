@@ -477,8 +477,15 @@ const matchPercentString = (line: string, index: number, profile: LanguageProfil
     return { open, close: mirror[match[2]] ?? match[2], escape: 'backslash', multiline: true };
 };
 
-/** Whether `character` is a word character (letter, digit, or underscore). */
-const isScannerWordChar = (character: string): boolean => (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') || (character >= '0' && character <= '9') || character === '_';
+/**
+ * Whether `character` can continue an identifier.
+ *
+ * ASCII letters, digits and underscores always can; any other visible
+ * character outside the ASCII range can as well, so a string prefix is never
+ * claimed in the middle of a longer Unicode identifier.
+ */
+const isScannerWordChar = (character: string): boolean =>
+    (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') || (character >= '0' && character <= '9') || character === '_' || (character > '~' && character.trim().length > 0);
 
 /** Whether `profile` supports `<<WORD` heredocs whose body stays opaque. */
 const isHeredocProfile = (profile: LanguageProfile): boolean => profile.id === 'shell' || profile.id === 'ruby' || profile.id === 'perl' || profile.id === 'php';

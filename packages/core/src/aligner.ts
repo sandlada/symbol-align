@@ -24,6 +24,15 @@ interface FirstOccurrence {
 /** Matches a word character (letter, digit, or underscore). */
 const WORD_CHARACTER = /[a-zA-Z0-9_]/;
 
+/**
+ * Whether `character` can continue an identifier.
+ *
+ * ASCII letters, digits and underscores always can; any other visible
+ * character outside the ASCII range can as well, so a keyword prefix is never
+ * claimed inside a longer Unicode identifier. Whitespace never continues one.
+ */
+const isIdentifierChar = (character: string): boolean => WORD_CHARACTER.test(character) || (character > '~' && character.trim().length > 0);
+
 /** Splits source code into lines, keeping empty lines. */
 const splitLines = (code: string): readonly string[] => code.split('\n');
 
@@ -172,7 +181,7 @@ const padAfterPrefixKeyword = (symbol: AlignSymbol, lines: readonly string[], co
 
     const allPrefix = holders.every((index) => {
         const trimmed = lines[index].trimStart();
-        return trimmed.startsWith(symbol) && (trimmed.length === symbol.length || !WORD_CHARACTER.test(trimmed[symbol.length]));
+        return trimmed.startsWith(symbol) && (trimmed.length === symbol.length || !isIdentifierChar(trimmed[symbol.length]));
     });
 
     if (!allPrefix) {

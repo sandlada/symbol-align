@@ -24,6 +24,16 @@ export interface FindOptions {
 /** Whether `character` is a letter, a digit or an underscore. */
 const isWordChar = (character: string): boolean => (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') || (character >= '0' && character <= '9') || character === '_';
 
+/**
+ * Whether `character` can continue an identifier.
+ *
+ * ASCII letters, digits and underscores always can; any other visible
+ * character outside the ASCII range (letters with diacritics, CJK ideographs,
+ * emoji, …) can as well, so a keyword prefix is never claimed inside a
+ * longer Unicode identifier. Whitespace never continues one.
+ */
+const isIdentifierChar = (character: string): boolean => isWordChar(character) || (character > '~' && character.trim().length > 0);
+
 /** Whether `symbol` consists of word characters only. */
 const isWordSymbol = (symbol: string): boolean => symbol.length > 0 && [...symbol].every(isWordChar);
 
@@ -132,7 +142,7 @@ export const findSymbolPositions =
             if (isWordSymbol(symbol)) {
                 const before = start > 0 ? line[start - 1] : '';
                 const after = end < line.length ? line[end] : '';
-                if (isWordChar(before) || isWordChar(after)) {
+                if (isIdentifierChar(before) || isIdentifierChar(after)) {
                     index = end;
                     continue;
                 }

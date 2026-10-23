@@ -314,6 +314,12 @@ describe('strings are never touched', () => {
         expect(align('readonlyx = 1\nvalue = 2')({ symbols: ['readonly', '='] }).code).toBe('readonlyx = 1\nvalue     = 2');
     });
 
+    it('never claims a keyword inside a longer Unicode identifier', () => {
+        expect(align('exporté = 1\nvalue = 2')({ symbols: ['export', '='] }).code).toBe('exporté = 1\nvalue   = 2');
+        expect(align('export变量 = 1\nvalue = 2')({ symbols: ['export', '='] }).code).toBe('export变量 = 1\nvalue    = 2');
+        expect(align('readonlyé = 1\nvalue = 2')({ symbols: ['readonly', '='] }).code).toBe('readonlyé = 1\nvalue     = 2');
+    });
+
     it('never aligns the `=` inside a longer operator', () => {
         expect(align('x := 1\nlonger = 2')({ language: 'python' }).code).toBe('x := 1\nlonger = 2');
         expect(align('#{a := 1}\nxx = 1')({ language: 'erlang' }).code).toBe('#{a := 1}\nxx = 1');
