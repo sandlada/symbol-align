@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Declaration columns for typed languages.** When the profile knows how a
+  declaration is laid out, the line is split into up to three cells —
+  `modifiers`, `type` and `name` — and the gaps between them are padded so the
+  cells line up. `declarationAnchor` picks the aligned edge (`start` by default,
+  `end` for the type cell) and `maxDeclarationPad` (default `12`) keeps a single
+  long type from setting the column of a whole block. C, C++, C#, Dart, Groovy,
+  Java, Objective-C, PHP and Solidity have a style; the pass only inserts
+  spaces, never changes the indentation, and is idempotent.
+- **Custom alignment groups.** The `groups` option lines up alternative tokens
+  in one column: the first occurrence of any member on a line is padded to the
+  group column. Groups are set through the `groups` key of
+  `symbol-align.config.json`, the `groups` option of the API or one repeatable
+  `--group` / `-g` CLI occurrence, and run before the symbols.
+- **F# support.** The `fsharp` profile knows `//` and nested `(* *)` comments
+  and the nine F# string forms, including triple-quoted, verbatim and
+  interpolated strings, and treats `'T` as a type parameter instead of a
+  character literal. Its default symbols are `=`, `->` and `:`.
+
 ### Changed
 
 - **The core library is free of Node.js builtins.** The modules that the main

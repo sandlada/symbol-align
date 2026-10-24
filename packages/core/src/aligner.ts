@@ -186,7 +186,7 @@ const locateGroup =
         });
     };
 
-/** Removes the duplicate and empty members of a group. */
+/** Removes the duplicate and empty members of a group; the `Set` is a performance normalization only, because duplicate members are already harmless. */
 const normalizeGroup = (group: AlignGroup): readonly AlignSymbol[] => [...new Set(group)].filter((member) => member.length > 0);
 
 /** Right-most column at which the symbol occurs inside a group. */

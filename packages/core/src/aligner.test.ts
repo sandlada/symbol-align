@@ -798,4 +798,57 @@ describe('declarations', () => {
         expect(result.code).toBe(['private const        Product Product = new Product();', 'private const string Product = "x";'].join('\n'));
         expect(result.changes).toBe(1);
     });
+
+    it('keeps a declaration whose group member only appears in the initializer', () => {
+        const code = ['private const string Alpha = Product.Create();', 'private const int Beta     = Product.Count;'].join('\n');
+        const options = { language: 'csharp', groups: [['Product']] } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+
+        // The member sits behind the name cell, so the prefix is free of it and
+        // the declaration pass still moves the name of Beta from column 18 to
+        // column 21. Excluding the whole line would leave Beta where it is.
+        expect(first.code).toBe(['private const string Alpha    =    Product.Create();', 'private const int    Beta     =    Product.Count;'].join('\n'));
+        expect(first.code.split('\n').map((line) => line.search(/Alpha|Beta/))).toEqual([21, 21]);
+        expect(first.code.split('\n').map((line) => line.indexOf('Product'))).toEqual([35, 35]);
+        expect(first.changes).toBe(2);
+        expect(second.code).toBe(first.code);
+        expect(second.changes).toBe(0);
+    });
+
+    it('does not exclude a declaration whose type only starts with a group member', () => {
+        const code = ['private const ProductId Value = 1;', 'private const int Count = 2;'].join('\n');
+        const options = { language: 'csharp', groups: [['Product']] } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+
+        // ProductId is a longer identifier, so the group never matches inside
+        // it and the line keeps its place in the declaration partition. A naive
+        // substring check over the prefix would exclude it and leave Count at
+        // column 18 instead of moving it to column 24.
+        expect(first.code).toBe(['private const ProductId Value = 1;', 'private const int       Count = 2;'].join('\n'));
+        expect(first.code.split('\n').map((line) => line.search(/Value|Count/))).toEqual([24, 24]);
+        expect(first.changes).toBe(1);
+        expect(second.code).toBe(first.code);
+        expect(second.changes).toBe(0);
+    });
+
+    it('aligns the declaration names, the group tokens and the equals signs of one block', () => {
+        const code = ['private const string Alpha = Product.Create();', 'private const int Beta = Product.Count;', 'private const bool Gamma = Product.Ready;'].join('\n');
+        const options = { language: 'csharp', groups: [['Product']], symbols: ['='] } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+
+        // The fixpoint hides the intermediate state, so the documented order
+        // (declarations, then groups, then symbols) has no direct order test.
+        // What is observable is the end state: the names, the group tokens and
+        // the equals signs each share one column.
+        expect(first.code).toBe(['private const string Alpha =  Product.Create();', 'private const int    Beta  =  Product.Count;', 'private const bool   Gamma =  Product.Ready;'].join('\n'));
+        expect(first.code.split('\n').map((line) => line.search(/Alpha|Beta|Gamma/))).toEqual([21, 21, 21]);
+        expect(first.code.split('\n').map((line) => line.indexOf('Product'))).toEqual([30, 30, 30]);
+        expect(first.code.split('\n').map((line) => line.indexOf('='))).toEqual([27, 27, 27]);
+        expect(first.changes).toBe(3);
+        expect(second.code).toBe(first.code);
+        expect(second.changes).toBe(0);
+    });
 });
