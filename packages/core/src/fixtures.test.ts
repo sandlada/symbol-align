@@ -3,11 +3,14 @@ import { align } from './aligner.js';
 import { allFixtures, type CodeFixture } from './fixtures.js';
 
 /** Builds the alignment options a fixture asks for. */
-const optionsOf = ({ symbols, language, scope, range }: CodeFixture) => ({
+const optionsOf = ({ symbols, language, scope, range, declarations, declarationAnchor, maxDeclarationPad }: CodeFixture) => ({
     ...(symbols ? { symbols } : {}),
     ...(language ? { language } : {}),
     ...(scope ? { scope } : {}),
     ...(range ? { range } : {}),
+    ...(declarations === undefined ? {} : { declarations }),
+    ...(declarationAnchor ? { declarationAnchor } : {}),
+    ...(maxDeclarationPad === undefined ? {} : { maxDeclarationPad }),
 });
 
 describe('align with fixtures', () => {

@@ -6,7 +6,7 @@
  * be split apart. All data is static — no profile is mutated at runtime.
  */
 
-import type { LanguageId, LanguageProfile, StringDelimiter } from './types.js';
+import type { DeclarationStyle, LanguageId, LanguageProfile, StringDelimiter } from './types.js';
 
 /* -------------------------------------------------------------------------- */
 /* Shared string delimiters                                                   */
@@ -696,6 +696,77 @@ const zigOperators = ['<<=', '>>=', '==', '!=', '<=', '>=', '+=', '-=', '*=', '/
 /* -------------------------------------------------------------------------- */
 
 /**
+ * Declaration style of every language.
+ *
+ * - `prefix` — declarations start with modifiers, then the type: the C family,
+ *   Java, C#, Objective-C, Groovy, PHP and Dart.
+ * - `type-first` — declarations start with the type and put the visibility
+ *   modifiers after it: Solidity.
+ * - `none` — every other language. Name-first languages (Go, Rust, Kotlin,
+ *   Swift, Scala, F#, …) have no fixed prefix column, languages such as JSON,
+ *   YAML, CSS or SQL have no type segment at all, and formatters such as gofmt
+ *   or Prettier own declaration spacing themselves.
+ */
+const DECLARATION_STYLES = {
+    generic: 'none',
+    javascript: 'none',
+    typescript: 'none',
+    python: 'none',
+    go: 'none',
+    rust: 'none',
+    java: 'prefix',
+    kotlin: 'none',
+    swift: 'none',
+    csharp: 'prefix',
+    cpp: 'prefix',
+    c: 'prefix',
+    ruby: 'none',
+    php: 'prefix',
+    dart: 'prefix',
+    shell: 'none',
+    sql: 'none',
+    yaml: 'none',
+    json: 'none',
+    css: 'none',
+    html: 'none',
+    xml: 'none',
+    markdown: 'none',
+    plaintext: 'none',
+    elixir: 'none',
+    haskell: 'none',
+    lua: 'none',
+    scala: 'none',
+    objectivec: 'prefix',
+    perl: 'none',
+    julia: 'none',
+    zig: 'none',
+    powershell: 'none',
+    clojure: 'none',
+    erlang: 'none',
+    r: 'none',
+    fortran: 'none',
+    nim: 'none',
+    crystal: 'none',
+    gleam: 'none',
+    odin: 'none',
+    solidity: 'type-first',
+    groovy: 'prefix',
+    terraform: 'none',
+    toml: 'none',
+    ini: 'none',
+    makefile: 'none',
+    dockerfile: 'none',
+    graphql: 'none',
+    vb: 'none',
+    delphi: 'none',
+    vue: 'none',
+    svelte: 'none',
+    astro: 'none',
+    protobuf: 'none',
+    v: 'none',
+} as const satisfies Record<LanguageId, DeclarationStyle>;
+
+/**
  * The profile table.
  *
  * The keys are the `LanguageId` values in the order they are declared in
@@ -712,6 +783,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, templateLiteral],
         operators: javascriptOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.generic,
     },
     javascript: {
         id: 'javascript',
@@ -722,6 +794,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, templateLiteral],
         operators: javascriptOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.javascript,
     },
     typescript: {
         id: 'typescript',
@@ -732,6 +805,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, templateLiteral],
         operators: javascriptOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.typescript,
     },
     python: {
         id: 'python',
@@ -742,6 +816,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, tripleSingleQuote, tripleDoubleQuote],
         operators: pythonOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.python,
     },
     go: {
         id: 'go',
@@ -752,6 +827,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, goRawString],
         operators: goOperators,
         defaultSymbols: ['=', ':='],
+        declarations: DECLARATION_STYLES.go,
     },
     rust: {
         id: 'rust',
@@ -762,6 +838,7 @@ const profileTable = {
         strings: [rustRawStringLevel2, rustRawString, singleQuote, doubleQuote],
         operators: rustOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.rust,
     },
     java: {
         id: 'java',
@@ -772,6 +849,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, tripleDoubleQuote],
         operators: cFamilyOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.java,
     },
     kotlin: {
         id: 'kotlin',
@@ -782,6 +860,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, tripleDoubleQuote],
         operators: cFamilyOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.kotlin,
     },
     swift: {
         id: 'swift',
@@ -792,6 +871,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, tripleDoubleQuote],
         operators: cFamilyOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.swift,
     },
     csharp: {
         id: 'csharp',
@@ -812,6 +892,7 @@ const profileTable = {
         ],
         operators: cFamilyOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.csharp,
     },
     cpp: {
         id: 'cpp',
@@ -822,6 +903,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: cFamilyOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.cpp,
     },
     c: {
         id: 'c',
@@ -832,6 +914,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: cFamilyOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.c,
     },
     ruby: {
         id: 'ruby',
@@ -842,6 +925,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: rubyOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.ruby,
     },
     php: {
         id: 'php',
@@ -852,6 +936,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: phpOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.php,
     },
     dart: {
         id: 'dart',
@@ -862,6 +947,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: cFamilyOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.dart,
     },
     shell: {
         id: 'shell',
@@ -872,6 +958,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: shellOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.shell,
     },
     sql: {
         id: 'sql',
@@ -882,6 +969,7 @@ const profileTable = {
         strings: [sqlSingleQuote, sqlDoubleQuote],
         operators: sqlOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.sql,
     },
     yaml: {
         id: 'yaml',
@@ -892,6 +980,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: yamlOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.yaml,
     },
     json: {
         id: 'json',
@@ -902,6 +991,7 @@ const profileTable = {
         strings: [doubleQuote],
         operators: jsonOperators,
         defaultSymbols: [':'],
+        declarations: DECLARATION_STYLES.json,
     },
     css: {
         id: 'css',
@@ -912,6 +1002,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: cssOperators,
         defaultSymbols: [':'],
+        declarations: DECLARATION_STYLES.css,
     },
     html: {
         id: 'html',
@@ -922,6 +1013,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: markupOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.html,
     },
     xml: {
         id: 'xml',
@@ -932,6 +1024,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: markupOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.xml,
     },
     markdown: {
         id: 'markdown',
@@ -942,6 +1035,7 @@ const profileTable = {
         strings: [],
         operators: markupOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.markdown,
     },
     plaintext: {
         id: 'plaintext',
@@ -952,6 +1046,7 @@ const profileTable = {
         strings: [],
         operators: markupOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.plaintext,
     },
     elixir: {
         id: 'elixir',
@@ -962,6 +1057,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, tripleSingleQuote, tripleDoubleQuote],
         operators: elixirOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.elixir,
     },
     haskell: {
         id: 'haskell',
@@ -972,6 +1068,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: haskellOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.haskell,
     },
     lua: {
         id: 'lua',
@@ -986,6 +1083,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, luaLongStringLevel2, luaLongStringLevel1, luaLongString],
         operators: luaOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.lua,
     },
     scala: {
         id: 'scala',
@@ -996,6 +1094,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, tripleDoubleQuote],
         operators: scalaOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.scala,
     },
     objectivec: {
         id: 'objectivec',
@@ -1006,6 +1105,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: cFamilyOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.objectivec,
     },
     perl: {
         id: 'perl',
@@ -1016,6 +1116,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: perlOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.perl,
     },
     julia: {
         id: 'julia',
@@ -1026,6 +1127,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, tripleDoubleQuote],
         operators: juliaOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.julia,
     },
     zig: {
         id: 'zig',
@@ -1036,6 +1138,7 @@ const profileTable = {
         strings: [singleQuote, multilineDoubleQuote],
         operators: zigOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.zig,
     },
     powershell: {
         id: 'powershell',
@@ -1046,6 +1149,7 @@ const profileTable = {
         strings: [powershellHereString, powershellHereLiteral, singleQuote, doubledDoubleQuote],
         operators: powershellOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.powershell,
     },
     clojure: {
         id: 'clojure',
@@ -1056,6 +1160,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: clojureOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.clojure,
     },
     erlang: {
         id: 'erlang',
@@ -1066,6 +1171,7 @@ const profileTable = {
         strings: [singleQuote, multilineDoubleQuote],
         operators: erlangOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.erlang,
     },
     r: {
         id: 'r',
@@ -1076,6 +1182,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, backtickSingleLine],
         operators: rOperators,
         defaultSymbols: ['<-', '='],
+        declarations: DECLARATION_STYLES.r,
     },
     fortran: {
         id: 'fortran',
@@ -1086,6 +1193,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: fortranOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.fortran,
     },
     nim: {
         id: 'nim',
@@ -1096,6 +1204,7 @@ const profileTable = {
         strings: [singleQuote, multilineDoubleQuote],
         operators: nimOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.nim,
     },
     crystal: {
         id: 'crystal',
@@ -1106,6 +1215,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, tripleDoubleQuote],
         operators: crystalOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.crystal,
     },
     gleam: {
         id: 'gleam',
@@ -1116,6 +1226,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: cFamilyOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.gleam,
     },
     odin: {
         id: 'odin',
@@ -1126,6 +1237,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: declarationOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.odin,
     },
     solidity: {
         id: 'solidity',
@@ -1136,6 +1248,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: cFamilyOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.solidity,
     },
     groovy: {
         id: 'groovy',
@@ -1146,6 +1259,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, tripleSingleQuote, tripleDoubleQuote, groovyDollarSlashyString],
         operators: groovyOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.groovy,
     },
     terraform: {
         id: 'terraform',
@@ -1156,6 +1270,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: terraformOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.terraform,
     },
     toml: {
         id: 'toml',
@@ -1166,6 +1281,7 @@ const profileTable = {
         strings: [tomlLiteralString, doubleQuote, tomlMultilineLiteralString, tripleDoubleQuote],
         operators: keyValueOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.toml,
     },
     ini: {
         id: 'ini',
@@ -1176,6 +1292,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: keyValueOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.ini,
     },
     makefile: {
         id: 'makefile',
@@ -1186,6 +1303,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: makefileOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.makefile,
     },
     dockerfile: {
         id: 'dockerfile',
@@ -1196,6 +1314,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: keyValueOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.dockerfile,
     },
     graphql: {
         id: 'graphql',
@@ -1206,6 +1325,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, tripleDoubleQuote],
         operators: graphqlOperators,
         defaultSymbols: [':'],
+        declarations: DECLARATION_STYLES.graphql,
     },
     vb: {
         id: 'vb',
@@ -1216,6 +1336,7 @@ const profileTable = {
         strings: [doubledDoubleQuote],
         operators: visualBasicOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.vb,
     },
     delphi: {
         id: 'delphi',
@@ -1229,6 +1350,7 @@ const profileTable = {
         strings: [singleQuote],
         operators: declarationOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.delphi,
     },
     vue: {
         id: 'vue',
@@ -1242,6 +1364,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, templateLiteral],
         operators: javascriptOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.vue,
     },
     svelte: {
         id: 'svelte',
@@ -1255,6 +1378,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, templateLiteral],
         operators: javascriptOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.svelte,
     },
     astro: {
         id: 'astro',
@@ -1268,6 +1392,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote, templateLiteral],
         operators: javascriptOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.astro,
     },
     protobuf: {
         id: 'protobuf',
@@ -1278,6 +1403,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: cFamilyOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.protobuf,
     },
     v: {
         id: 'v',
@@ -1288,6 +1414,7 @@ const profileTable = {
         strings: [singleQuote, doubleQuote],
         operators: colonAssignmentOperators,
         defaultSymbols: ['='],
+        declarations: DECLARATION_STYLES.v,
     },
 } as const satisfies Record<LanguageId, LanguageProfile>;
 

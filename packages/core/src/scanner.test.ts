@@ -9,6 +9,7 @@ const profile = (overrides: Partial<LanguageProfile> & Pick<LanguageProfile, 'id
     strings: [],
     operators: [],
     defaultSymbols: ['='],
+    declarations: 'none',
     ...overrides,
 });
 

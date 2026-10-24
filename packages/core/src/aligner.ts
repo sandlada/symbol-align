@@ -1,7 +1,15 @@
+import { findDeclarationCells } from './declarations.js';
 import { findSymbolPositions } from './finder.js';
 import { languageProfile } from './language.js';
 import { scanSource } from './scanner.js';
-import type { AlignOptions, AlignResult, AlignSymbol, AlignmentScope, LanguageId, LanguageProfile, LineRange, ScanResult } from './types.js';
+import type { AlignmentScope, AlignOptions, AlignResult, AlignSymbol, DeclarationAnchor, DeclarationCell, LanguageId, LanguageProfile, LineRange, ScanResult } from './types.js';
+
+/** A run of spaces that has to be inserted into one line at an absolute column. */
+interface DeclarationInsertion {
+    readonly index: number;
+    readonly offset: number;
+    readonly width: number;
+}
 
 /** A line index together with the column of the symbol that is being aligned. */
 interface LineColumn {
@@ -213,6 +221,228 @@ const padAfterPrefixKeyword = (symbol: AlignSymbol, lines: readonly string[], co
     return { lines: padded, changed };
 };
 
+/** Default column difference that still joins one declaration column. */
+const DEFAULT_MAX_DECLARATION_PAD = 12;
+
+/** Turns `maxDeclarationPad` into the effective limit. */
+const declarationPadLimit = (maxPad: number | undefined): number => {
+    const value = maxPad ?? DEFAULT_MAX_DECLARATION_PAD;
+
+    return Number.isFinite(value) && value >= 1 ? value : Number.POSITIVE_INFINITY;
+};
+
+/** Start column of the cell at `cellIndex`, or the neutral element for a missing cell. */
+const cellStart = (cells: readonly DeclarationCell[] | null | undefined, cellIndex: number): number => cells?.[cellIndex]?.start ?? Number.NEGATIVE_INFINITY;
+
+/** The window of effective starts that one boundary aligns to. */
+interface StartWindow {
+    /** First start that joins the column. */
+    readonly lo: number;
+    /** Last start that joins the column, and the shared target. */
+    readonly hi: number;
+}
+
+/**
+ * Finds the window of effective starts that covers the most declaration lines.
+ *
+ * A window is a contiguous range of the sorted starts whose ends are at most
+ * `limit` apart. The widest cluster wins, so one long generic type cannot set
+ * the target of a block of ordinary declarations: the outlier keeps its column
+ * and the majority still lines up.
+ *
+ * Windows that cover the same number of lines resolve to the right-most one
+ * (the larger `hi`), which is the column the previous max-based target picked
+ * whenever every line was inside the limit. Sorting is the only super-linear
+ * step; the window itself is a single two-pointer sweep.
+ *
+ * @param starts - The effective start column of every line of the partition.
+ * @param limit - The largest accepted distance between two joined starts.
+ * @returns The winning window, or `null` when no start is usable.
+ */
+const largestStartWindow = (starts: readonly number[], limit: number): StartWindow | null => {
+    const sorted = starts.filter((start) => Number.isFinite(start)).sort((left, right) => left - right);
+    let left = 0;
+    let members = 0;
+    let window: StartWindow | null = null;
+
+    sorted.forEach((hi, right) => {
+        while (hi - sorted[left] > limit) {
+            left += 1;
+        }
+
+        const covered = right - left + 1;
+
+        if (window === null || covered >= members) {
+            members = covered;
+            window = { lo: sorted[left], hi };
+        }
+    });
+
+    return window;
+};
+
+/** Shape of the cells of a line, e.g. `modifiers|type|name` — the partition key beside the indent. */
+const cellSignature = (cells: readonly DeclarationCell[]): string => {
+    let signature = cells[0]?.kind ?? '';
+
+    for (let index = 1; index < cells.length; index += 1) {
+        signature += `|${cells[index].kind}`;
+    }
+
+    return signature;
+};
+
+/**
+ * Splits the base groups by indentation and declaration shape.
+ *
+ * Every line is pushed into its bucket once and every bucket becomes one
+ * partition, so the work stays linear in the number of lines.
+ */
+const declarationPartitions = (lines: readonly string[], groups: readonly (readonly number[])[], located: readonly (readonly DeclarationCell[] | null)[]): readonly (readonly number[])[] =>
+    groups.flatMap((group) => {
+        const buckets = new Map<string, number[]>();
+
+        group.forEach((index) => {
+            const cells = located[index];
+
+            if (cells === null || cells === undefined || cells.length < 2) {
+                return;
+            }
+
+            const key = `${indentOf(lines[index])}|${cellSignature(cells)}`;
+            const bucket = buckets.get(key);
+
+            if (bucket === undefined) {
+                buckets.set(key, [index]);
+                return;
+            }
+
+            bucket.push(index);
+        });
+
+        return [...buckets.values()];
+    });
+
+/**
+ * Aligns the declaration columns of one partition.
+ *
+ * Boundaries are processed from left to right. `shifts[position]` holds the
+ * number of spaces that were already inserted into that line before the
+ * current boundary, so every delta is measured on the *effective* start of the
+ * cell.
+ *
+ * Every boundary aligns to its largest cluster of effective starts: the window
+ * `[lo, hi]` at most `limit` wide that covers the most lines. Only the lines
+ * inside that window are padded, up to `hi`. A single long generic type is
+ * therefore the outlier that keeps its column, instead of becoming the target
+ * that excludes every ordinary line.
+ *
+ * The name column is invariant to which gap absorbs the padding. With the
+ * `end` anchor a boundary therefore pads in front of the preceding cell and
+ * leaves the name target intact. Boundary 0 is skipped for `end`: the first
+ * cell starts at the indentation, and padding in front of it would change the
+ * indentation of the line.
+ *
+ * Insertions are recorded at the original column of the cell edge. They are
+ * applied from the right edge of a line, so an earlier insertion carries the
+ * later ones along with the text exactly as the `shift` accumulator predicts
+ * for the next boundary.
+ */
+const alignDeclarationPartition = (partition: readonly number[], located: readonly (readonly DeclarationCell[] | null)[], anchor: DeclarationAnchor, limit: number): readonly DeclarationInsertion[] => {
+    const cellCount = located[partition[0]]?.length ?? 0;
+    const shifts: number[] = partition.map(() => 0);
+    const insertions: DeclarationInsertion[] = [];
+
+    for (let boundary = 0; boundary < cellCount - 1; boundary += 1) {
+        if (boundary === 0 && anchor === 'end') {
+            continue;
+        }
+
+        const starts = partition.map((index, position) => cellStart(located[index], boundary + 1) + shifts[position]);
+        const window = largestStartWindow(starts, limit);
+
+        if (window === null) {
+            continue;
+        }
+
+        partition.forEach((index, position) => {
+            const start = starts[position];
+            const delta = window.hi - start;
+
+            if (!(start >= window.lo && start <= window.hi) || delta <= 0) {
+                return;
+            }
+
+            const cells = located[index];
+            const cell = cells?.[boundary];
+
+            if (cell === undefined) {
+                return;
+            }
+
+            insertions.push({ index, offset: anchor === 'end' ? cell.start : cell.end, width: delta });
+            shifts[position] += delta;
+        });
+    }
+
+    return insertions;
+};
+
+/** Applies the insertions of every partition, from the right edge of each line. */
+const applyDeclarationInsertions = (lines: readonly string[], insertions: readonly DeclarationInsertion[]): readonly string[] => {
+    const byLine = new Map<number, DeclarationInsertion[]>();
+
+    insertions.forEach((insertion) => {
+        const list = byLine.get(insertion.index);
+
+        if (list === undefined) {
+            byLine.set(insertion.index, [insertion]);
+            return;
+        }
+
+        list.push(insertion);
+    });
+
+    return lines.map((line, index) => {
+        const list = byLine.get(index);
+
+        if (list === undefined) {
+            return line;
+        }
+
+        return list.sort((left, right) => right.offset - left.offset).reduce((text, insertion) => insertSpaces(text, insertion.offset, insertion.width), line);
+    });
+};
+
+/**
+ * Aligns the declaration columns of every line.
+ *
+ * The pass is the first stage of every fixpoint iteration. It only inserts
+ * spaces, never touches indentation and stays a no-op when the profile has no
+ * declaration style or the caller disabled declarations.
+ */
+const alignDeclarations =
+    (profile: LanguageProfile, scope: AlignmentScope, range: LineRange, options: AlignOptions) =>
+    (lines: readonly string[]): readonly string[] => {
+        if (profile.declarations === 'none' || options.declarations === false) {
+            return lines;
+        }
+
+        const scan = scanSource(lines.join('\n'))(profile);
+        const located = lines.map((line, index) => findDeclarationCells(line)({ regions: scan.codeRegions[index] ?? [], style: profile.declarations }));
+        const partitions = declarationPartitions(lines, groupIndices(lines, scope, range), located);
+
+        if (partitions.length === 0) {
+            return lines;
+        }
+
+        const anchor = options.declarationAnchor ?? 'start';
+        const limit = declarationPadLimit(options.maxDeclarationPad);
+        const insertions = partitions.flatMap((partition) => alignDeclarationPartition(partition, located, anchor, limit));
+
+        return insertions.length === 0 ? lines : applyDeclarationInsertions(lines, insertions);
+    };
+
 /** Runs one alignment pass for a single symbol. */
 const alignSymbol =
     (symbol: AlignSymbol, profile: LanguageProfile, scope: AlignmentScope, range: LineRange) =>
@@ -333,9 +563,11 @@ export const alignWith =
         }
 
         const ordered = orderByFirstOccurrence(symbols, profile, range)(lines);
+        const alignDeclarationColumns = alignDeclarations(profile, scope, range, options);
 
-        /** Runs one full sequence of symbol passes over `input`. */
-        const runPasses = (symbolsToAlign: readonly AlignSymbol[], input: readonly string[]): readonly string[] => symbolsToAlign.reduce((current, symbol) => alignSymbol(symbol, profile, scope, range)(current).lines, input);
+        /** Runs one full sequence of declaration and symbol passes over `input`. */
+        const runPasses = (symbolsToAlign: readonly AlignSymbol[], input: readonly string[]): readonly string[] =>
+            symbolsToAlign.reduce((current, symbol) => alignSymbol(symbol, profile, scope, range)(current).lines, alignDeclarationColumns(input));
 
         /** Whether two line arrays hold the same text. */
         const sameLines = (left: readonly string[], right: readonly string[]): boolean => left.length === right.length && left.every((line, index) => line === right[index]);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { align } from './aligner.js';
+import { findDeclarationCells } from './declarations.js';
 import { findSymbolPositions } from './finder.js';
 import { allLanguages, languageProfile } from './language.js';
 import { scanSource } from './scanner.js';
@@ -54,6 +55,43 @@ const buildCorpus = (language: LanguageId): readonly string[] => {
     const random = createRandom(0x5eed + language.length * 7919);
 
     return Array.from({ length: 12 }, (_, index) => buildSnippet(random, index));
+};
+
+const DECLARATION_MODIFIERS = ['', 'private ', 'private const ', 'public ', 'protected static '];
+const DECLARATION_TYPES = ['int', 'string', 'Product', 'List<Product>', 'my_type', 'std::string', 'uint256'];
+
+/**
+ * Builds a corpus of real declarations.
+ *
+ * Unlike {@link buildCorpus} — which only writes `const <name> = <value>` and
+ * therefore never produces a type cell — every line here is
+ * `<indent><modifiers><type> <name> = <value>`, so the declaration pass always
+ * has a real type cell to align.
+ */
+const buildDeclarationCorpus = (language: LanguageId): readonly string[] => {
+    const random = createRandom(0xdec1 + language.length * 104729);
+
+    return Array.from({ length: 8 }, () => {
+        const lines: string[] = [];
+
+        for (let line = 0; line < 4; line += 1) {
+            if (random() < 0.1) {
+                lines.push('');
+                continue;
+            }
+
+            const indent = INDENTS[Math.floor(random() * INDENTS.length)];
+            const modifiers = DECLARATION_MODIFIERS[Math.floor(random() * DECLARATION_MODIFIERS.length)];
+            const type = DECLARATION_TYPES[Math.floor(random() * DECLARATION_TYPES.length)];
+            const name = NAMES[Math.floor(random() * NAMES.length)];
+            const value = VALUES[Math.floor(random() * VALUES.length)];
+            const trailing = random() < 0.5 ? ';' : '';
+
+            lines.push(`${indent}${modifiers}${type} ${name} = ${value}${trailing}`);
+        }
+
+        return lines.join('\n');
+    });
 };
 
 /** The characters of a text without any whitespace. */
@@ -162,6 +200,120 @@ describe('invariants', () => {
                     }
                 }
             });
+    });
+
+    it.each(languages)('%s never changes the indentation of a line', (language) => {
+        buildCorpus(language).forEach((code) => {
+            const result = align(code)({ language });
+            const before = code.split('\n');
+            const after = result.code.split('\n');
+
+            after.forEach((line, index) => {
+                const indent = line.length - line.trimStart().length;
+                const originalIndent = before[index].length - before[index].trimStart().length;
+
+                expect(indent).toBe(originalIndent);
+            });
+        });
+    });
+
+    it.each(languages)('%s is idempotent with declarations enabled', (language) => {
+        buildCorpus(language).forEach((code) => {
+            const first = align(code)({ language, declarations: true });
+            const second = align(first.code)({ language, declarations: true });
+
+            expect(second.code).toBe(first.code);
+            expect(second.changes).toBe(0);
+        });
+    });
+
+    it.each(languages)('%s keeps the code characters with declarations enabled', (language) => {
+        buildCorpus(language).forEach((code) => {
+            const result = align(code)({ language, declarations: true });
+
+            expect(withoutWhitespace(result.code)).toBe(withoutWhitespace(code));
+        });
+    });
+
+    it('builds a declaration corpus with a type cell on every line', () => {
+        const profile = languageProfile('csharp');
+
+        buildDeclarationCorpus('csharp').forEach((code) => {
+            code.split('\n').forEach((line) => {
+                if (line.trim().length === 0) {
+                    return;
+                }
+
+                const regions = scanSource(line)(profile).codeRegions[0] ?? [];
+                const cells = findDeclarationCells(line)({ regions, style: 'prefix' });
+
+                expect(cells).not.toBeNull();
+                expect(cells?.some((cell) => cell.kind === 'type')).toBe(true);
+            });
+        });
+    });
+
+    it.each(languages)('%s keeps the indentation of its declaration corpus', (language) => {
+        buildDeclarationCorpus(language).forEach((code) => {
+            const result = align(code)({ language, declarations: true });
+            const before = code.split('\n');
+            const after = result.code.split('\n');
+
+            after.forEach((line, index) => {
+                const indent = line.length - line.trimStart().length;
+                const originalIndent = before[index].length - before[index].trimStart().length;
+
+                expect(indent).toBe(originalIndent);
+            });
+        });
+    });
+
+    it.each(languages)('%s is idempotent on its declaration corpus', (language) => {
+        buildDeclarationCorpus(language).forEach((code) => {
+            const first = align(code)({ language, declarations: true });
+            const second = align(first.code)({ language, declarations: true });
+
+            expect(second.code).toBe(first.code);
+            expect(second.changes).toBe(0);
+        });
+    });
+
+    it.each(languages)('%s keeps the code characters of its declaration corpus', (language) => {
+        buildDeclarationCorpus(language).forEach((code) => {
+            const result = align(code)({ language, declarations: true });
+
+            expect(withoutWhitespace(result.code)).toBe(withoutWhitespace(code));
+        });
+    });
+
+    const declarationLanguages = allLanguages.filter((profile) => profile.declarations !== 'none').map((profile) => profile.id);
+
+    it.each(declarationLanguages)('%s is idempotent with the end anchor', (language) => {
+        buildDeclarationCorpus(language).forEach((code) => {
+            for (const maxDeclarationPad of [1, 4, 12]) {
+                const options = { language, declarations: true, declarationAnchor: 'end', maxDeclarationPad } as const;
+                const first = align(code)(options);
+                const second = align(first.code)(options);
+
+                expect(withoutWhitespace(first.code)).toBe(withoutWhitespace(code));
+                expect(second.code).toBe(first.code);
+                expect(second.changes).toBe(0);
+            }
+        });
+    });
+
+    it.each(declarationLanguages)('%s is idempotent with a declaration pad limit', (language) => {
+        buildDeclarationCorpus(language).forEach((code) => {
+            for (const maxDeclarationPad of [1, 4, 12]) {
+                const options = { language, declarations: true, maxDeclarationPad } as const;
+                const first = align(code)(options);
+                const second = align(first.code)(options);
+
+                expect(withoutWhitespace(first.code)).toBe(withoutWhitespace(code));
+                expect(second.code).toBe(first.code);
+                expect(second.changes).toBe(0);
+            }
+        });
     });
 
     it.each(languages)('%s aligns every symbol of a block to one column', (language) => {

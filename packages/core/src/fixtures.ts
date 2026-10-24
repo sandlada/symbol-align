@@ -3,10 +3,10 @@
  *
  * Every fixture carries the input snippet, the expected output after alignment
  * and the number of lines that are expected to change. The optional
- * `symbols`, `language`, `scope` and `range` fields map directly onto
- * `AlignOptions`.
+ * `symbols`, `language`, `scope`, `range`, `declarations`, `declarationAnchor`
+ * and `maxDeclarationPad` fields map directly onto `AlignOptions`.
  */
-import type { AlignSymbol, AlignmentScope, LanguageId, LineRange } from './types.js';
+import type { AlignmentScope, AlignSymbol, DeclarationAnchor, LanguageId, LineRange } from './types.js';
 
 export interface CodeFixture {
     /** Stable identifier of the fixture. */
@@ -25,6 +25,12 @@ export interface CodeFixture {
     readonly scope?: AlignmentScope;
     /** The lines that are aligned. */
     readonly range?: LineRange;
+    /** Whether the declaration columns are aligned. */
+    readonly declarations?: boolean;
+    /** Which edge of a declaration cell is aligned. */
+    readonly declarationAnchor?: DeclarationAnchor;
+    /** Largest column difference that still joins a declaration column. */
+    readonly maxDeclarationPad?: number;
 }
 
 // ────────────────────────────
@@ -365,16 +371,54 @@ export const tsReadonlyInterface: CodeFixture = {
 export const dartKeywordMix: CodeFixture = {
     name: 'dart-keyword-mix',
     input: ["final String name = 'hello';", 'final int longValue = 42;', 'var x = true;', 'dynamic dynamicVar = null;'].join('\n'),
-    output: ["final String name   = 'hello';", 'final int longValue = 42;', 'var x               = true;', 'dynamic dynamicVar  = null;'].join('\n'),
-    changes: 3,
+    output: ["final String name      = 'hello';", 'final int    longValue = 42;', 'var     x              = true;', 'dynamic dynamicVar     = null;'].join('\n'),
+    changes: 4,
+    language: 'dart',
 };
 
 export const csharpMultiKeyword: CodeFixture = {
     name: 'csharp-multi-keyword',
     input: ['public required string name = "value";', 'internal readonly int longValue = 42;', 'protected string x = "default";'].join('\n'),
-    output: ['public required string name     = "value";', 'internal readonly int longValue = 42;', 'protected string x              = "default";'].join('\n'),
+    output: ['public required   string name      = "value";', 'internal readonly int    longValue = 42;', 'protected         string x         = "default";'].join('\n'),
+    changes: 3,
+    language: 'csharp',
+};
+
+// ────────────────────────────
+// declaration columns
+// ────────────────────────────
+
+export const csharpDeclarations: CodeFixture = {
+    name: 'csharp-declarations',
+    input: ['private const string Product = "symbol-align";', 'private const int DefaultPort = 5173;'].join('\n'),
+    output: ['private const string Product     = "symbol-align";', 'private const int    DefaultPort = 5173;'].join('\n'),
     changes: 2,
     language: 'csharp',
+};
+
+export const declarationEndAnchor: CodeFixture = {
+    name: 'declaration-end-anchor',
+    input: ['private const string Product = "symbol-align";', 'private const int DefaultPort = 5173;'].join('\n'),
+    output: ['private const string Product     = "symbol-align";', 'private const    int DefaultPort = 5173;'].join('\n'),
+    changes: 2,
+    language: 'csharp',
+    declarationAnchor: 'end',
+};
+
+export const customTypeDeclarations: CodeFixture = {
+    name: 'custom-type-declarations',
+    input: ['Product alpha = new Product();', 'CatalogItem beta = new CatalogItem();'].join('\n'),
+    output: ['Product     alpha = new Product();', 'CatalogItem beta  = new CatalogItem();'].join('\n'),
+    changes: 2,
+    language: 'csharp',
+};
+
+export const solanaTypeFirst: CodeFixture = {
+    name: 'solana-type-first',
+    input: ['uint256 public totalSupply = 1000;', 'uint8 private decimals = 18;'].join('\n'),
+    output: ['uint256 public  totalSupply = 1000;', 'uint8   private decimals    = 18;'].join('\n'),
+    changes: 2,
+    language: 'solidity',
 };
 
 // ────────────────────────────
@@ -1011,6 +1055,10 @@ export const allFixtures: readonly CodeFixture[] = [
     tsReadonlyInterface,
     dartKeywordMix,
     csharpMultiKeyword,
+    csharpDeclarations,
+    declarationEndAnchor,
+    customTypeDeclarations,
+    solanaTypeFirst,
     pythonAssignments,
     pythonDict,
     goShortDeclaration,

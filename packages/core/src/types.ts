@@ -92,6 +92,42 @@ export interface StringDelimiter {
 /** A block comment delimiter pair, e.g. slash-star and star-slash. */
 export type BlockComment = readonly [open: string, close: string];
 
+/**
+ * How declarations of a language are laid out.
+ *
+ * - `prefix` — the modifiers come first (`public static readonly int value`).
+ * - `type-first` — the type comes first (`uint256 public value`, Solidity).
+ * - `none` — the language has no declaration column worth aligning.
+ */
+export type DeclarationStyle = 'prefix' | 'type-first' | 'none';
+
+/**
+ * Which edge of a declaration cell is aligned.
+ *
+ * - `start` — the content of a cell starts at the same column (default).
+ * - `end` — the cell is padded on its left, so its content ends at the same
+ *   column.
+ */
+export type DeclarationAnchor = 'start' | 'end';
+
+/** One visual segment of a declaration. */
+export interface DeclarationCell {
+    /** The segment of the declaration this cell covers. */
+    readonly kind: 'modifiers' | 'type' | 'name';
+    /** Inclusive column of the first non-blank character. */
+    readonly start: number;
+    /** Exclusive column behind the last non-blank character. */
+    readonly end: number;
+}
+
+/** Options accepted by {@link findDeclarationCells}. */
+export interface DeclarationOptions {
+    /** Code regions of the line (real code only). */
+    readonly regions: readonly CodeRegion[];
+    /** Declaration style that decides how the line is split into cells. */
+    readonly style: DeclarationStyle;
+}
+
 /** Everything the scanner needs to know about a language. */
 export interface LanguageProfile {
     /** Stable identifier used by the CLI and the API. */
@@ -115,6 +151,8 @@ export interface LanguageProfile {
     readonly operators: readonly string[];
     /** Symbols aligned by default for this language. */
     readonly defaultSymbols: readonly AlignSymbol[];
+    /** How declarations are split into alignment cells. */
+    readonly declarations: DeclarationStyle;
 }
 
 /** A contiguous region of a line that contains real code (not string or comment text). */
@@ -179,6 +217,26 @@ export interface AlignOptions {
      * reaches into the range is recognised.
      */
     readonly range?: LineRange;
+    /**
+     * Whether the declaration columns of the language profile are aligned.
+     *
+     * Defaults to `true` unless the profile declares no declaration style.
+     * The declaration pass only ever inserts spaces as well.
+     */
+    readonly declarations?: boolean;
+    /**
+     * Which edge of a declaration cell is aligned. Defaults to `start`.
+     *
+     * `end` pads the type on its left, so the type ends line up.
+     */
+    readonly declarationAnchor?: DeclarationAnchor;
+    /**
+     * Largest start-column difference that still joins a declaration column.
+     *
+     * Defaults to `12`. A value below `1` (or a non-finite value) means
+     * unlimited.
+     */
+    readonly maxDeclarationPad?: number;
 }
 
 /** The outcome of an alignment run. */
