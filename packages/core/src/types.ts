@@ -220,6 +220,9 @@ export interface AlignOptions {
      * given. A token that appears in a group is removed from the symbol list.
      * Duplicate and empty members are ignored.
      *
+     * A group never changes the indentation of a line; a member in the first
+     * column is not padded.
+     *
      * A line whose declaration prefix (`modifiers`, `type` or `name`) contains
      * a group member is left out of the declaration alignment, so the
      * declaration pass and the group pass never move each other's target.

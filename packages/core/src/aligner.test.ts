@@ -408,6 +408,60 @@ describe('groups', () => {
         expect(second.changes).toBe(0);
     });
 
+    it('returns the input unchanged when conflicting groups would pad the indentation', () => {
+        const code = ['AAA x BBB = 1;', 'BBB x AAA = 2;'].join('\n');
+        const options = { symbols: [], groups: [['AAA', 'ZZZ'], ['BBB', 'YYY']], scope: 'indent' } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+
+        // Padding AAA from column 0 would change the indentation of the first
+        // line. The next iteration would then see two different indent groups,
+        // call the result stable and return a partial mutation. A member in the
+        // first column is not padded, so the conflict falls back to the input.
+        expect(first.code).toBe(code);
+        expect(first.changes).toBe(0);
+        expect(second.code).toBe(code);
+        expect(second.changes).toBe(0);
+    });
+
+    it.each(['block', 'file'] as const)('leaves the conflicting groups unchanged with scope %s', (scope) => {
+        const code = ['AAA x BBB = 1;', 'BBB x AAA = 2;'].join('\n');
+        const result = align(code)({ symbols: [], groups: [['AAA', 'ZZZ'], ['BBB', 'YYY']], scope });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('never pads a group member that is the first token of a line', () => {
+        const code = ['    AAA = 1;', 'ZZZ = 2;'].join('\n');
+        const options = { symbols: [], groups: [['AAA', 'ZZZ']], scope: 'block' } as const;
+        const first = align(code)(options);
+
+        // Both members start at their indentation. Measuring them would pad the
+        // second line by four spaces and change its indentation.
+        expect(first.code).toBe(code);
+        expect(first.changes).toBe(0);
+        expect(align(first.code)(options).changes).toBe(0);
+    });
+
+    it('pads only the group members that start behind the indentation', () => {
+        const code = ['AAA x = 1;', '  x AAA = 2;', '      x AAA = 3;'].join('\n');
+        const first = align(code)({ symbols: [], groups: [['AAA', 'ZZZ']], scope: 'file' });
+
+        // The first line keeps its first-column member untouched; only the two
+        // later members are measured and the closer one is padded.
+        expect(first.code).toBe(['AAA x = 1;', '  x     AAA = 2;', '      x AAA = 3;'].join('\n'));
+        expect(first.changes).toBe(1);
+        expect(align(first.code)({ symbols: [], groups: [['AAA', 'ZZZ']], scope: 'file' }).changes).toBe(0);
+    });
+
+    it('still aligns a group whose members start behind the indentation', () => {
+        const result = align(['    a = MY_STATE1;', '    longName = MY_STATE2;'].join('\n'))({ symbols: [], groups: [['MY_STATE1', 'MY_STATE2']], scope: 'indent' });
+
+        expect(result.code).toBe(['    a =        MY_STATE1;', '    longName = MY_STATE2;'].join('\n'));
+        expect(result.changes).toBe(1);
+    });
+
     it('is idempotent', () => {
         const code = ['first = ALPHA;', 'longerThird = BETA;', 'second = GAMMA;', 'longerFourth = DELTA;'].join('\n');
         const options = {

@@ -566,10 +566,27 @@ const alignSymbol =
     };
 
 /**
+ * Whether a line joins the column of a group.
+ *
+ * A member that starts at the indentation would be padded in front of the first
+ * visible character, which changes the indentation of the line. Such a line is
+ * neither measured nor padded, so a group never changes the indentation and the
+ * `indent` groups of the next fixpoint iteration stay the same.
+ */
+const isGroupHolder = (lines: readonly string[], columns: readonly LineColumn[], index: number): boolean => {
+    const column = columns[index]?.column ?? null;
+
+    return column !== null && column > indentOf(lines[index]);
+};
+
+/**
  * Runs one alignment pass for a group of alternative tokens.
  *
- * The first occurrence of any member is located on every line; the lines that
- * carry one are padded to the right-most column of the group. The pass reuses
+ * The first occurrence of any member is located on every line; the lines whose
+ * member starts behind the indentation are padded to the right-most column of
+ * the group. A member in the first column of a line never participates, because
+ * padding in front of it would change the indentation of that line and split
+ * the line off its `indent` group. The pass reuses
  * {@link padToTargetColumn}, so only spaces are inserted and a line that does
  * not carry a member is never touched.
  */
@@ -582,7 +599,9 @@ const alignGroup =
         let current = lines;
 
         groups.forEach((indices) => {
-            const holders = indices.filter((index) => columns[index]?.column !== null);
+            // The same predicate guards the target and the padding, because
+            // `padToTargetColumn` only pads the holders it is given.
+            const holders = indices.filter((index) => isGroupHolder(lines, columns, index));
             if (holders.length === 0) {
                 return;
             }
