@@ -232,7 +232,8 @@ export interface AlignOptions {
      * configuration conflicts when two groups change their relative order
      * between the lines of one scope group (for example `AAA BBB` on one line
      * and `BBB AAA` on another); it returns the whole input unchanged instead
-     * of a partial alignment. A group that occurs on only one line never
+     * of a partial alignment. Both groups of a pair must occur on a line for
+     * that line to be compared, so a group that occurs on only one line never
      * conflicts, and lines of different `indent` groups are never compared.
      */
     readonly groups?: readonly AlignGroup[];

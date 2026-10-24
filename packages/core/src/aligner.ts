@@ -211,37 +211,77 @@ const locateGroups =
 const normalizeGroup = (group: AlignGroup): readonly AlignSymbol[] => [...new Set(group)].filter((member) => member.length > 0);
 
 /**
- * Order of the groups that occur on one line, or `null` when fewer than two do.
+ * Whether the lines of one scope group contradict the relative order of the
+ * groups `left` and `right`.
  *
- * The group indices are sorted by their first-occurrence column; equal columns
- * keep the configured order, so the signature only changes when two groups
- * really swap places.
+ * Only the lines that carry *both* groups contribute: a group that is absent
+ * from a line says nothing about the order of the pair. Two groups at the same
+ * column never contradict each other either, because the padding cannot move
+ * one past the other. The first line that fixes the direction decides it; any
+ * later line that puts the pair the other way round is a conflict.
+ *
+ * @param columns - Line-major first columns of every group.
+ * @param indices - The lines of one scope group.
+ * @param left - Index of the lower-numbered group of the pair.
+ * @param right - Index of the higher-numbered group of the pair.
  */
-const groupOrderSignature = (columns: readonly (number | null)[]): string | null => {
-    const present: number[] = [];
+const pairConflicts = (columns: readonly (readonly (number | null)[])[], indices: readonly number[], left: number, right: number): boolean => {
+    let direction = 0;
 
-    columns.forEach((column, index) => {
-        if (column !== null) {
-            present.push(index);
+    for (const index of indices) {
+        const line = columns[index];
+
+        if (line === undefined) {
+            continue;
         }
-    });
 
-    if (present.length < 2) {
-        return null;
+        const leftColumn = line[left] ?? null;
+        const rightColumn = line[right] ?? null;
+
+        if (leftColumn === null || rightColumn === null) {
+            continue;
+        }
+
+        const current = Math.sign(leftColumn - rightColumn);
+
+        if (current === 0) {
+            continue;
+        }
+
+        if (direction === 0) {
+            direction = current;
+            continue;
+        }
+
+        if (direction !== current) {
+            return true;
+        }
     }
 
-    present.sort((left, right) => (columns[left] ?? 0) - (columns[right] ?? 0) || left - right);
+    return false;
+};
 
-    return present.join(',');
+/** Whether any pair of groups changes its relative order inside one scope group. */
+const scopeConflicts = (columns: readonly (readonly (number | null)[])[], indices: readonly number[], groupCount: number): boolean => {
+    for (let left = 0; left < groupCount - 1; left += 1) {
+        for (let right = left + 1; right < groupCount; right += 1) {
+            if (pairConflicts(columns, indices, left, right)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 };
 
 /**
  * Whether two configured groups change their relative order between lines.
  *
- * Within every scope group, the lines that carry at least two groups produce an
- * order signature. More than one distinct signature means the groups move each
- * other's target, so the configuration conflicts and the caller returns the
- * input unchanged.
+ * Every pair of groups is checked independently: the configuration conflicts
+ * when one pair appears in one order on a line and in the opposite order on
+ * another line of the same scope group. A group that occurs on only one line
+ * never contradicts anything, and a third group that is present on one line
+ * only cannot turn a consistent pair into a conflict.
  *
  * The detection is independent of the first-column exclusion of
  * {@link alignGroup}: a member at the indentation still defines the order. Two
@@ -255,23 +295,7 @@ const groupsConflict = (lines: readonly string[], groups: readonly AlignGroup[],
 
     const columns = locateGroups(groups, profile)(lines);
 
-    return groupIndices(lines, scope, range).some((indices) => {
-        const signatures = new Set<string>();
-
-        for (const index of indices) {
-            const signature = groupOrderSignature(columns[index] ?? []);
-
-            if (signature !== null) {
-                signatures.add(signature);
-            }
-
-            if (signatures.size > 1) {
-                return true;
-            }
-        }
-
-        return false;
-    });
+    return groupIndices(lines, scope, range).some((indices) => scopeConflicts(columns, indices, groups.length));
 };
 
 /** Right-most column at which the symbol occurs inside a group. */

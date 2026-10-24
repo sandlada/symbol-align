@@ -478,6 +478,21 @@ describe('groups', () => {
         expect(align(first.code)(options).changes).toBe(0);
     });
 
+    it.each(['block', 'indent', 'file'] as const)('leaves a layout with one conflicting pair unchanged with scope %s', (scope) => {
+        const code = ['AAA b CCC b EEE = 1;', 'CCC b AAA b EEE = 2;'].join('\n');
+        const options = { symbols: ['='], groups: [['AAA'], ['CCC'], ['EEE']], scope } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+
+        // Only AAA and CCC swap places; AAA/EEE and CCC/EEE keep their order
+        // on both lines. One contradictory pair is enough for a conflict, so
+        // the whole input stays untouched.
+        expect(first.code).toBe(code);
+        expect(first.changes).toBe(0);
+        expect(second.code).toBe(code);
+        expect(second.changes).toBe(0);
+    });
+
     it('aligns three groups that keep their order on every line', () => {
         const code = ['a FIRST_ALT b SECOND_ALT c THIRD_ALT = 1;', 'aa FIRST_ALT b SECOND_ALT c THIRD_ALT = 2;'].join('\n');
         const options = { symbols: ['='], groups: [['FIRST_ALT'], ['SECOND_ALT'], ['THIRD_ALT']] } as const;
@@ -498,6 +513,26 @@ describe('groups', () => {
         expect(second.changes).toBe(0);
     });
 
+    it('aligns a three-group layout whose groups sit at different columns', () => {
+        const code = ['AAA b CCC b EEE = 1;', 'AAA b  CCC b  EEE = 2;'].join('\n');
+        const options = { symbols: ['='], groups: [['AAA'], ['CCC'], ['EEE']] } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+
+        // Every pair keeps its order, so the group passes pad the first line
+        // until all three groups share the column of the second line.
+        expect(first.code).toBe(['AAA b  CCC b  EEE = 1;', 'AAA b  CCC b  EEE = 2;'].join('\n'));
+        expect(first.changes).toBe(1);
+
+        const lines = first.code.split('\n');
+        for (const token of ['AAA', 'CCC', 'EEE', '=']) {
+            expect(new Set(lines.map((line) => line.indexOf(token))).size).toBe(1);
+        }
+
+        expect(second.code).toBe(first.code);
+        expect(second.changes).toBe(0);
+    });
+
     it('does not treat a group that occurs on only one line as a conflict', () => {
         const code = ['a AAA ZZZ = 1;', 'longer AAA = 2;'].join('\n');
         const options = { symbols: [], groups: [['AAA'], ['ZZZ']] } as const;
@@ -508,6 +543,42 @@ describe('groups', () => {
         expect(first.code).toBe(['a      AAA ZZZ = 1;', 'longer AAA = 2;'].join('\n'));
         expect(first.changes).toBe(1);
         expect(align(first.code)(options).changes).toBe(0);
+    });
+
+    it('does not treat a group that occurs on one line only as a three-group conflict', () => {
+        const code = ['AAA b CCC b EEE = 1;', 'AAA b EEE = 2;'].join('\n');
+        const options = { symbols: ['='], groups: [['AAA'], ['CCC'], ['EEE']] } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+
+        // CCC is absent from the second line, so the CCC/EEE pair is ordered
+        // on one line only and cannot contradict itself. A comparison of whole
+        // presence sets would suppress the shared EEE column; the pairwise
+        // check still aligns it.
+        expect(first.code).toBe(['AAA b CCC b EEE = 1;', 'AAA b       EEE = 2;'].join('\n'));
+        expect(first.changes).toBe(1);
+        expect(second.code).toBe(first.code);
+        expect(second.changes).toBe(0);
+    });
+
+    it('does not treat two groups that share a column on one line as a conflict', () => {
+        const code = ['  x AAA b BBB = 1;', '  yy AAA b BBB = 2;', '  BBB b AAA = 3;'].join('\n');
+        const options = {
+            symbols: [],
+            groups: [['AAA'], ['BBB', 'AAA']],
+        } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+
+        // The second group starts at the AAA of the first two lines, exactly
+        // where the first group starts; equal columns never contradict each
+        // other. Only the third line orders the pair (BBB before AAA), so the
+        // repeated AAA of the first two lines is padded instead of falling
+        // back to the unchanged input.
+        expect(first.code).toBe(['  x     AAA b BBB = 1;', '  yy    AAA b BBB = 2;', '  BBB b AAA = 3;'].join('\n'));
+        expect(first.changes).toBe(2);
+        expect(second.code).toBe(first.code);
+        expect(second.changes).toBe(0);
     });
 
     it('never compares groups across indent groups', () => {
