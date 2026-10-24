@@ -228,9 +228,12 @@ export interface AlignOptions {
      * declaration pass and the group pass never move each other's target.
      *
      * A group whose members alternate their order across lines can conflict
-     * with another group the same way a conflicting symbol order does:
-     * conflicting groups may under-align; the input is returned unchanged
-     * rather than diverging.
+     * with another group the same way a conflicting symbol order does. A
+     * configuration conflicts when two groups change their relative order
+     * between the lines of one scope group (for example `AAA BBB` on one line
+     * and `BBB AAA` on another); it returns the whole input unchanged instead
+     * of a partial alignment. A group that occurs on only one line never
+     * conflicts, and lines of different `indent` groups are never compared.
      */
     readonly groups?: readonly AlignGroup[];
     /** Language profile that drives string and comment handling. Defaults to `generic`. */

@@ -2,7 +2,7 @@ import { findDeclarationCells } from './declarations.js';
 import { findSymbolPositions } from './finder.js';
 import { languageProfile } from './language.js';
 import { scanSource } from './scanner.js';
-import type { AlignGroup, AlignmentScope, AlignOptions, AlignResult, AlignSymbol, DeclarationAnchor, DeclarationCell, LanguageId, LanguageProfile, LineRange, ScanResult } from './types.js';
+import type { AlignGroup, AlignmentScope, AlignOptions, AlignResult, AlignSymbol, CodeRegion, DeclarationAnchor, DeclarationCell, LanguageId, LanguageProfile, LineComment, LineRange, ScanResult } from './types.js';
 
 /** A run of spaces that has to be inserted into one line at an absolute column. */
 interface DeclarationInsertion {
@@ -152,42 +152,127 @@ const locateSymbol =
     };
 
 /**
- * Locates the first occurrence of any member of a group on every line.
+ * Locates the first occurrence of any member of a group on one line.
  *
  * The minimum column of the group wins, so the member that appears first on a
- * line defines where the group column starts. The scan runs through
- * `findSymbolPositions`, which means the word boundary, operator fragment and
- * code region rules apply to every member exactly as they do to a symbol.
+ * line defines where the group column starts. The caller passes the code
+ * regions and the line comment of the line, so the word boundary, operator
+ * fragment and code region rules apply to every member exactly as they do to a
+ * symbol.
+ */
+const firstGroupColumn = (group: AlignGroup, line: string, regions: readonly CodeRegion[], comment: LineComment | undefined, operators: readonly string[]): number | null => {
+    const positions = findSymbolPositions(line)({ regions, symbols: group, operators, comment });
+
+    return group.reduce<number | null>((first, member) => {
+        const memberColumn = positions.get(member)?.[0] ?? null;
+
+        if (memberColumn === null) {
+            return first;
+        }
+
+        return first === null ? memberColumn : Math.min(first, memberColumn);
+    }, null);
+};
+
+/**
+ * Locates the first occurrence of any member of a group on every line.
+ *
+ * The scan is redone for every pass because earlier passes insert spaces and
+ * therefore shift the columns of the members that come later.
  */
 const locateGroup =
     (group: AlignGroup, profile: LanguageProfile) =>
     (lines: readonly string[]): readonly LineColumn[] => {
         const scan = scanSource(lines.join('\n'))(profile);
 
-        return lines.map((line, index) => {
-            const positions = findSymbolPositions(line)({
-                regions: scan.codeRegions[index] ?? [],
-                symbols: group,
-                operators: profile.operators,
-                comment: scan.lineComments[index],
-            });
+        return lines.map((line, index) => ({
+            index,
+            column: firstGroupColumn(group, line, scan.codeRegions[index] ?? [], scan.lineComments[index], profile.operators),
+        }));
+    };
 
-            const column = group.reduce<number | null>((first, member) => {
-                const memberColumn = positions.get(member)?.[0] ?? null;
+/**
+ * Locates the first occurrence of every group on every line with a single scan.
+ *
+ * The result is line-major: `columns[line][group]` is the column of the first
+ * member of that group on the line, or `null` when no member occurs. The finder
+ * rules are exactly those of {@link locateGroup}; sharing the scan keeps the
+ * conflict detection at one scan of the source instead of one scan per group.
+ */
+const locateGroups =
+    (groups: readonly AlignGroup[], profile: LanguageProfile) =>
+    (lines: readonly string[]): readonly (readonly (number | null)[])[] => {
+        const scan = scanSource(lines.join('\n'))(profile);
 
-                if (memberColumn === null) {
-                    return first;
-                }
-
-                return first === null ? memberColumn : Math.min(first, memberColumn);
-            }, null);
-
-            return { index, column };
-        });
+        return lines.map((line, index) => groups.map((group) => firstGroupColumn(group, line, scan.codeRegions[index] ?? [], scan.lineComments[index], profile.operators)));
     };
 
 /** Removes the duplicate and empty members of a group; the `Set` is a performance normalization only, because duplicate members are already harmless. */
 const normalizeGroup = (group: AlignGroup): readonly AlignSymbol[] => [...new Set(group)].filter((member) => member.length > 0);
+
+/**
+ * Order of the groups that occur on one line, or `null` when fewer than two do.
+ *
+ * The group indices are sorted by their first-occurrence column; equal columns
+ * keep the configured order, so the signature only changes when two groups
+ * really swap places.
+ */
+const groupOrderSignature = (columns: readonly (number | null)[]): string | null => {
+    const present: number[] = [];
+
+    columns.forEach((column, index) => {
+        if (column !== null) {
+            present.push(index);
+        }
+    });
+
+    if (present.length < 2) {
+        return null;
+    }
+
+    present.sort((left, right) => (columns[left] ?? 0) - (columns[right] ?? 0) || left - right);
+
+    return present.join(',');
+};
+
+/**
+ * Whether two configured groups change their relative order between lines.
+ *
+ * Within every scope group, the lines that carry at least two groups produce an
+ * order signature. More than one distinct signature means the groups move each
+ * other's target, so the configuration conflicts and the caller returns the
+ * input unchanged.
+ *
+ * The detection is independent of the first-column exclusion of
+ * {@link alignGroup}: a member at the indentation still defines the order. Two
+ * lines that belong to different scope groups never conflict with each other,
+ * because only the lines of one scope group are compared.
+ */
+const groupsConflict = (lines: readonly string[], groups: readonly AlignGroup[], profile: LanguageProfile, scope: AlignmentScope, range: LineRange): boolean => {
+    if (groups.length < 2) {
+        return false;
+    }
+
+    const columns = locateGroups(groups, profile)(lines);
+
+    return groupIndices(lines, scope, range).some((indices) => {
+        const signatures = new Set<string>();
+
+        for (const index of indices) {
+            const signature = groupOrderSignature(columns[index] ?? []);
+
+            if (signature !== null) {
+                signatures.add(signature);
+            }
+
+            if (signatures.size > 1) {
+                return true;
+            }
+        }
+
+        return false;
+    });
+};
 
 /** Right-most column at which the symbol occurs inside a group. */
 const targetColumn = (columns: readonly LineColumn[], members: readonly number[]): number => members.reduce((target, index) => Math.max(target, columns[index]?.column ?? 0), 0);
@@ -691,6 +776,9 @@ export const align =
  * back to the leading symbol only, which is always stable. A single symbol
  * that still moves after several passes (prefix padding combined with the
  * `indent` scope can climb) falls back to leaving the input untouched.
+ * Configurations whose groups change their relative order between the lines of
+ * one scope group are detected before the first pass and return the input
+ * unchanged.
  * Under-aligning is always preferred over mutating string content or
  * diverging.
  */
@@ -706,6 +794,10 @@ export const alignWith =
         const range = normalizeRange(options.range, lines.length);
 
         if (symbols.length === 0 && groups.length === 0) {
+            return { code, changes: 0 };
+        }
+
+        if (groupsConflict(lines, groups, profile, scope, range)) {
             return { code, changes: 0 };
         }
 

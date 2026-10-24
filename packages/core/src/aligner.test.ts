@@ -410,7 +410,14 @@ describe('groups', () => {
 
     it('returns the input unchanged when conflicting groups would pad the indentation', () => {
         const code = ['AAA x BBB = 1;', 'BBB x AAA = 2;'].join('\n');
-        const options = { symbols: [], groups: [['AAA', 'ZZZ'], ['BBB', 'YYY']], scope: 'indent' } as const;
+        const options = {
+            symbols: [],
+            groups: [
+                ['AAA', 'ZZZ'],
+                ['BBB', 'YYY'],
+            ],
+            scope: 'indent',
+        } as const;
         const first = align(code)(options);
         const second = align(first.code)(options);
 
@@ -426,10 +433,115 @@ describe('groups', () => {
 
     it.each(['block', 'file'] as const)('leaves the conflicting groups unchanged with scope %s', (scope) => {
         const code = ['AAA x BBB = 1;', 'BBB x AAA = 2;'].join('\n');
-        const result = align(code)({ symbols: [], groups: [['AAA', 'ZZZ'], ['BBB', 'YYY']], scope });
+        const result = align(code)({
+            symbols: [],
+            groups: [
+                ['AAA', 'ZZZ'],
+                ['BBB', 'YYY'],
+            ],
+            scope,
+        });
 
         expect(result.code).toBe(code);
         expect(result.changes).toBe(0);
+    });
+
+    it.each(['block', 'indent', 'file'] as const)('leaves a three-group order conflict unchanged with scope %s', (scope) => {
+        const code = ['AAA b CCC b EEE = 1;', 'EEE b AAA b CCC = 2;'].join('\n');
+        const options = { symbols: ['='], groups: [['AAA'], ['CCC'], ['EEE']], scope } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+
+        // EEE, AAA and CCC rotate their order between the lines, so every
+        // group pass moves the target of another one. The conflict is detected
+        // before the first pass and the partial mutation never happens.
+        expect(first.code).toBe(code);
+        expect(first.changes).toBe(0);
+        expect(second.code).toBe(code);
+        expect(second.changes).toBe(0);
+    });
+
+    it.each(['block', 'indent', 'file'] as const)('leaves a two-group order conflict unchanged with scope %s', (scope) => {
+        const code = ['AAA x BBB = 1;', 'BBB x AAA = 2;'].join('\n');
+        const options = {
+            symbols: [],
+            groups: [
+                ['AAA', 'ZZZ'],
+                ['BBB', 'YYY'],
+            ],
+            scope,
+        } as const;
+        const first = align(code)(options);
+
+        expect(first.code).toBe(code);
+        expect(first.changes).toBe(0);
+        expect(align(first.code)(options).changes).toBe(0);
+    });
+
+    it('aligns three groups that keep their order on every line', () => {
+        const code = ['a FIRST_ALT b SECOND_ALT c THIRD_ALT = 1;', 'aa FIRST_ALT b SECOND_ALT c THIRD_ALT = 2;'].join('\n');
+        const options = { symbols: ['='], groups: [['FIRST_ALT'], ['SECOND_ALT'], ['THIRD_ALT']] } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+
+        // The relative order is identical on both lines, so the groups do not
+        // conflict and the first group still pads the shorter prefix.
+        expect(first.code).toBe(['a  FIRST_ALT b SECOND_ALT c THIRD_ALT = 1;', 'aa FIRST_ALT b SECOND_ALT c THIRD_ALT = 2;'].join('\n'));
+        expect(first.changes).toBe(1);
+
+        const lines = first.code.split('\n');
+        for (const token of ['FIRST_ALT', 'SECOND_ALT', 'THIRD_ALT', '=']) {
+            expect(new Set(lines.map((line) => line.indexOf(token))).size).toBe(1);
+        }
+
+        expect(second.code).toBe(first.code);
+        expect(second.changes).toBe(0);
+    });
+
+    it('does not treat a group that occurs on only one line as a conflict', () => {
+        const code = ['a AAA ZZZ = 1;', 'longer AAA = 2;'].join('\n');
+        const options = { symbols: [], groups: [['AAA'], ['ZZZ']] } as const;
+        const first = align(code)(options);
+
+        // Only the first line carries ZZZ, so no second line can contradict its
+        // order; the shared AAA column is still aligned.
+        expect(first.code).toBe(['a      AAA ZZZ = 1;', 'longer AAA = 2;'].join('\n'));
+        expect(first.changes).toBe(1);
+        expect(align(first.code)(options).changes).toBe(0);
+    });
+
+    it('never compares groups across indent groups', () => {
+        const code = ['  x AAA y BBB = 1;', '  xx AAA y BBB = 2;', '    BBB x AAA = 3;', '    BBB xx AAA = 4;'].join('\n');
+        const options = { symbols: [], groups: [['AAA'], ['BBB']], scope: 'indent' } as const;
+        const first = align(code)(options);
+
+        // Each indent group keeps one order of its own; the opposite order of
+        // the other indent group belongs to a different scope group and cannot
+        // conflict, so both groups are still aligned internally.
+        expect(first.code).toBe(['  x  AAA y BBB = 1;', '  xx AAA y BBB = 2;', '    BBB x  AAA = 3;', '    BBB xx AAA = 4;'].join('\n'));
+        expect(first.changes).toBe(2);
+        expect(align(first.code)(options).changes).toBe(0);
+    });
+
+    it('keeps the conflict fallback of a typed snippet idempotent', () => {
+        const code = ['public AAA x BBB = 1;', 'public longlong BBB x AAA = 2;'].join('\n');
+        const options = {
+            language: 'csharp',
+            symbols: ['='],
+            groups: [
+                ['AAA', 'ZZZ'],
+                ['BBB', 'YYY'],
+            ],
+        } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+
+        // The declaration pass and the symbol pass never run on a conflict, so
+        // the original bytes stay untouched and a second run is a no-op.
+        expect(first.code).toBe(code);
+        expect(first.changes).toBe(0);
+        expect(second.code).toBe(code);
+        expect(second.changes).toBe(0);
     });
 
     it('never pads a group member that is the first token of a line', () => {
