@@ -15,7 +15,7 @@ import { align } from './aligner.js';
 import { resolveConfig, type SymbolAlignConfig } from './config.js';
 import { loadConfig, loadConfigFile } from './config-fs.js';
 import { detectLanguage, isLanguageId } from './language.js';
-import type { AlignGroup, AlignmentScope, AlignOptions, LanguageId } from './types.js';
+import type { AlignGroup, AlignmentScope, AlignOptions, DeclarationAnchor, LanguageId } from './types.js';
 
 /* -------------------------------------------------------------------------- */
 /* Public types                                                                 */
@@ -35,6 +35,12 @@ export interface CliArgs {
     readonly config?: string;
     /** Grouping strategy used before aligning — `undefined` keeps the default. */
     readonly scope?: AlignmentScope;
+    /** Whether the declaration columns are aligned — `undefined` keeps the default. */
+    readonly declarations?: boolean;
+    /** Which edge of a declaration cell is aligned — `undefined` keeps the default. */
+    readonly declarationAnchor?: DeclarationAnchor;
+    /** Largest start-column difference that still joins a declaration column. */
+    readonly maxDeclarationPad?: number;
     /** Report misalignment instead of writing the aligned code. */
     readonly check: boolean;
     /** Print the usage text. */
@@ -83,6 +89,10 @@ Options:
   -t, --stdin-filepath <p>  Path of the piped file (used for language detection)
   -c, --config <path>       Configuration file (default: nearest symbol-align.config.json)
       --scope <block|indent|file>  Grouping strategy (default: block)
+      --declarations        Align the declaration columns of the language (default: on)
+      --no-declarations     Do not align the declaration columns
+      --declaration-anchor <start|end>  Which edge of a declaration cell is aligned (default: start)
+      --max-declaration-pad <n>  Largest column difference that joins a declaration column (default: 12)
       --check               Exit 1 when the input is not already aligned
   -v, --version             Print the version
   -h, --help                Show this help
@@ -98,6 +108,7 @@ Examples:
   echo "a = 1\\nbb = 2" | symbol-align
   cat file.ts | symbol-align --symbols =,:
   symbol-align --file input.ts --group MY_STATE1,MY_STATE2
+  symbol-align --file input.ts --declarations --declaration-anchor start --max-declaration-pad 12
   symbol-align --file input.ts
   symbol-align -f input.ts -o output.ts
   symbol-align -f input.ts --write
@@ -111,7 +122,7 @@ Examples:
 /* -------------------------------------------------------------------------- */
 
 /** Long names of the options that take a value. */
-type ValueOptionName = 'file' | 'output' | 'symbols' | 'group' | 'language' | 'stdin-filepath' | 'config' | 'scope';
+type ValueOptionName = 'file' | 'output' | 'symbols' | 'group' | 'language' | 'stdin-filepath' | 'config' | 'scope' | 'declaration-anchor' | 'max-declaration-pad';
 
 /** A value taking option of the command line. */
 interface ValueOption {
@@ -139,6 +150,8 @@ const valueOptions: readonly ValueOption[] = [
     { name: 'stdin-filepath', short: 't' },
     { name: 'config', short: 'c' },
     { name: 'scope', short: undefined },
+    { name: 'declaration-anchor', short: undefined },
+    { name: 'max-declaration-pad', short: undefined },
 ];
 
 /** Looks a value taking option up by its long name. */
@@ -207,6 +220,29 @@ const parseScope = (value: string): AlignmentScope => {
     throw new Error(`Invalid scope: ${value}. Expected "block", "indent" or "file".`);
 };
 
+/** Parses the declaration anchor — an unknown anchor is an error. */
+const parseDeclarationAnchor = (value: string): DeclarationAnchor => {
+    if (value === 'start' || value === 'end') {
+        return value;
+    }
+
+    throw new Error(`Invalid declaration anchor: ${value}. Expected "start" or "end".`);
+};
+
+/** Matches the decimal digits of a positive maximum declaration pad. */
+const POSITIVE_INTEGER = /^\d+$/;
+
+/** Parses the maximum declaration pad — anything but a positive integer is an error. */
+const parseMaxDeclarationPad = (value: string): number => {
+    const parsed = POSITIVE_INTEGER.test(value) ? Number(value) : Number.NaN;
+
+    if (!Number.isInteger(parsed) || parsed < 1) {
+        throw new Error(`Invalid max declaration pad: ${value}. Expected a positive integer.`);
+    }
+
+    return parsed;
+};
+
 /** Rejects an empty value for a path taking option. */
 const requirePath =
     (name: ValueOptionName) =>
@@ -243,6 +279,10 @@ const applyOption =
                 return { ...args, config: requirePath(name)(value) };
             case 'scope':
                 return { ...args, scope: parseScope(value) };
+            case 'declaration-anchor':
+                return { ...args, declarationAnchor: parseDeclarationAnchor(value) };
+            case 'max-declaration-pad':
+                return { ...args, maxDeclarationPad: parseMaxDeclarationPad(value) };
         }
     };
 
@@ -308,6 +348,14 @@ const parseTokens = (tokens: readonly string[], args: CliArgs): CliArgs => {
 
     if (token === '--diff') {
         return parseTokens(rest, { ...args, diff: true });
+    }
+
+    if (token === '--declarations') {
+        return parseTokens(rest, { ...args, declarations: true });
+    }
+
+    if (token === '--no-declarations') {
+        return parseTokens(rest, { ...args, declarations: false });
     }
 
     const option = matchOption(token);
@@ -519,6 +567,9 @@ const buildOptions =
             ...(args.symbols === undefined ? {} : { symbols: args.symbols }),
             ...(args.groups === undefined ? {} : { groups: args.groups }),
             ...(args.scope === undefined ? {} : { scope: args.scope }),
+            ...(args.declarations === undefined ? {} : { declarations: args.declarations }),
+            ...(args.declarationAnchor === undefined ? {} : { declarationAnchor: args.declarationAnchor }),
+            ...(args.maxDeclarationPad === undefined ? {} : { maxDeclarationPad: args.maxDeclarationPad }),
         };
     };
 

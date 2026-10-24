@@ -127,6 +127,69 @@ describe('formatText', () => {
     });
 });
 
+describe('formatText options', () => {
+    const legacyInput = ['public required string name = "value";', 'internal readonly int longValue = 42;', 'protected string x = "default";'].join('\n');
+
+    it('aligns the declaration columns by default', () => {
+        const result = formatText({
+            text: ['private const string Product = "value";', 'private const int DefaultPort = 8080;'].join('\n'),
+            languageId: 'csharp',
+            language: 'csharp',
+            scope: 'block',
+        });
+
+        expect(result.text).toBe(['private const string Product     = "value";', 'private const int    DefaultPort = 8080;'].join('\n'));
+    });
+
+    it('forwards declarations: false and keeps the legacy output', () => {
+        const result = formatText({
+            text: legacyInput,
+            languageId: 'csharp',
+            language: 'csharp',
+            scope: 'block',
+            declarations: false,
+        });
+
+        expect(result.text).toBe(['public required string name     = "value";', 'internal readonly int longValue = 42;', 'protected string x              = "default";'].join('\n'));
+    });
+
+    it('forwards declarationAnchor: end', () => {
+        const result = formatText({
+            text: ['private const string Product = "value";', 'private const int DefaultPort = 8080;'].join('\n'),
+            languageId: 'csharp',
+            language: 'csharp',
+            scope: 'block',
+            declarationAnchor: 'end',
+        });
+
+        expect(result.text).toBe(['private const string Product     = "value";', 'private const    int DefaultPort = 8080;'].join('\n'));
+    });
+
+    it('forwards maxDeclarationPad', () => {
+        const result = formatText({
+            text: ['public static int shortName;', 'public static long mediumName;', 'public static Map<String, List<Integer>> outlierName;'].join('\n'),
+            languageId: 'java',
+            language: 'java',
+            scope: 'block',
+            maxDeclarationPad: 100,
+        });
+
+        expect(result.text).toBe(['public static int                        shortName;', 'public static long                       mediumName;', 'public static Map<String, List<Integer>> outlierName;'].join('\n'));
+    });
+
+    it('forwards groups and aligns the members to one column', () => {
+        const result = formatText({
+            text: ['let status = MY_STATE1;', 'let longName = MY_STATE2;'].join('\n'),
+            languageId: 'typescript',
+            language: 'typescript',
+            scope: 'block',
+            groups: [['MY_STATE1', 'MY_STATE2']],
+        });
+
+        expect(result.text).toBe(['let status   =   MY_STATE1;', 'let longName =   MY_STATE2;'].join('\n'));
+    });
+});
+
 describe('formatText with a range', () => {
     const text = 'const a = 1;\nconst bbbb = 22;\nconst cccccc = 333;';
 

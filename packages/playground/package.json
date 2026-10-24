@@ -1,0 +1,22 @@
+{
+    "name": "@sandlada/playground",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "description": "Live, zero-runtime-dependency playground for @sandlada/symbol-align",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+        "preview": "vite preview",
+        "typecheck": "tsc --noEmit -p tsconfig.json",
+        "test": "vitest run",
+        "test:watch": "vitest"
+    },
+    "dependencies": {
+        "@sandlada/symbol-align": "workspace:*"
+    },
+    "devDependencies": {
+        "vite": "catalog:"
+    }
+}

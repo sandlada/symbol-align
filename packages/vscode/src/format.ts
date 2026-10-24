@@ -5,7 +5,7 @@
  * editor adapter lives in `extension.ts`.
  */
 
-import type { AlignmentScope, AlignOptions, LanguageId, LineRange } from '@sandlada/symbol-align';
+import type { AlignGroup, AlignmentScope, AlignOptions, DeclarationAnchor, LanguageId, LineRange } from '@sandlada/symbol-align';
 import { align } from '@sandlada/symbol-align';
 
 import { resolveLanguage } from './language.js';
@@ -18,6 +18,8 @@ export interface FormatRequest {
     readonly languageId: string;
     /** Symbols to align — an empty list means "use the language defaults". */
     readonly symbols?: readonly string[];
+    /** Groups of alternative tokens that share one alignment column. */
+    readonly groups?: readonly AlignGroup[];
     /** The language profile to use — `undefined` means "detect it from the language id". */
     readonly language?: LanguageId;
     /** The grouping strategy. */
@@ -29,6 +31,12 @@ export interface FormatRequest {
      * comment that reaches into the range is recognised.
      */
     readonly range?: LineRange;
+    /** Whether the declaration columns are aligned — `undefined` keeps the core default. */
+    readonly declarations?: boolean;
+    /** Which edge of a declaration cell is aligned — `undefined` keeps the core default. */
+    readonly declarationAnchor?: DeclarationAnchor;
+    /** Largest start-column difference that still joins a declaration column. */
+    readonly maxDeclarationPad?: number;
 }
 
 /** The outcome of an alignment run. */
@@ -48,8 +56,12 @@ export interface FormatResponse {
  */
 const toAlignOptions = (request: FormatRequest, language: LanguageId | undefined): AlignOptions => ({
     ...(request.symbols === undefined || request.symbols.length === 0 ? {} : { symbols: request.symbols }),
+    ...(request.groups === undefined ? {} : { groups: request.groups }),
     ...(language === undefined ? {} : { language }),
     ...(request.range === undefined ? {} : { range: request.range }),
+    ...(request.declarations === undefined ? {} : { declarations: request.declarations }),
+    ...(request.declarationAnchor === undefined ? {} : { declarationAnchor: request.declarationAnchor }),
+    ...(request.maxDeclarationPad === undefined ? {} : { maxDeclarationPad: request.maxDeclarationPad }),
     scope: request.scope,
 });
 

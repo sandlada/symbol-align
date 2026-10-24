@@ -64,6 +64,37 @@
                     ],
                     "default": "block",
                     "description": "How the lines are grouped before they are aligned. \"block\" aligns the lines of a blank-line separated block, \"indent\" keeps every nesting level on its own column, \"file\" aligns every line of the document."
+                },
+                "symbolAlign.declarations": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Align the declaration columns of typed languages — the modifiers, the type and the name of a declaration."
+                },
+                "symbolAlign.declarationAnchor": {
+                    "type": "string",
+                    "enum": [
+                        "start",
+                        "end"
+                    ],
+                    "default": "start",
+                    "description": "Which edge of a declaration cell is aligned. \"start\" aligns the content start of every cell, \"end\" pads the type on its left so the type ends line up."
+                },
+                "symbolAlign.maxDeclarationPad": {
+                    "type": "number",
+                    "default": 12,
+                    "minimum": 1,
+                    "description": "Largest column difference that still joins a declaration column. A type outside the window keeps its column instead of pushing every name."
+                },
+                "symbolAlign.groups": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "default": [],
+                    "description": "Groups of alternative tokens that share one alignment column, for example [[\"MY_STATE1\", \"MY_STATE2\"]]. Group members are aligned before the symbols and are removed from the symbol list."
                 }
             }
         }

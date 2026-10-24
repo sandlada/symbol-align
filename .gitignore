@@ -1,6 +1,7 @@
 node_modules
 dist
 build
+output
 *.log
 .DS_Store
 
@@ -13,3 +14,15 @@ build
 # Lockfiles from other package managers (this repo uses pnpm)
 package-lock.json
 yarn.lock
+
+# AI
+.teamwork
+.copilot
+.claude
+.opencode
+.gemini
+.cursor
+.grok
+.codex
+superpower*
+!*/skills

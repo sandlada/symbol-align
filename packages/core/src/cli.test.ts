@@ -218,6 +218,71 @@ describe('parseArgs', () => {
         expect(() => parseArgs(['node', 'cli.js', '--language', 'klingon'])).toThrow('Unknown language: klingon');
     });
 
+    it('enables the declaration alignment with --declarations', () => {
+        expect(parseArgs(['node', 'cli.js', '--declarations']).declarations).toBe(true);
+    });
+
+    it('disables the declaration alignment with --no-declarations', () => {
+        expect(parseArgs(['node', 'cli.js', '--no-declarations']).declarations).toBe(false);
+    });
+
+    it('lets the last declaration flag win', () => {
+        expect(parseArgs(['node', 'cli.js', '--declarations', '--no-declarations']).declarations).toBe(false);
+        expect(parseArgs(['node', 'cli.js', '--no-declarations', '--declarations']).declarations).toBe(true);
+    });
+
+    it('reads the declaration anchor from --declaration-anchor', () => {
+        expect(parseArgs(['node', 'cli.js', '--declaration-anchor', 'end']).declarationAnchor).toBe('end');
+    });
+
+    it('reads the declaration anchor from --declaration-anchor=value', () => {
+        expect(parseArgs(['node', 'cli.js', '--declaration-anchor=end']).declarationAnchor).toBe('end');
+    });
+
+    it('reads the max declaration pad from --max-declaration-pad', () => {
+        expect(parseArgs(['node', 'cli.js', '--max-declaration-pad', '24']).maxDeclarationPad).toBe(24);
+    });
+
+    it('reads the max declaration pad from --max-declaration-pad=value', () => {
+        expect(parseArgs(['node', 'cli.js', '--max-declaration-pad=24']).maxDeclarationPad).toBe(24);
+    });
+
+    it('parses the declaration options together', () => {
+        const args = parseArgs(['node', 'cli.js', '--declarations', '--declaration-anchor', 'end', '--max-declaration-pad', '24']);
+
+        expect(args.declarations).toBe(true);
+        expect(args.declarationAnchor).toBe('end');
+        expect(args.maxDeclarationPad).toBe(24);
+    });
+
+    it('rejects an unknown declaration anchor', () => {
+        expect(() => parseArgs(['node', 'cli.js', '--declaration-anchor', 'middle'])).toThrow('Invalid declaration anchor: middle. Expected "start" or "end".');
+    });
+
+    it('rejects a zero max declaration pad', () => {
+        expect(() => parseArgs(['node', 'cli.js', '--max-declaration-pad', '0'])).toThrow('Invalid max declaration pad: 0. Expected a positive integer.');
+    });
+
+    it('rejects a fractional max declaration pad', () => {
+        expect(() => parseArgs(['node', 'cli.js', '--max-declaration-pad', '1.5'])).toThrow('Invalid max declaration pad: 1.5. Expected a positive integer.');
+    });
+
+    it('rejects a max declaration pad that is not a number', () => {
+        expect(() => parseArgs(['node', 'cli.js', '--max-declaration-pad', 'many'])).toThrow('Invalid max declaration pad: many. Expected a positive integer.');
+    });
+
+    it('reports a missing value for --declaration-anchor', () => {
+        expect(() => parseArgs(['node', 'cli.js', '--declaration-anchor'])).toThrow('Missing value for declaration-anchor');
+    });
+
+    it('reports a missing value for --max-declaration-pad', () => {
+        expect(() => parseArgs(['node', 'cli.js', '--max-declaration-pad'])).toThrow('Missing value for max-declaration-pad');
+    });
+
+    it('reports a missing value when a declaration option is followed by another option', () => {
+        expect(() => parseArgs(['node', 'cli.js', '--declaration-anchor', '--declarations'])).toThrow('Missing value for declaration-anchor');
+    });
+
     it('enables the check mode with --check', () => {
         expect(parseArgs(['node', 'cli.js', '--check']).check).toBe(true);
     });
@@ -300,6 +365,17 @@ describe('usage', () => {
     it('documents the group option', () => {
         expect(usage).toContain('-g, --group <list>');
         expect(usage).toContain('symbol-align --file input.ts --group MY_STATE1,MY_STATE2');
+    });
+
+    it('documents the declaration options', () => {
+        expect(usage).toContain('--declarations');
+        expect(usage).toContain('--no-declarations');
+        expect(usage).toContain('--declaration-anchor <start|end>');
+        expect(usage).toContain('--max-declaration-pad <n>');
+    });
+
+    it('documents an example with the declaration options', () => {
+        expect(usage).toContain('symbol-align --file input.ts --declarations --declaration-anchor start --max-declaration-pad 12');
     });
 });
 
@@ -718,6 +794,122 @@ describe('runCli', () => {
         const lines = streams.stdoutText().split('\n');
         expect(lines[1]?.indexOf('=')).toBe(lines[2]?.indexOf('='));
         expect(lines[1]?.indexOf('=')).toBeLessThan(lines[0]?.indexOf('=') ?? 0);
+    });
+});
+
+describe('runCli with the declaration options', () => {
+    /** Two C# declarations — the declaration pass and the `=` pass both move them. */
+    const declarationInput = ['private const string Product = "symbol-align";', 'private const int DefaultPort = 5173;'].join('\n');
+    /** The snippet with the declaration cells aligned at their start. */
+    const startAligned = ['private const string Product     = "symbol-align";', 'private const int    DefaultPort = 5173;'].join('\n');
+    /** The snippet with the types ending in one column. */
+    const endAligned = ['private const string Product     = "symbol-align";', 'private const    int DefaultPort = 5173;'].join('\n');
+    /** The snippet with only the `=` symbols aligned and the declaration columns untouched. */
+    const symbolsOnly = ['private const string Product  = "symbol-align";', 'private const int DefaultPort = 5173;'].join('\n');
+    /** The options that select the C# declaration style. */
+    const csharp = ['--language', 'csharp'];
+
+    it('aligns the declaration columns with --declarations', async () => {
+        const streams = createStreams(declarationInput);
+
+        const code = await runCli(['node', 'cli.js', ...csharp, '--declarations'], streams);
+
+        expect(code).toBe(0);
+        expect(streams.stdoutText()).toBe(`${startAligned}\n`);
+    });
+
+    it('leaves the declaration columns untouched with --no-declarations', async () => {
+        const streams = createStreams(declarationInput);
+
+        const code = await runCli(['node', 'cli.js', ...csharp, '--no-declarations'], streams);
+
+        expect(code).toBe(0);
+        expect(streams.stdoutText()).toBe(`${symbolsOnly}\n`);
+    });
+
+    it('lets --no-declarations override --declarations', async () => {
+        const streams = createStreams(declarationInput);
+
+        const code = await runCli(['node', 'cli.js', ...csharp, '--declarations', '--no-declarations'], streams);
+
+        expect(code).toBe(0);
+        expect(streams.stdoutText()).toBe(`${symbolsOnly}\n`);
+    });
+
+    it('right-aligns the declaration cells with --declaration-anchor end', async () => {
+        const streams = createStreams(declarationInput);
+
+        const code = await runCli(['node', 'cli.js', ...csharp, '--declaration-anchor', 'end'], streams);
+
+        expect(code).toBe(0);
+        expect(streams.stdoutText()).toBe(`${endAligned}\n`);
+    });
+
+    it('keeps a distant declaration cell apart with --max-declaration-pad 1', async () => {
+        const streams = createStreams(declarationInput);
+
+        const code = await runCli(['node', 'cli.js', ...csharp, '--max-declaration-pad', '1'], streams);
+
+        expect(code).toBe(0);
+        expect(streams.stdoutText()).toBe(`${symbolsOnly}\n`);
+    });
+
+    it('aligns the declaration cells with a wide --max-declaration-pad', async () => {
+        const streams = createStreams(declarationInput);
+
+        const code = await runCli(['node', 'cli.js', ...csharp, '--max-declaration-pad', '24'], streams);
+
+        expect(code).toBe(0);
+        expect(streams.stdoutText()).toBe(`${startAligned}\n`);
+    });
+
+    it('passes the declaration options of the configuration through', async () => {
+        await withTempDir(async (directory) => {
+            const config = { language: 'csharp', groups: [['MY_STATE1', 'MY_STATE2']], declarations: true, declarationAnchor: 'end', maxDeclarationPad: 24 };
+            await writeFile(join(directory, 'symbol-align.config.json'), JSON.stringify(config), 'utf-8');
+            const streams = createStreams(declarationInput);
+
+            const code = await runCli(['node', 'cli.js'], streams);
+
+            expect(code).toBe(0);
+            expect(streams.stdoutText()).toBe(`${endAligned}\n`);
+        });
+    });
+
+    it('lets the command line override the declaration anchor of the configuration', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'symbol-align.config.json'), JSON.stringify({ language: 'csharp', declarationAnchor: 'start' }), 'utf-8');
+            const streams = createStreams(declarationInput);
+
+            const code = await runCli(['node', 'cli.js', '--declaration-anchor', 'end'], streams);
+
+            expect(code).toBe(0);
+            expect(streams.stdoutText()).toBe(`${endAligned}\n`);
+        });
+    });
+
+    it('lets --declarations override a configuration that disables it', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'symbol-align.config.json'), JSON.stringify({ language: 'csharp', declarations: false }), 'utf-8');
+            const streams = createStreams(declarationInput);
+
+            const code = await runCli(['node', 'cli.js', '--declarations'], streams);
+
+            expect(code).toBe(0);
+            expect(streams.stdoutText()).toBe(`${startAligned}\n`);
+        });
+    });
+
+    it('lets --no-declarations override a configuration that enables it', async () => {
+        await withTempDir(async (directory) => {
+            await writeFile(join(directory, 'symbol-align.config.json'), JSON.stringify({ language: 'csharp', declarations: true, declarationAnchor: 'end' }), 'utf-8');
+            const streams = createStreams(declarationInput);
+
+            const code = await runCli(['node', 'cli.js', '--no-declarations'], streams);
+
+            expect(code).toBe(0);
+            expect(streams.stdoutText()).toBe(`${symbolsOnly}\n`);
+        });
     });
 });
 

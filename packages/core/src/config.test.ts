@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { SymbolAlignConfig } from './config.js';
 import { parseConfig, resolveConfig } from './config.js';
@@ -79,6 +81,30 @@ describe('parseConfig', () => {
         expect(() => parseConfig({ scope: 'chunk' })).toThrow('Invalid configuration: "scope" must be "block", "indent" or "file"');
     });
 
+    it('keeps the declaration options', () => {
+        expect(parseConfig({ declarations: false, declarationAnchor: 'end', maxDeclarationPad: 24 })).toEqual({ declarations: false, declarationAnchor: 'end', maxDeclarationPad: 24 });
+    });
+
+    it('rejects declarations that are not a boolean', () => {
+        expect(() => parseConfig({ declarations: 'yes' })).toThrow('Invalid configuration: "declarations" must be a boolean');
+    });
+
+    it('rejects an unknown declaration anchor', () => {
+        expect(() => parseConfig({ declarationAnchor: 'middle' })).toThrow('Invalid configuration: "declarationAnchor" must be "start" or "end"');
+    });
+
+    it('rejects a max declaration pad below one', () => {
+        expect(() => parseConfig({ maxDeclarationPad: 0 })).toThrow('Invalid configuration: "maxDeclarationPad" must be a positive integer');
+    });
+
+    it('rejects a fractional max declaration pad', () => {
+        expect(() => parseConfig({ maxDeclarationPad: 1.5 })).toThrow('Invalid configuration: "maxDeclarationPad" must be a positive integer');
+    });
+
+    it('rejects a max declaration pad that is not a number', () => {
+        expect(() => parseConfig({ maxDeclarationPad: '12' })).toThrow('Invalid configuration: "maxDeclarationPad" must be a positive integer');
+    });
+
     it('rejects overrides that are not an object', () => {
         expect(() => parseConfig({ overrides: '*.py' })).toThrow('Invalid configuration: "overrides" must be an object');
     });
@@ -101,6 +127,24 @@ describe('parseConfig', () => {
 
     it('rejects an override with an unknown scope', () => {
         expect(() => parseConfig({ overrides: { '*.py': { scope: 'chunk' } } })).toThrow('Invalid configuration: invalid override "*.py": "scope" must be "block", "indent" or "file"');
+    });
+
+    it('keeps the declaration options of an override', () => {
+        expect(parseConfig({ overrides: { '*.cs': { declarations: true, declarationAnchor: 'end', maxDeclarationPad: 12 } } })).toEqual({
+            overrides: { '*.cs': { declarations: true, declarationAnchor: 'end', maxDeclarationPad: 12 } },
+        });
+    });
+
+    it('rejects an override with invalid declarations', () => {
+        expect(() => parseConfig({ overrides: { '*.cs': { declarations: 'yes' } } })).toThrow('Invalid configuration: invalid override "*.cs": "declarations" must be a boolean');
+    });
+
+    it('rejects an override with an unknown declaration anchor', () => {
+        expect(() => parseConfig({ overrides: { '*.cs': { declarationAnchor: 'middle' } } })).toThrow('Invalid configuration: invalid override "*.cs": "declarationAnchor" must be "start" or "end"');
+    });
+
+    it('rejects an override with an invalid max declaration pad', () => {
+        expect(() => parseConfig({ overrides: { '*.cs': { maxDeclarationPad: 0 } } })).toThrow('Invalid configuration: invalid override "*.cs": "maxDeclarationPad" must be a positive integer');
     });
 
     it('ignores unknown keys', () => {
@@ -197,6 +241,44 @@ describe('resolveConfig', () => {
         const config = parseConfig({ groups: [['A', 'B']], overrides: { '*.py': { language: 'python' } } });
 
         expect(resolveConfig(config)('main.py')).toEqual({ groups: [['A', 'B']], language: 'python' });
+    });
+
+    it('resolves groups and the declaration options of a configuration', () => {
+        const config = parseConfig({ groups: [['A', 'B']], declarations: true, declarationAnchor: 'end', maxDeclarationPad: 24 });
+
+        expect(resolveConfig(config)('input.cs')).toEqual({ groups: [['A', 'B']], declarations: true, declarationAnchor: 'end', maxDeclarationPad: 24 });
+    });
+
+    it('returns the declaration options when no file path is given', () => {
+        const config = parseConfig({ declarations: false, declarationAnchor: 'end', maxDeclarationPad: 12 });
+
+        expect(resolveConfig(config)()).toEqual({ declarations: false, declarationAnchor: 'end', maxDeclarationPad: 12 });
+    });
+
+    it('applies the declaration options of an override', () => {
+        const config = parseConfig({ declarations: true, overrides: { '*.cs': { declarations: false, declarationAnchor: 'end', maxDeclarationPad: 4 } } });
+
+        expect(resolveConfig(config)('Program.cs')).toEqual({ declarations: false, declarationAnchor: 'end', maxDeclarationPad: 4 });
+    });
+
+    it('lets a later matching override win for the declaration options', () => {
+        const config = parseConfig({
+            declarations: true,
+            declarationAnchor: 'start',
+            maxDeclarationPad: 4,
+            overrides: {
+                '*.cs': { declarations: false, declarationAnchor: 'end', maxDeclarationPad: 8 },
+                'Program.cs': { declarations: true, declarationAnchor: 'start', maxDeclarationPad: 24 },
+            },
+        });
+
+        expect(resolveConfig(config)('Program.cs')).toEqual({ declarations: true, declarationAnchor: 'start', maxDeclarationPad: 24 });
+    });
+
+    it('keeps the base declaration options when no override defines them', () => {
+        const config = parseConfig({ declarations: false, declarationAnchor: 'end', maxDeclarationPad: 24, overrides: { '*.cs': { language: 'csharp' } } });
+
+        expect(resolveConfig(config)('Program.cs')).toEqual({ declarations: false, declarationAnchor: 'end', maxDeclarationPad: 24, language: 'csharp' });
     });
 });
 
@@ -356,5 +438,56 @@ describe('glob patterns', () => {
 
         expect(languageOf(config, 'src/a/main.py')).toBe('python');
         expect(languageOf(config, 'src\\a\\main.py')).toBe('python');
+    });
+});
+
+/** The parts of the configuration schema that mirror the configuration keys. */
+interface ConfigSchema {
+    readonly properties: Readonly<Record<string, unknown>>;
+    readonly $defs: {
+        readonly override: {
+            readonly properties: Readonly<Record<string, unknown>>;
+        };
+    };
+}
+
+const schemaPath = fileURLToPath(new URL('../schemas/symbol-align.config.schema.json', import.meta.url));
+
+const readSchema = (): ConfigSchema => JSON.parse(readFileSync(schemaPath, 'utf-8')) as ConfigSchema;
+
+/*
+ * `schema.test.ts` owns the language and scope enums; the declaration keys and
+ * the groups are asserted here because they are parsed by this module.
+ */
+describe('the configuration schema', () => {
+    it('describes the groups in the root and in the overrides', () => {
+        const schema = readSchema();
+        const shape = { type: 'array', items: { type: 'array', items: { type: 'string', minLength: 1 } } };
+
+        expect(schema.properties.groups).toMatchObject({ ...shape, description: expect.any(String) });
+        expect(schema.$defs.override.properties.groups).toMatchObject(shape);
+    });
+
+    it('describes the declarations in the root and in the overrides', () => {
+        const schema = readSchema();
+
+        expect(schema.properties.declarations).toMatchObject({ type: 'boolean' });
+        expect(schema.$defs.override.properties.declarations).toMatchObject({ type: 'boolean' });
+    });
+
+    it('describes the declaration anchor in the root and in the overrides', () => {
+        const schema = readSchema();
+        const shape = { type: 'string', enum: ['start', 'end'] };
+
+        expect(schema.properties.declarationAnchor).toMatchObject(shape);
+        expect(schema.$defs.override.properties.declarationAnchor).toMatchObject(shape);
+    });
+
+    it('describes the max declaration pad in the root and in the overrides', () => {
+        const schema = readSchema();
+        const shape = { type: 'integer', minimum: 1 };
+
+        expect(schema.properties.maxDeclarationPad).toMatchObject(shape);
+        expect(schema.$defs.override.properties.maxDeclarationPad).toMatchObject(shape);
     });
 });

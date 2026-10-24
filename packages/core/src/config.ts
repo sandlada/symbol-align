@@ -12,7 +12,7 @@
  */
 
 import { isLanguageId } from './language.js';
-import type { AlignGroup, AlignOptions, AlignSymbol, AlignmentScope, LanguageId } from './types.js';
+import type { AlignGroup, AlignmentScope, AlignOptions, AlignSymbol, DeclarationAnchor, LanguageId } from './types.js';
 
 /** A per file pattern override of the configuration. */
 export interface ConfigOverride {
@@ -22,6 +22,12 @@ export interface ConfigOverride {
     readonly groups?: readonly AlignGroup[];
     readonly language?: LanguageId;
     readonly scope?: AlignmentScope;
+    /** Whether the declaration columns of the language profile are aligned. */
+    readonly declarations?: boolean;
+    /** Which edge of a declaration cell is aligned. */
+    readonly declarationAnchor?: DeclarationAnchor;
+    /** Largest start-column difference that still joins a declaration column. */
+    readonly maxDeclarationPad?: number;
 }
 
 /** The parsed content of a `symbol-align.config.json` file. */
@@ -32,6 +38,12 @@ export interface SymbolAlignConfig {
     readonly groups?: readonly AlignGroup[];
     readonly language?: LanguageId;
     readonly scope?: AlignmentScope;
+    /** Whether the declaration columns of the language profile are aligned. */
+    readonly declarations?: boolean;
+    /** Which edge of a declaration cell is aligned. */
+    readonly declarationAnchor?: DeclarationAnchor;
+    /** Largest start-column difference that still joins a declaration column. */
+    readonly maxDeclarationPad?: number;
     /** Overrides keyed by a glob pattern that is matched against the file path. */
     readonly overrides?: Readonly<Record<string, ConfigOverride>>;
 }
@@ -51,6 +63,9 @@ const isGroupList = (value: unknown): value is readonly AlignGroup[] => Array.is
 
 /** Whether `value` is a valid alignment scope. */
 const isScope = (value: unknown): value is AlignmentScope => value === 'block' || value === 'indent' || value === 'file';
+
+/** Whether `value` is a valid declaration anchor. */
+const isDeclarationAnchor = (value: unknown): value is DeclarationAnchor => value === 'start' || value === 'end';
 
 /** Reads the `symbols` entry of a configuration object. */
 const readSymbols = (source: Record<string, unknown>): readonly AlignSymbol[] | undefined => {
@@ -112,6 +127,51 @@ const readScope = (source: Record<string, unknown>): AlignmentScope | undefined 
     return value;
 };
 
+/** Reads the `declarations` entry of a configuration object. */
+const readDeclarations = (source: Record<string, unknown>): boolean | undefined => {
+    const value = source.declarations;
+
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (typeof value !== 'boolean') {
+        throw new Error('Invalid configuration: "declarations" must be a boolean');
+    }
+
+    return value;
+};
+
+/** Reads the `declarationAnchor` entry of a configuration object. */
+const readDeclarationAnchor = (source: Record<string, unknown>): DeclarationAnchor | undefined => {
+    const value = source.declarationAnchor;
+
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (!isDeclarationAnchor(value)) {
+        throw new Error('Invalid configuration: "declarationAnchor" must be "start" or "end"');
+    }
+
+    return value;
+};
+
+/** Reads the `maxDeclarationPad` entry of a configuration object. */
+const readMaxDeclarationPad = (source: Record<string, unknown>): number | undefined => {
+    const value = source.maxDeclarationPad;
+
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) {
+        throw new Error('Invalid configuration: "maxDeclarationPad" must be a positive integer');
+    }
+
+    return value;
+};
+
 /** Reads a single override entry of the `overrides` map. */
 const readOverride = (pattern: string, value: unknown): ConfigOverride => {
     if (!isPlainObject(value)) {
@@ -123,12 +183,18 @@ const readOverride = (pattern: string, value: unknown): ConfigOverride => {
         const groups = readGroups(value);
         const language = readLanguage(value);
         const scope = readScope(value);
+        const declarations = readDeclarations(value);
+        const declarationAnchor = readDeclarationAnchor(value);
+        const maxDeclarationPad = readMaxDeclarationPad(value);
 
         return {
             ...(symbols === undefined ? {} : { symbols }),
             ...(groups === undefined ? {} : { groups }),
             ...(language === undefined ? {} : { language }),
             ...(scope === undefined ? {} : { scope }),
+            ...(declarations === undefined ? {} : { declarations }),
+            ...(declarationAnchor === undefined ? {} : { declarationAnchor }),
+            ...(maxDeclarationPad === undefined ? {} : { maxDeclarationPad }),
         };
     } catch (error) {
         const detail = (error as Error).message.replace(/^Invalid configuration: /, '');
@@ -271,6 +337,9 @@ export const parseConfig = (raw: unknown): SymbolAlignConfig => {
     const groups = readGroups(raw);
     const language = readLanguage(raw);
     const scope = readScope(raw);
+    const declarations = readDeclarations(raw);
+    const declarationAnchor = readDeclarationAnchor(raw);
+    const maxDeclarationPad = readMaxDeclarationPad(raw);
     const overrides = readOverrides(raw);
 
     return {
@@ -278,6 +347,9 @@ export const parseConfig = (raw: unknown): SymbolAlignConfig => {
         ...(groups === undefined ? {} : { groups }),
         ...(language === undefined ? {} : { language }),
         ...(scope === undefined ? {} : { scope }),
+        ...(declarations === undefined ? {} : { declarations }),
+        ...(declarationAnchor === undefined ? {} : { declarationAnchor }),
+        ...(maxDeclarationPad === undefined ? {} : { maxDeclarationPad }),
         ...(overrides === undefined ? {} : { overrides }),
     };
 };
@@ -298,6 +370,9 @@ export const resolveConfig =
             ...(config.groups === undefined ? {} : { groups: config.groups }),
             ...(config.language === undefined ? {} : { language: config.language }),
             ...(config.scope === undefined ? {} : { scope: config.scope }),
+            ...(config.declarations === undefined ? {} : { declarations: config.declarations }),
+            ...(config.declarationAnchor === undefined ? {} : { declarationAnchor: config.declarationAnchor }),
+            ...(config.maxDeclarationPad === undefined ? {} : { maxDeclarationPad: config.maxDeclarationPad }),
         };
 
         if (filePath === undefined) {
@@ -309,11 +384,17 @@ export const resolveConfig =
         const groups = lastDefined((override) => override.groups)(overrides) ?? base.groups;
         const language = lastDefined((override) => override.language)(overrides) ?? base.language;
         const scope = lastDefined((override) => override.scope)(overrides) ?? base.scope;
+        const declarations = lastDefined((override) => override.declarations)(overrides) ?? base.declarations;
+        const declarationAnchor = lastDefined((override) => override.declarationAnchor)(overrides) ?? base.declarationAnchor;
+        const maxDeclarationPad = lastDefined((override) => override.maxDeclarationPad)(overrides) ?? base.maxDeclarationPad;
 
         return {
             ...(symbols === undefined ? {} : { symbols }),
             ...(groups === undefined ? {} : { groups }),
             ...(language === undefined ? {} : { language }),
             ...(scope === undefined ? {} : { scope }),
+            ...(declarations === undefined ? {} : { declarations }),
+            ...(declarationAnchor === undefined ? {} : { declarationAnchor }),
+            ...(maxDeclarationPad === undefined ? {} : { maxDeclarationPad }),
         };
     };

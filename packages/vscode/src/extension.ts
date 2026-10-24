@@ -5,7 +5,7 @@
  * `language.ts` — this module only wires the editor API to that logic.
  */
 
-import type { AlignmentScope, LanguageId, LineRange } from '@sandlada/symbol-align';
+import type { AlignmentScope, DeclarationAnchor, LanguageId, LineRange } from '@sandlada/symbol-align';
 import { isLanguageId } from '@sandlada/symbol-align';
 import * as vscode from 'vscode';
 import type { FormatResponse } from './format.js';
@@ -18,10 +18,18 @@ interface SymbolAlignSettings {
     readonly enabled: boolean;
     /** The symbols to align — an empty list means "use the language defaults". */
     readonly symbols: readonly string[];
+    /** Groups of alternative tokens that share one alignment column. */
+    readonly groups: readonly (readonly string[])[];
     /** The configured language profile — `auto` detects it from the document. */
     readonly language: string;
     /** The grouping strategy. */
     readonly scope: AlignmentScope;
+    /** Whether the declaration columns are aligned. */
+    readonly declarations: boolean;
+    /** Which edge of a declaration cell is aligned. */
+    readonly declarationAnchor: DeclarationAnchor;
+    /** Largest start-column difference that still joins a declaration column. */
+    readonly maxDeclarationPad: number;
 }
 
 /** Every document of the workspace is a candidate for the alignment. */
@@ -40,6 +48,27 @@ const readScope = (value: string): AlignmentScope => {
     return 'block';
 };
 
+/**
+ * Reads the declaration anchor from the configuration.
+ *
+ * An unknown value falls back to `start`, the default of the core library.
+ */
+const readDeclarationAnchor = (value: string): DeclarationAnchor => {
+    if (value === 'end') {
+        return value;
+    }
+
+    return 'start';
+};
+
+/**
+ * Reads the maximum declaration pad from the configuration.
+ *
+ * Anything but a positive integer falls back to `12`, the default of the core
+ * library.
+ */
+const readMaxDeclarationPad = (value: number): number => (Number.isInteger(value) && value >= 1 ? value : 12);
+
 /** Reads the settings of the extension. */
 const readSettings = (): SymbolAlignSettings => {
     const configuration = vscode.workspace.getConfiguration('symbolAlign');
@@ -47,8 +76,12 @@ const readSettings = (): SymbolAlignSettings => {
     return {
         enabled: configuration.get<boolean>('enabled', true),
         symbols: configuration.get<string[]>('symbols', []),
+        groups: configuration.get<readonly (readonly string[])[]>('groups', []),
         language: configuration.get<string>('language', 'auto'),
         scope: readScope(configuration.get<string>('scope', 'block')),
+        declarations: configuration.get<boolean>('declarations', true),
+        declarationAnchor: readDeclarationAnchor(configuration.get<string>('declarationAnchor', 'start')),
+        maxDeclarationPad: readMaxDeclarationPad(configuration.get<number>('maxDeclarationPad', 12)),
     };
 };
 
@@ -82,8 +115,12 @@ const alignText = (text: string, document: vscode.TextDocument, settings: Symbol
         text,
         languageId: document.languageId,
         symbols: settings.symbols,
+        groups: settings.groups,
         language,
         scope: settings.scope,
+        declarations: settings.declarations,
+        declarationAnchor: settings.declarationAnchor,
+        maxDeclarationPad: settings.maxDeclarationPad,
         ...(range === undefined ? {} : { range }),
     });
 

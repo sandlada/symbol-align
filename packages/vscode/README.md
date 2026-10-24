@@ -28,12 +28,16 @@ recognised and the symbols inside it are left alone.
 
 ## Settings
 
-| Setting                 | Type       | Default   | Description                                                                                     |
-| ----------------------- | ---------- | --------- | ----------------------------------------------------------------------------------------------- |
-| `symbolAlign.enabled`   | `boolean`  | `true`    | Align the document when it is formatted.                                                         |
-| `symbolAlign.symbols`   | `string[]` | `[]`      | The symbols to align, e.g. `["=", ":"]`. An empty list uses the symbols of the language.          |
-| `symbolAlign.language`  | `string`   | `"auto"`  | The language profile to use. `"auto"` detects it from the language of the document.                |
-| `symbolAlign.scope`     | `string`   | `"block"` | `"block"` aligns the lines of a blank-line separated block, `"indent"` keeps every nesting level on its own column, `"file"` aligns every line of the file. |
+| Setting                         | Type         | Default   | Description                                                                                                                                                 |
+| ------------------------------- | ------------ | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `symbolAlign.enabled`           | `boolean`    | `true`    | Align the document when it is formatted.                                                                                                                    |
+| `symbolAlign.symbols`           | `string[]`   | `[]`      | The symbols to align, e.g. `["=", ":"]`. An empty list uses the symbols of the language.                                                                    |
+| `symbolAlign.language`          | `string`     | `"auto"`  | The language profile to use. `"auto"` detects it from the language of the document.                                                                         |
+| `symbolAlign.scope`             | `string`     | `"block"` | `"block"` aligns the lines of a blank-line separated block, `"indent"` keeps every nesting level on its own column, `"file"` aligns every line of the file. |
+| `symbolAlign.declarations`      | `boolean`    | `true`    | Align the declaration columns — the modifiers, the type and the name of a declaration.                                                                      |
+| `symbolAlign.declarationAnchor` | `string`     | `"start"` | `"start"` aligns the start of every declaration cell, `"end"` pads in front of the type so the type contents end on one column.                             |
+| `symbolAlign.maxDeclarationPad` | `number`     | `12`      | The largest column difference that still joins a declaration column. A type outside the window keeps its column.                                            |
+| `symbolAlign.groups`            | `string[][]` | `[]`      | Groups of alternative tokens that share one column, e.g. `[["A", "B"]]`. Members are aligned before the symbols.                                            |
 
 The `symbolAlign.enabled` setting only controls the formatter. The two commands
 always align, because they are an explicit request.
@@ -42,13 +46,15 @@ always align, because they are an explicit request.
 
 The language of the document is detected from its VS Code language id. The
 extension maps the following ids to a profile of the core library: `javascript`,
-`typescript`, `python`, `go`, `rust`, `java`, `kotlin`, `swift`, `csharp`,
-`cpp`, `c`, `objectivec`, `ruby`, `php`, `dart`, `shell`, `powershell`, `sql`,
-`yaml`, `json`, `css`, `html`, `xml`, `markdown`, `plaintext`, `elixir`,
-`haskell`, `lua`, `scala`, `perl`, `julia`, `zig`, `clojure`, `erlang`, `r`,
-`fortran`, `nim`, `crystal`, `gleam`, `odin`, `solidity`, `groovy`,
-`terraform`, `toml`, `ini`, `makefile`, `dockerfile`, `graphql`, `delphi`,
-`vue`, `svelte`, `astro`, `protobuf` and `v`.
+`javascriptreact`, `typescript`, `typescriptreact`, `python`, `go`, `rust`,
+`java`, `kotlin`, `swift`, `csharp`, `fsharp`, `f#`, `cpp`, `c`, `objectivec`,
+`objective-c`, `ruby`, `php`, `dart`, `shellscript`, `powershell`, `sql`,
+`yaml`, `toml`, `ini`, `json`, `jsonc`, `css`, `scss`, `less`, `html`, `xml`,
+`markdown`, `plaintext`, `elixir`, `haskell`, `lua`, `scala`, `perl`, `julia`,
+`zig`, `clojure`, `erlang`, `r`, `fortran`, `fortran-free-form`, `nim`,
+`crystal`, `gleam`, `odin`, `solidity`, `groovy`, `terraform`, `makefile`,
+`dockerfile`, `graphql`, `delphi`, `pascal`, `protobuf`, `proto`, `v`, `vb`,
+`vue`, `svelte` and `astro`.
 
 A document whose language is unknown — or whose profile the core library does
 not know — is left untouched.

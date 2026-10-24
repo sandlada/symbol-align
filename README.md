@@ -27,6 +27,8 @@ clean vertical columns.
   - [API](#api)
 - [How it works](#how-it-works)
 - [Options](#options)
+- [Declarations](#declarations)
+- [Custom groups](#custom-groups)
 - [Supported languages](#supported-languages)
 - [Rules](#rules)
 - [Examples](#examples)
@@ -43,10 +45,11 @@ clean vertical columns.
 
 This repository is a [pnpm](https://pnpm.io) workspace (`packages/*`).
 
-| Package                                                   | Description                          |
-| --------------------------------------------------------- | ------------------------------------ |
-| [`@sandlada/symbol-align`](packages/core)                 | Core library + CLI (published to npm) |
-| [Symbol Align](packages/vscode)                            | VS Code extension                     |
+| Package                                                   | Description                            |
+| --------------------------------------------------------- | -------------------------------------- |
+| [`@sandlada/symbol-align`](packages/core)                 | Core library + CLI (published to npm)  |
+| [Symbol Align](packages/vscode)                            | VS Code extension                      |
+| [Playground](packages/playground)                          | Vite-powered live playground           |
 
 ## Install
 
@@ -195,8 +198,9 @@ filesystem live in the `/node` entry point — see [Configuration](#configuratio
    with the same indentation and with `scope: 'file'` it is the whole input.
    Only the lines of the same group are aligned with each other, so unrelated
    parts of a file never influence one another.
-4. **Align.** Every symbol is aligned in the order of its first appearance.
-   For each symbol the lines of a block are padded until the symbol starts at
+4. **Align.** The declaration columns are aligned first, then the configured
+   token groups, and finally every symbol in the order of its first appearance.
+   For each target the lines of a block are padded until the target starts at
    the same column — only spaces are ever inserted.
 
 Because the scanner understands the language, the result is stable: running
@@ -209,9 +213,13 @@ the formatter twice never changes the snippet a second time.
 | Option     | Type                 | Default              | Description                                                     |
 | ---------- | -------------------- | -------------------- | --------------------------------------------------------------- |
 | `symbols`  | `readonly string[]`  | language defaults    | Symbols to align (e.g. `['=', ':', '=>', '//', '#']`)           |
+| `groups`   | `readonly string[][]` | `[]`                | Groups of alternative tokens that share one alignment column    |
 | `language` | `LanguageId`         | `'generic'`          | Language profile that drives string and comment handling        |
 | `scope`    | `'block' \| 'indent' \| 'file'` | `'block'`  | Which lines are aligned with each other                         |
 | `range`    | `LineRange`          | the whole input      | The lines that are aligned                                      |
+| `declarations` | `boolean`         | `true` when the profile has a declaration style | Whether the declaration columns are aligned |
+| `declarationAnchor` | `'start' \| 'end'` | `'start'`     | Which edge of a declaration cell is aligned                     |
+| `maxDeclarationPad` | `number`       | `12`                 | Largest start-column difference that still joins a declaration column |
 
 Three grouping strategies are available:
 
@@ -233,12 +241,174 @@ recognised — that is what an editor needs when the user selects a few lines.
 | `code`    | `string` | The aligned code                   |
 | `changes` | `number` | Number of distinct lines modified  |
 
+## Declarations
+
+Typed languages have a declaration column of their own. When the language
+profile knows how a declaration is laid out, `symbol-align` splits a line into
+three cells and pads the gaps between them:
+
+```text
+private const string Product = "value";
+└ modifiers ┘ └type─┘ └name─┘
+```
+
+| Cell        | Contents                                                                     |
+| ----------- | ---------------------------------------------------------------------------- |
+| `modifiers` | `private`, `const`, `static`, `readonly`, `public`, …                         |
+| `type`      | `string`, `int`, `MyApp.Order`, `Map<String, List<Integer>>`, `(int, string)` |
+| `name`      | The declared identifier                                                      |
+
+Only the *first code region* of a line is inspected, so a keyword or a symbol
+inside a string or a comment never starts a declaration. The pass only adds
+spaces between the cells — the indentation of a line never changes.
+
+Lines are aligned with lines of the same indentation and the same cell shape.
+A `private const string` declaration is therefore never lined up with a
+two-cell `int x;` declaration.
+
+### Declaration anchors
+
+`declarationAnchor` decides which edge of a cell is aligned:
+
+`start` (default) makes the content of every cell start on the same column:
+
+```cs
+private const string Product     = "value";
+private const int    DefaultPort = 8080;
+```
+
+`end` pads the gap in front of the type cell, so the type contents end on the
+same column:
+
+```cs
+private const string Product     = "value";
+private const    int DefaultPort = 8080;
+```
+
+The first cell of a line is never padded — that would change the indentation —
+so a two-cell declaration has nothing to align with `end`.
+
+### `maxDeclarationPad`
+
+A single long type must not drag every name of a block with it. The default
+`maxDeclarationPad` is `12`: only start columns within a window of 12
+characters join one declaration column, and the window that covers the most
+lines wins. The outlier keeps its column:
+
+```java
+public static int  shortName;
+public static long mediumName;
+public static Map<String, List<Integer>> outlierName;
+```
+
+A larger `maxDeclarationPad` pulls the outlier into the same column:
+
+```java
+public static int                        shortName;
+public static long                       mediumName;
+public static Map<String, List<Integer>> outlierName;
+```
+
+In the API a value below `1` (or a non-finite value) means unlimited. The CLI
+and the VS Code setting require a positive integer.
+
+### No type dictionary
+
+The locator does not know the types of your project. It tokenises the first
+code region and treats the span between the modifiers and the name as one
+*type* cell, balancing brackets while it goes. That is why custom types,
+generics, arrays, nullable markers and tuples work without configuration:
+
+| Declaration                                          | Type cell                          |
+| ---------------------------------------------------- | ---------------------------------- |
+| `Product item;`                                      | `Product`                          |
+| `Dictionary<string, int> map;`                       | `Dictionary<string, int>`          |
+| `Product[] items;`                                   | `Product[]`                        |
+| `int? maybe;`                                        | `int?`                             |
+| `(int, string) pair;`                                | `(int, string)`                    |
+| `std::vector<std::pair<int, int>> values;`           | `std::vector<std::pair<int, int>>` |
+
+A `*`, `&`, `^` or `?` that touches the name belongs to the *name* cell
+(`char *name` declares a pointer, while `a * b` is a multiplication).
+
+A line with two possible readings — a member access (`foo.bar = 1;`), a
+statement (`x = 1;`) or a construct without a type — is not a declaration and
+is left untouched. Under-aligning is always preferred over moving the wrong
+cell.
+
+### Language classification
+
+Every language profile declares one of three styles:
+
+| Style        | Languages                                                                   | Why                                                        |
+| ------------ | --------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `prefix`     | C#, C++, C, Java, Objective-C, PHP, Dart, Groovy                            | modifiers, then type, then name                            |
+| `type-first` | Solidity                                                                    | the type comes first, visibility follows it                |
+| `none`       | every other profile, including Go, Rust, Kotlin, Swift, Scala, F#, TypeScript | no fixed modifier/type/name prefix, or no type at all      |
+
+`none` is not an omission. Name-first languages have no fixed prefix column,
+data and markup languages (JSON, YAML, CSS, SQL) have no type segment, and
+formatters such as gofmt or Prettier already own declaration spacing. Turning
+declarations on there would guess, so the profile keeps the legacy output.
+
+`declarations` defaults to `true` for a profile that has a style and is a no-op
+for `none`. Set `declarations: false` to get exactly the output of the
+previous versions.
+
+## Custom groups
+
+A custom group lines up alternative tokens in one column. Give the group its
+members and the first occurrence of any member on a line is padded to the
+group column:
+
+```ts
+// before
+let status = MY_STATE1;
+let longName = MY_STATE2;
+```
+
+```ts
+// after — symbols: [], groups: [['MY_STATE1', 'MY_STATE2']]
+let status =   MY_STATE1;
+let longName = MY_STATE2;
+```
+
+The group is useful for enum-like constants, alternative keywords or any set of
+tokens that should share a column. The interaction rules are:
+
+- Every alignment pass runs the declaration columns first, then the groups in
+  the order they are given, then the symbols; the whole sequence repeats to a
+  fixpoint.
+- A token that appears in a group is removed from the symbol list, so the two
+  passes never pad the same target twice.
+- Duplicate and empty members are ignored. The first occurrence of a member on
+  a line defines the column; later occurrences move with the line but never
+  set the target.
+- The word boundary and operator rules apply to every member: `MY_STATE1` never
+  matches `MY_STATE10`, and `->` never matches `->>`.
+- A declaration line whose modifier, type or name cell contains a group member
+  is left out of the declaration alignment, so the group owns that column. A
+  member in the initializer, after the name, does not exclude the line.
+- Groups run within the configured `scope` (`block`, `indent` or `file`) just
+  like symbols.
+- A group that alternates its order with another group can conflict with it;
+  conflicting groups leave the input unchanged instead of returning a partial
+  result.
+
+In the API the option is `groups`; in the configuration file it is the
+`groups` key. The CLI takes one group per `--group` / `-g` occurrence, with the
+members separated by commas:
+
+```bash
+symbol-align --file input.ts --group MY_STATE1,MY_STATE2 --group OTHER1,OTHER2
+```
+
 ## Supported languages
 
 The alignment itself is language agnostic — any punctuation symbol can be
 aligned. What the language profile adds is the *lexical* knowledge: which
 sequences start a string, which start a comment, and which operators must not
-be split apart.
+be split apart. There are 57 built-in profiles:
 
 | Language | Id | Default symbol | Notable handling |
 | -------- | -- | -------------- | ---------------- |
@@ -252,6 +422,7 @@ be split apart.
 | Kotlin | `kotlin` | `=` | `//`, `/*` `*/`, 2 string forms |
 | Swift | `swift` | `=` | `//`, `/*` `*/`, 2 string forms |
 | C# | `csharp` | `=` | `//`, `/*` `*/`, 4 string forms |
+| F# | `fsharp` | `=`, `->`, `:` | `//`, nested `(*` `*)`, 9 string forms, `'T` guard |
 | C++ | `cpp` | `=` | `//`, `/*` `*/`, 2 string forms |
 | C | `c` | `=` | `//`, `/*` `*/`, 2 string forms |
 | Ruby | `ruby` | `=` | `#`, 2 string forms |
@@ -313,6 +484,10 @@ the piped file.
   `==`) is never aligned
 - Lines that do not contain the symbol are left unchanged
 - Multi-symbol alignment processes symbols in **order of first appearance**
+- Declaration alignment only pads the gaps between the cells and never changes
+  the indentation of a line
+- A custom group aligns the first occurrence of any member and obeys the same
+  word boundary and operator fragment rules as a symbol
 - Only **adds** spaces — never removes existing spacing
 
 ## Examples
@@ -431,6 +606,10 @@ Options:
   -t, --stdin-filepath <p>  Path of the piped file (used for language detection)
   -c, --config <path>       Configuration file (default: nearest symbol-align.config.json)
       --scope <block|indent|file>  Grouping strategy (default: block)
+      --declarations        Align the declaration columns of the language (default: on)
+      --no-declarations     Do not align the declaration columns
+      --declaration-anchor <start|end>  Which edge of a declaration cell is aligned (default: start)
+      --max-declaration-pad <n>  Largest column difference that joins a declaration column (default: 12)
       --check               Exit 1 when the input is not already aligned
   -v, --version             Print the version
   -h, --help                Show this help
@@ -446,6 +625,7 @@ Examples:
   echo "a = 1\nbb = 2" | symbol-align
   cat file.ts | symbol-align --symbols =,:
   symbol-align --file input.ts --group MY_STATE1,MY_STATE2
+  symbol-align --file input.ts --declarations --declaration-anchor start --max-declaration-pad 12
   symbol-align --file input.ts
   symbol-align -f input.ts -o output.ts
   symbol-align -f input.ts --write
@@ -488,6 +668,10 @@ specific one.
 {
     "$schema": "https://raw.githubusercontent.com/sandlada/symbol-align/main/packages/core/schemas/symbol-align.config.schema.json",
     "symbols": ["=", ":"],
+    "groups": [["MY_STATE1", "MY_STATE2"]],
+    "declarations": true,
+    "declarationAnchor": "start",
+    "maxDeclarationPad": 12,
     "scope": "block",
     "overrides": {
         "*.py": { "symbols": ["="] },
@@ -499,9 +683,13 @@ specific one.
 | Key         | Type                      | Description                                                     |
 | ----------- | ------------------------- | --------------------------------------------------------------- |
 | `symbols`   | `string[]`                | Symbols to align (an empty list aligns nothing)                 |
+| `groups`    | `string[][]`              | Groups of alternative tokens that share one alignment column    |
 | `language`  | `LanguageId`              | Language profile to use                                         |
 | `scope`     | `'block'|'indent'|'file'` | Grouping strategy                                               |
-| `overrides` | `object`                  | Per file pattern overrides of `symbols`, `language` and `scope` |
+| `declarations` | `boolean`              | Whether the declaration columns are aligned                     |
+| `declarationAnchor` | `'start'|'end'`  | Which edge of a declaration cell is aligned                     |
+| `maxDeclarationPad` | `number`         | Largest column difference that joins a declaration column       |
+| `overrides` | `object`                  | Per file pattern overrides of `symbols`, `groups`, `language`, `scope`, `declarations`, `declarationAnchor` and `maxDeclarationPad` |
 
 The patterns are matched against the file name and against the full path. `*`
 does not cross a directory separator, `**` does, and a leading `**` also
@@ -645,6 +833,7 @@ pnpm clean          # remove build output
 
 pnpm --filter @sandlada/symbol-align build   # build a single package
 pnpm --filter @sandlada/symbol-align dev     # run the CLI from source (tsx)
+pnpm dev:playground                          # run the Vite playground (localhost:5173)
 ```
 
 Shared dependency versions are declared in the `catalog` section of

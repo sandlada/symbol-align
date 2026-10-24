@@ -13,6 +13,17 @@
                 "minLength": 1
             }
         },
+        "groups": {
+            "type": "array",
+            "description": "Groups of alternative tokens that share one alignment column.",
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            }
+        },
         "language": {
             "type": "string",
             "description": "Language profile that drives string and comment handling.",
@@ -81,9 +92,23 @@
             "description": "How the lines are grouped before they are aligned.",
             "enum": ["block", "indent", "file"]
         },
+        "declarations": {
+            "type": "boolean",
+            "description": "Whether the declaration columns of the language profile are aligned."
+        },
+        "declarationAnchor": {
+            "type": "string",
+            "description": "Which edge of a declaration cell is aligned: the cells start or their content ends.",
+            "enum": ["start", "end"]
+        },
+        "maxDeclarationPad": {
+            "type": "integer",
+            "description": "Largest start-column difference that still joins a declaration column. Defaults to 12.",
+            "minimum": 1
+        },
         "overrides": {
             "type": "object",
-            "description": "Per file pattern overrides of symbols, language and scope.",
+            "description": "Per file pattern overrides of symbols, groups, language, scope and declaration options.",
             "propertyNames": {
                 "minLength": 1
             },
@@ -170,6 +195,27 @@
                 "scope": {
                     "type": "string",
                     "enum": ["block", "indent", "file"]
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minLength": 1
+                        }
+                    }
+                },
+                "declarations": {
+                    "type": "boolean"
+                },
+                "declarationAnchor": {
+                    "type": "string",
+                    "enum": ["start", "end"]
+                },
+                "maxDeclarationPad": {
+                    "type": "integer",
+                    "minimum": 1
                 }
             },
             "additionalProperties": true

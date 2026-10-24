@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="color-scheme" content="light dark" />
+
+        <title>Symbol Align Playground — Live code alignment for 57 languages</title>
+        <meta
+            name="description"
+            content="A free in-browser playground for @sandlada/symbol-align. Align =, :, => and comments into clean columns across 57 language profiles. Live output, no uploads."
+        />
+        <meta
+            name="keywords"
+            content="symbol align, code alignment, align equals signs, align colons, align arrows, code formatter, C# alignment, TypeScript alignment, Python alignment, snippet alignment, developer tool"
+        />
+        <meta name="author" content="sandlada" />
+        <meta name="application-name" content="Symbol Align Playground" />
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f5f3" />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#101214" />
+
+        <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+        <link rel="manifest" href="./manifest.webmanifest" />
+        <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
+
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Symbol Align Playground" />
+        <meta property="og:locale" content="en_US" />
+        <meta property="og:title" content="Symbol Align Playground — Make the code line up" />
+        <meta
+            property="og:description"
+            content="Paste a snippet, pick a language and watch =, :, => and comments settle into columns. Runs the real symbol-align core in your browser. No uploads."
+        />
+        <meta property="og:image" content="./og.png" />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Symbol Align Playground: a code snippet before and after its equals signs are aligned into a column." />
+
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Symbol Align Playground — Make the code line up" />
+        <meta
+            name="twitter:description"
+            content="A live, in-browser playground for @sandlada/symbol-align. Align symbols into clean columns across 57 language profiles."
+        />
+        <meta name="twitter:image" content="./og.png" />
+
+        <script type="application/ld+json">
+            {
+                "@context": "https://schema.org",
+                "@type": "WebApplication",
+                "name": "Symbol Align Playground",
+                "description": "A free in-browser playground for @sandlada/symbol-align. It aligns punctuation symbols such as =, :, => and -> into clean vertical columns across 57 language profiles.",
+                "applicationCategory": "DeveloperApplication",
+                "operatingSystem": "Any",
+                "browserRequirements": "Requires JavaScript and a modern web browser.",
+                "isAccessibleForFree": true,
+                "offers": {
+                    "@type": "Offer",
+                    "price": "0",
+                    "priceCurrency": "USD"
+                },
+                "featureList": [
+                    "Live alignment while typing",
+                    "57 language profiles",
+                    "Toggle and add alignment symbols",
+                    "Declaration column alignment",
+                    "Custom token groups",
+                    "Block, indent and file alignment scopes",
+                    "Copy-ready aligned output"
+                ],
+                "author": {
+                    "@type": "Organization",
+                    "name": "sandlada"
+                }
+            }
+        </script>
+
+        <script type="application/ld+json">
+            {
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                "mainEntity": [
+                    {
+                        "@type": "Question",
+                        "name": "Does my code leave the browser?",
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": "No. Alignment runs locally in this tab. There is no server, no upload and no tracking script."
+                        }
+                    },
+                    {
+                        "@type": "Question",
+                        "name": "Is this a code formatter?",
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": "No. It only inserts spaces in front of the symbols you select. It never removes characters, reorders code, changes quotes or touches string content. Use it to align equals signs, colons, arrows or trailing comments without reformatting the rest of the snippet."
+                        }
+                    },
+                    {
+                        "@type": "Question",
+                        "name": "Why is my snippet unchanged?",
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": "The selected symbols may not occur in the same blank-line block or indentation level. Try the File scope, select another symbol such as :, or check whether the snippet is already aligned. If no symbols are selected, the output is identical to the source by design."
+                        }
+                    },
+                    {
+                        "@type": "Question",
+                        "name": "Can I align comments and arrows?",
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": "Yes. Toggle //, #, =>, -> or add any punctuation token with the custom symbol field. Word symbols such as readonly are supported too."
+                        }
+                    },
+                    {
+                        "@type": "Question",
+                        "name": "What are declaration columns and custom groups?",
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": "Typed declarations can line their modifiers, types and names into a grid; the Anchor control chooses whether the type starts or ends on one column. Custom groups align alternative tokens such as MY_STATE1 and MY_STATE2 into a single column: semicolons separate groups and commas separate members."
+                        }
+                    },
+                    {
+                        "@type": "Question",
+                        "name": "Which languages are supported?",
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": "57 profiles, from C#, TypeScript and Python to SQL, YAML, Terraform and Makefile. The selector in the toolbar is generated from the same profile table as the library, so every profile the core supports is available here."
+                        }
+                    }
+                ]
+            }
+        </script>
+
+        <script type="module" src="/src/main.ts"></script>
+    </head>
+
+    <body id="top">
+        <a class="skip-link" href="#playground">Skip to the playground</a>
+
+        <header class="site-header">
+            <div class="shell header-inner">
+                <a class="brand" href="#top" aria-label="Symbol Align Playground, back to top">
+                    <svg class="brand-mark" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
+                        <rect x="1" y="1" width="26" height="26" rx="3" />
+                        <path d="M7 9h14M7 14h8M7 19h11" />
+                        <path class="brand-caret" d="M19 12v4" />
+                    </svg>
+                    <span class="brand-name">Symbol Align</span>
+                    <span class="brand-separator" aria-hidden="true">/</span>
+                    <span class="brand-page">Playground</span>
+                </a>
+
+                <nav class="site-nav" aria-label="Page sections">
+                    <a href="#how-it-works">How it works</a>
+                    <a href="#languages">Languages</a>
+                    <a href="#faq">FAQ</a>
+                </nav>
+
+                <p class="header-note">Runs locally · no uploads</p>
+            </div>
+        </header>
+
+        <main id="main">
+            <section class="hero shell" aria-labelledby="hero-title">
+                <div class="hero-heading">
+                    <p class="package-label">@sandlada/symbol-align</p>
+                    <h1 id="hero-title">Make the code<br />line up.</h1>
+                </div>
+                <div class="hero-copy">
+                    <p class="hero-lede">
+                        Line up <code>=</code>, <code>:</code>, <code>=&gt;</code> and other punctuation into clean columns. This playground runs the real alignment core in your browser — paste a snippet and every keystroke
+                        updates the result.
+                    </p>
+                    <p class="hero-note">Only spaces are ever inserted. Strings, comments and the meaning of your code stay untouched.</p>
+                </div>
+            </section>
+
+            <noscript>
+                <p class="noscript">The live playground needs JavaScript. You can still read what the tool does and which languages it supports below.</p>
+            </noscript>
+
+            <section class="playground shell" id="playground" tabindex="-1" aria-labelledby="playground-title">
+                <h2 class="visually-hidden" id="playground-title">Symbol alignment playground</h2>
+
+                <div class="commandbar">
+                    <div class="commandbar-primary">
+                        <div class="field">
+                            <label class="field-label" for="language">Language</label>
+                            <div class="select-wrap">
+                                <select id="language" name="language" autocomplete="off"></select>
+                            </div>
+                        </div>
+
+                        <fieldset class="field field-scope">
+                            <legend class="field-label">Scope</legend>
+                            <div class="segmented">
+                                <input type="radio" name="scope" id="scope-block" value="block" checked />
+                                <label for="scope-block" title="Align the lines of each blank-line separated block">Block</label>
+
+                                <input type="radio" name="scope" id="scope-indent" value="indent" />
+                                <label for="scope-indent" title="Keep every indentation level on its own column">Indent</label>
+
+                                <input type="radio" name="scope" id="scope-file" value="file" />
+                                <label for="scope-file" title="Align every line of the snippet as one group">File</label>
+                            </div>
+                        </fieldset>
+
+                        <div class="field field-actions">
+                            <span class="field-label" aria-hidden="true">Actions</span>
+                            <div class="button-row">
+                                <button type="button" class="button" id="load-example">
+                                    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                                        <path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9" />
+                                        <path d="M2.5 2.5v3.2h3.2" />
+                                    </svg>
+                                    <span>Load example</span>
+                                </button>
+                                <button type="button" class="button button-primary" id="copy-output">
+                                    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                                        <rect x="5.5" y="5.5" width="8" height="8" rx="1" />
+                                        <path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" />
+                                    </svg>
+                                    <span>Copy output</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="commandbar-declarations">
+                        <fieldset class="field">
+                            <legend class="field-label">Declarations</legend>
+                            <div class="segmented">
+                                <input type="radio" name="declarations" id="declarations-on" value="true" checked />
+                                <label for="declarations-on" title="Align the modifier, type and name columns of declarations">On</label>
+
+                                <input type="radio" name="declarations" id="declarations-off" value="false" />
+                                <label for="declarations-off" title="Only align the selected symbols">Off</label>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="field">
+                            <legend class="field-label">Anchor</legend>
+                            <div class="segmented">
+                                <input type="radio" name="declaration-anchor" id="anchor-start" value="start" checked />
+                                <label for="anchor-start" title="Every declaration cell starts at the same column">Start</label>
+
+                                <input type="radio" name="declaration-anchor" id="anchor-end" value="end" />
+                                <label for="anchor-end" title="Cell content ends at the same column">End</label>
+                            </div>
+                        </fieldset>
+
+                        <div class="field field-max-pad">
+                            <label class="field-label" for="max-declaration-pad">Max pad</label>
+                            <input type="number" id="max-declaration-pad" name="max-declaration-pad" min="1" max="999" step="1" value="12" inputmode="numeric" />
+                        </div>
+
+                        <div class="field field-groups">
+                            <label class="field-label" for="groups">Groups</label>
+                            <input
+                                type="text"
+                                id="groups"
+                                name="groups"
+                                autocomplete="off"
+                                spellcheck="false"
+                                maxlength="512"
+                                placeholder="MY_STATE1,MY_STATE2;OTHER1,OTHER2"
+                                aria-describedby="groups-help"
+                            />
+                            <p id="groups-help" class="visually-hidden">Semicolons separate groups, commas separate members. Members use one to sixty-four characters without spaces.</p>
+                            <p id="groups-error" class="field-error" role="alert" hidden>Use 1–64 characters without spaces; separate groups with “;” and members with “,”.</p>
+                        </div>
+                    </div>
+
+                    <div class="commandbar-symbols">
+                        <div class="symbol-label">
+                            <span class="field-label" id="symbols-label">Symbols</span>
+                            <p class="field-hint">Toggle any symbol, or add your own.</p>
+                        </div>
+
+                        <fieldset class="symbol-strip" id="symbols" aria-labelledby="symbols-label"></fieldset>
+
+                        <form class="custom-symbol" id="custom-symbol-form" novalidate>
+                            <label class="visually-hidden" for="custom-symbol">Add a custom symbol</label>
+                            <input id="custom-symbol" name="custom-symbol" type="text" inputmode="text" autocomplete="off" spellcheck="false" maxlength="8" placeholder="Add symbol" aria-describedby="custom-symbol-help" />
+                            <button type="submit" class="button button-quiet">Add</button>
+                        </form>
+                        <p id="custom-symbol-help" class="visually-hidden">Use one to eight non-whitespace characters, for example =&gt; or //.</p>
+                        <p id="custom-symbol-error" class="field-error" role="alert" hidden>Use 1–8 characters without spaces.</p>
+                    </div>
+                </div>
+
+                <div class="workspace" id="workspace">
+                    <section class="pane" aria-labelledby="source-title">
+                        <header class="pane-bar">
+                            <div class="pane-heading">
+                                <h3 id="source-title">Source</h3>
+                                <span class="pane-tag" id="source-tag">C#</span>
+                            </div>
+                            <p class="pane-meta" id="source-meta"></p>
+                        </header>
+                        <div class="editor">
+                            <div class="gutter" aria-hidden="true"><div class="gutter-inner" id="source-gutter"></div></div>
+                            <textarea
+                                id="source"
+                                name="source"
+                                wrap="off"
+                                spellcheck="false"
+                                autocapitalize="off"
+                                autocomplete="off"
+                                aria-labelledby="source-title"
+                                placeholder="Paste a code snippet here…"
+                            ></textarea>
+                        </div>
+                    </section>
+
+                    <hr
+                        class="splitter"
+                        id="splitter"
+                        aria-orientation="vertical"
+                        aria-label="Resize the source and output panes"
+                        aria-valuemin="25"
+                        aria-valuemax="75"
+                        aria-valuenow="50"
+                        tabindex="0"
+                    />
+
+                    <section class="pane" aria-labelledby="output-title">
+                        <header class="pane-bar">
+                            <div class="pane-heading">
+                                <h3 id="output-title">Aligned</h3>
+                                <span class="pane-tag pane-tag-accent" id="change-tag">Live</span>
+                            </div>
+                            <p class="pane-legend"><span class="pad-swatch" aria-hidden="true"></span> inserted spaces</p>
+                        </header>
+                        <section class="editor editor-output" id="output-editor" aria-labelledby="output-title">
+                            <div class="gutter" aria-hidden="true"><div class="gutter-inner" id="output-gutter"></div></div>
+                            <pre id="output" tabindex="-1"></pre>
+                        </section>
+                    </section>
+                </div>
+
+                <div class="statusbar" id="statusbar">
+                    <p class="status-primary"><span class="status-dot" id="status-dot" data-state="ready" aria-hidden="true"></span><span id="status-message">Ready</span></p>
+                    <p class="status-metrics" id="status-metrics"></p>
+                    <p class="status-context" id="status-context"></p>
+                </div>
+                <p class="visually-hidden" id="live-region" aria-live="polite"></p>
+            </section>
+
+            <section class="content-section shell" id="how-it-works" aria-labelledby="how-title">
+                <div class="section-head">
+                    <h2 id="how-title">One job. Done precisely.</h2>
+                    <p>
+                        This is not a code formatter. It does not reorder, rewrap or rename anything. It reads the snippet, finds the symbols you choose, and inserts spaces until those symbols share a column — then it stops.
+                    </p>
+                </div>
+
+                <div class="principle-grid">
+                    <article class="principle">
+                        <h3>Code, not strings</h3>
+                        <p>A single-pass lexical scanner tracks string literals and comments across lines. An <code>=</code> inside a string, a comment or an interpolated hole never becomes a target.</p>
+                    </article>
+                    <article class="principle">
+                        <h3>Whole operators stay whole</h3>
+                        <p>A symbol that is only a fragment of a longer operator is rejected. Aligning <code>=</code> never splits <code>=&gt;</code>, <code>==</code> or <code>:=</code> apart.</p>
+                    </article>
+                    <article class="principle">
+                        <h3>Stable by construction</h3>
+                        <p>Passes repeat to a fixpoint. If a conflicting symbol order would keep moving, the aligner under-aligns rather than mutating the snippet or diverging on the next run.</p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="content-section shell" id="languages" aria-labelledby="languages-title">
+                <div class="section-head">
+                    <h2 id="languages-title">57 language profiles. One grammar of whitespace.</h2>
+                    <p>
+                        Every profile knows its own comment markers, string delimiters and operator table. The same core powers the CLI and the VS Code extension; this page imports the source directly, so it doubles as a live test
+                        bench.
+                    </p>
+                </div>
+
+                <ul class="language-index" aria-label="Supported languages">
+                    <li>C#</li>
+                    <li>F#</li>
+                    <li>TypeScript</li>
+                    <li>JavaScript</li>
+                    <li>Python</li>
+                    <li>Go</li>
+                    <li>Rust</li>
+                    <li>Java</li>
+                    <li>Kotlin</li>
+                    <li>Swift</li>
+                    <li>C++</li>
+                    <li>C</li>
+                    <li>Objective-C</li>
+                    <li>Ruby</li>
+                    <li>PHP</li>
+                    <li>Dart</li>
+                    <li>Elixir</li>
+                    <li>Erlang</li>
+                    <li>Haskell</li>
+                    <li>Clojure</li>
+                    <li>Lua</li>
+                    <li>Scala</li>
+                    <li>Perl</li>
+                    <li>Julia</li>
+                    <li>Zig</li>
+                    <li>Nim</li>
+                    <li>Crystal</li>
+                    <li>Gleam</li>
+                    <li>Odin</li>
+                    <li>Solidity</li>
+                    <li>Groovy</li>
+                    <li>PowerShell</li>
+                    <li>Shell</li>
+                    <li>SQL</li>
+                    <li>YAML</li>
+                    <li>TOML</li>
+                    <li>INI</li>
+                    <li>JSON</li>
+                    <li>CSS</li>
+                    <li>HTML</li>
+                    <li>XML</li>
+                    <li>Markdown</li>
+                    <li>Plain Text</li>
+                    <li>Terraform</li>
+                    <li>Protocol Buffers</li>
+                    <li>GraphQL</li>
+                    <li>Makefile</li>
+                    <li>Dockerfile</li>
+                    <li>V</li>
+                    <li>Visual Basic</li>
+                    <li>Delphi</li>
+                    <li>Fortran</li>
+                    <li>R</li>
+                    <li>Vue</li>
+                    <li>Svelte</li>
+                    <li>Astro</li>
+                    <li>Generic</li>
+                </ul>
+            </section>
+
+            <section class="content-section shell" id="faq" aria-labelledby="faq-title">
+                <div class="section-head">
+                    <h2 id="faq-title">Questions, answered.</h2>
+                    <p>Short answers about privacy, scope and what the aligner will — and will not — change.</p>
+                </div>
+
+                <div class="faq-list">
+                    <details>
+                        <summary>Does my code leave the browser?</summary>
+                        <p>No. Alignment runs locally in this tab. There is no server, no upload and no tracking script.</p>
+                    </details>
+                    <details>
+                        <summary>Is this a code formatter?</summary>
+                        <p>
+                            No. It only inserts spaces in front of the symbols you select. It never removes characters, reorders code, changes quotes or touches string content. Use it to align equals signs, colons, arrows or trailing
+                            comments without reformatting the rest of the snippet.
+                        </p>
+                    </details>
+                    <details>
+                        <summary>Why is my snippet unchanged?</summary>
+                        <p>
+                            The selected symbols may not occur in the same blank-line block or indentation level. Try the File scope, select another symbol such as <code>:</code>, or check whether the snippet is already aligned. If no
+                            symbols are selected, the output is identical to the source by design.
+                        </p>
+                    </details>
+                    <details>
+                        <summary>Can I align comments and arrows?</summary>
+                        <p>Yes. Toggle <code>//</code>, <code>#</code>, <code>=&gt;</code>, <code>-&gt;</code> or add any punctuation token with the custom symbol field. Word symbols such as <code>readonly</code> are supported too.</p>
+                    </details>
+                    <details>
+                        <summary>What are declaration columns and custom groups?</summary>
+                        <p>
+                            Typed declarations can line their modifiers, types and names into a grid: set Declarations to Off to compare that with plain symbol alignment, and use Anchor to align the start or the end of the type cell. Custom groups
+                            align alternative tokens such as <code>MY_STATE1</code> and <code>MY_STATE2</code> into one column; semicolons separate groups and commas separate members.
+                        </p>
+                    </details>
+                    <details>
+                        <summary>Which languages are supported?</summary>
+                        <p>
+                            57 profiles, from C#, TypeScript and Python to SQL, YAML, Terraform and Makefile. The selector in the toolbar is generated from the same profile table as the library, so every profile the core supports is
+                            available here.
+                        </p>
+                    </details>
+                </div>
+            </section>
+        </main>
+
+        <footer class="site-footer shell">
+            <p>Symbol Align Playground. MIT licensed. Built on @sandlada/symbol-align.</p>
+            <p>No tracking. No uploads. No runtime dependencies beyond the core.</p>
+        </footer>
+    </body>
+</html>

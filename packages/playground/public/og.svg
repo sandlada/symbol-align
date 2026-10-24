@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-labelledby="title description">
+    <title id="title">Symbol Align Playground</title>
+    <desc id="description">Make the code line up. A live browser playground for aligning equals signs, colons and arrows.</desc>
+
+    <defs>
+        <linearGradient id="wash" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#f6f5f3" />
+            <stop offset="0.62" stop-color="#f6f5f3" />
+            <stop offset="1" stop-color="#e9f2fb" />
+        </linearGradient>
+        <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+            <path d="M48 0H0V48" fill="none" stroke="#171614" stroke-opacity="0.055" stroke-width="1" />
+        </pattern>
+    </defs>
+
+    <rect width="1200" height="630" fill="url(#wash)" />
+    <rect width="1200" height="630" fill="url(#grid)" />
+    <rect y="0" width="1200" height="8" fill="#0f6cbd" />
+
+    <g transform="translate(72 58)">
+        <rect width="40" height="40" rx="7" fill="#0f6cbd" />
+        <path d="M10 12h20M10 20h11M10 28h15" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+        <path d="M27.5 17.5v5" fill="none" stroke="#9fd7ff" stroke-width="2.5" stroke-linecap="round" />
+
+        <text x="56" y="19" fill="#171614" font-family="Bahnschrift, 'Segoe UI Variable Display', 'Segoe UI', sans-serif" font-size="21" font-weight="600">Symbol Align</text>
+        <text x="56" y="35" fill="#5c5a57" font-family="'Cascadia Code', Consolas, monospace" font-size="12">playground</text>
+    </g>
+
+    <text x="72" y="212" fill="#171614" font-family="'Segoe UI Variable Display', 'Segoe UI', sans-serif" font-size="82" font-weight="600" letter-spacing="-3.4">Make the code</text>
+    <text x="72" y="292" fill="#171614" font-family="'Segoe UI Variable Display', 'Segoe UI', sans-serif" font-size="82" font-weight="600" letter-spacing="-3.4">line up.</text>
+
+    <text x="72" y="346" fill="#5c5a57" font-family="'Segoe UI Variable Text', 'Segoe UI', sans-serif" font-size="21">
+        Align =, :, =&gt; and comments into clean columns.
+    </text>
+    <text x="72" y="376" fill="#5c5a57" font-family="'Segoe UI Variable Text', 'Segoe UI', sans-serif" font-size="21">
+        Runs the real core in your browser. No uploads.
+    </text>
+
+    <g transform="translate(642 156)">
+        <rect width="486" height="402" fill="#ffffff" stroke="#dedbd7" />
+        <rect width="486" height="42" fill="#faf9f8" />
+        <rect y="42" width="486" height="1" fill="#dedbd7" />
+        <circle cx="20" cy="21" r="4" fill="#c8c4bf" />
+        <circle cx="34" cy="21" r="4" fill="#c8c4bf" />
+        <text x="52" y="26" fill="#5c5a57" font-family="'Cascadia Code', Consolas, monospace" font-size="12">Program.cs</text>
+        <text x="448" y="26" fill="#0f6cbd" font-family="'Cascadia Code', Consolas, monospace" font-size="12">aligned</text>
+
+        <text x="28" y="88" fill="#8a8784" font-family="'Cascadia Code', Consolas, monospace" font-size="14">BEFORE</text>
+        <g fill="#171614" font-family="'Cascadia Code', Consolas, monospace" font-size="19">
+            <text x="28" y="122">const string name = "ada";</text>
+            <text x="28" y="150">const string greetingText = "hello";</text>
+            <text x="28" y="178">const int port = 5173;</text>
+        </g>
+
+        <rect x="28" y="204" width="430" height="1" fill="#dedbd7" />
+
+        <text x="28" y="240" fill="#0f6cbd" font-family="'Cascadia Code', Consolas, monospace" font-size="14">AFTER</text>
+        <line x1="353" y1="258" x2="353" y2="338" stroke="#0f6cbd" stroke-width="1" stroke-dasharray="3 4" opacity="0.55" />
+        <g fill="#171614" font-family="'Cascadia Code', Consolas, monospace" font-size="19">
+            <text x="28" y="274">const string name</text>
+            <text x="347" y="274">= "ada";</text>
+            <text x="28" y="302">const string greetingText</text>
+            <text x="347" y="302">= "hello";</text>
+            <text x="28" y="330">const int port</text>
+            <text x="347" y="330">= 5173;</text>
+        </g>
+
+        <rect x="28" y="358" width="430" height="1" fill="#dedbd7" />
+        <text x="28" y="382" fill="#8a8784" font-family="'Cascadia Code', Consolas, monospace" font-size="12">only spaces are inserted</text>
+        <path d="M394 370h64" stroke="#0f6cbd" stroke-width="1.5" />
+    </g>
+
+    <g transform="translate(72 492)" font-family="'Segoe UI Variable Text', 'Segoe UI', sans-serif" font-size="16" fill="#5c5a57">
+        <text y="0">57 language profiles</text>
+        <circle cx="190" cy="-5" r="2" fill="#c8c4bf" />
+        <text x="208" y="0">Block, indent and file scopes</text>
+        <circle cx="434" cy="-5" r="2" fill="#c8c4bf" />
+        <text x="452" y="0">Copy-ready output</text>
+    </g>
+
+    <text x="72" y="586" fill="#8a8784" font-family="'Cascadia Code', Consolas, monospace" font-size="13">@sandlada/symbol-align</text>
+</svg>

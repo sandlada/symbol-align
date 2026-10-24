@@ -11,6 +11,7 @@ catalog:
   esbuild: ^0.28.2
   tsx: ^4.23.15
   typescript: ^7.0.2
+  vite: ^8.3.5
   vitest: ^5.0.5
 
 # Packages that are allowed to run install scripts.
