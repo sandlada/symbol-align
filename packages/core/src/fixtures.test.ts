@@ -3,8 +3,9 @@ import { align } from './aligner.js';
 import { allFixtures, type CodeFixture } from './fixtures.js';
 
 /** Builds the alignment options a fixture asks for. */
-const optionsOf = ({ symbols, language, scope, range, declarations, declarationAnchor, maxDeclarationPad }: CodeFixture) => ({
+const optionsOf = ({ symbols, groups, language, scope, range, declarations, declarationAnchor, maxDeclarationPad }: CodeFixture) => ({
     ...(symbols ? { symbols } : {}),
+    ...(groups ? { groups } : {}),
     ...(language ? { language } : {}),
     ...(scope ? { scope } : {}),
     ...(range ? { range } : {}),

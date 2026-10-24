@@ -334,4 +334,30 @@ describe('invariants', () => {
             });
         });
     });
+
+    it.each(languages)('%s aligns a two-word group without changing the code', (language) => {
+        const code = ['const MY_STATE1 = 1;', 'const muchLonger = MY_STATE2;'].join('\n');
+        const options = { language, symbols: [], groups: [['MY_STATE1', 'MY_STATE2']], declarations: false } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+
+        expect(first.changes).toBe(1);
+        expect(withoutWhitespace(first.code)).toBe(withoutWhitespace(code));
+        expect(first.code.length).toBeGreaterThanOrEqual(code.length);
+        expect(second.code).toBe(first.code);
+        expect(second.changes).toBe(0);
+    });
+
+    it.each(declarationLanguages)('%s is idempotent when a group member sits in a declaration prefix', (language) => {
+        buildDeclarationCorpus(language).forEach((code) => {
+            const options = { language, groups: [['Product']] } as const;
+            const first = align(code)(options);
+            const second = align(first.code)(options);
+
+            expect(withoutWhitespace(first.code)).toBe(withoutWhitespace(code));
+            expect(first.code.length).toBeGreaterThanOrEqual(code.length);
+            expect(second.code).toBe(first.code);
+            expect(second.changes).toBe(0);
+        });
+    });
 });

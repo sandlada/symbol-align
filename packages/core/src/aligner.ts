@@ -2,7 +2,7 @@ import { findDeclarationCells } from './declarations.js';
 import { findSymbolPositions } from './finder.js';
 import { languageProfile } from './language.js';
 import { scanSource } from './scanner.js';
-import type { AlignmentScope, AlignOptions, AlignResult, AlignSymbol, DeclarationAnchor, DeclarationCell, LanguageId, LanguageProfile, LineRange, ScanResult } from './types.js';
+import type { AlignGroup, AlignmentScope, AlignOptions, AlignResult, AlignSymbol, DeclarationAnchor, DeclarationCell, LanguageId, LanguageProfile, LineRange, ScanResult } from './types.js';
 
 /** A run of spaces that has to be inserted into one line at an absolute column. */
 interface DeclarationInsertion {
@@ -151,6 +151,44 @@ const locateSymbol =
         });
     };
 
+/**
+ * Locates the first occurrence of any member of a group on every line.
+ *
+ * The minimum column of the group wins, so the member that appears first on a
+ * line defines where the group column starts. The scan runs through
+ * `findSymbolPositions`, which means the word boundary, operator fragment and
+ * code region rules apply to every member exactly as they do to a symbol.
+ */
+const locateGroup =
+    (group: AlignGroup, profile: LanguageProfile) =>
+    (lines: readonly string[]): readonly LineColumn[] => {
+        const scan = scanSource(lines.join('\n'))(profile);
+
+        return lines.map((line, index) => {
+            const positions = findSymbolPositions(line)({
+                regions: scan.codeRegions[index] ?? [],
+                symbols: group,
+                operators: profile.operators,
+                comment: scan.lineComments[index],
+            });
+
+            const column = group.reduce<number | null>((first, member) => {
+                const memberColumn = positions.get(member)?.[0] ?? null;
+
+                if (memberColumn === null) {
+                    return first;
+                }
+
+                return first === null ? memberColumn : Math.min(first, memberColumn);
+            }, null);
+
+            return { index, column };
+        });
+    };
+
+/** Removes the duplicate and empty members of a group. */
+const normalizeGroup = (group: AlignGroup): readonly AlignSymbol[] => [...new Set(group)].filter((member) => member.length > 0);
+
 /** Right-most column at which the symbol occurs inside a group. */
 const targetColumn = (columns: readonly LineColumn[], members: readonly number[]): number => members.reduce((target, index) => Math.max(target, columns[index]?.column ?? 0), 0);
 
@@ -293,16 +331,62 @@ const cellSignature = (cells: readonly DeclarationCell[]): string => {
 };
 
 /**
+ * Marks the declaration lines whose prefix contains a group member.
+ *
+ * The declaration pass pads the gaps between the cells; a group pass pads in
+ * front of the first occurrence of a member. When a member sits inside the
+ * declaration prefix both passes shift the target of the other one, so the
+ * fixpoint climbs instead of settling. Such a line is left out of the
+ * declaration partitions and keeps the column that the group pass chose.
+ *
+ * The prefix is the half-open range from the first declaration cell to the end
+ * of the name cell. `findSymbolPositions` applies the same word boundary,
+ * operator fragment and code region rules as the group pass, so a member that
+ * is only a fragment of a longer operator or identifier never triggers the
+ * exclusion.
+ */
+const declarationExclusions = (lines: readonly string[], located: readonly (readonly DeclarationCell[] | null)[], members: readonly AlignSymbol[], profile: LanguageProfile, scan: ScanResult): readonly boolean[] =>
+    lines.map((line, index) => {
+        const cells = located[index];
+
+        if (cells === null || cells === undefined || cells.length < 2) {
+            return false;
+        }
+
+        const name = cells[cells.length - 1];
+        const regions = (scan.codeRegions[index] ?? []).flatMap((region) => {
+            const start = Math.max(region.start, cells[0].start);
+            const end = Math.min(region.end, name.end);
+
+            return start < end ? [{ start, end }] : [];
+        });
+
+        if (regions.length === 0) {
+            return false;
+        }
+
+        const positions = findSymbolPositions(line)({ regions, symbols: members, operators: profile.operators });
+
+        return [...positions.values()].some((columns) => columns.length > 0);
+    });
+
+/**
  * Splits the base groups by indentation and declaration shape.
  *
  * Every line is pushed into its bucket once and every bucket becomes one
- * partition, so the work stays linear in the number of lines.
+ * partition, so the work stays linear in the number of lines. Lines that a
+ * configured group has claimed are skipped, so the two passes never move each
+ * other's target.
  */
-const declarationPartitions = (lines: readonly string[], groups: readonly (readonly number[])[], located: readonly (readonly DeclarationCell[] | null)[]): readonly (readonly number[])[] =>
+const declarationPartitions = (lines: readonly string[], groups: readonly (readonly number[])[], located: readonly (readonly DeclarationCell[] | null)[], excluded: readonly boolean[] | null): readonly (readonly number[])[] =>
     groups.flatMap((group) => {
         const buckets = new Map<string, number[]>();
 
         group.forEach((index) => {
+            if (excluded?.[index] === true) {
+                return;
+            }
+
             const cells = located[index];
 
             if (cells === null || cells === undefined || cells.length < 2) {
@@ -420,9 +504,17 @@ const applyDeclarationInsertions = (lines: readonly string[], insertions: readon
  * The pass is the first stage of every fixpoint iteration. It only inserts
  * spaces, never touches indentation and stays a no-op when the profile has no
  * declaration style or the caller disabled declarations.
+ *
+ * When groups are configured, a declaration line whose prefix carries a group
+ * member is excluded from the partitions: the group pass pads in front of that
+ * member, which would move the declaration target, and the declaration pass
+ * would move the group target in turn. With the line excluded the group owns
+ * its column and the pass reaches a fixpoint. Without groups the exclusions are
+ * never computed, so `declarations: false` and the no-group output are
+ * unchanged.
  */
 const alignDeclarations =
-    (profile: LanguageProfile, scope: AlignmentScope, range: LineRange, options: AlignOptions) =>
+    (profile: LanguageProfile, scope: AlignmentScope, range: LineRange, options: AlignOptions, groups: readonly AlignGroup[]) =>
     (lines: readonly string[]): readonly string[] => {
         if (profile.declarations === 'none' || options.declarations === false) {
             return lines;
@@ -430,7 +522,9 @@ const alignDeclarations =
 
         const scan = scanSource(lines.join('\n'))(profile);
         const located = lines.map((line, index) => findDeclarationCells(line)({ regions: scan.codeRegions[index] ?? [], style: profile.declarations }));
-        const partitions = declarationPartitions(lines, groupIndices(lines, scope, range), located);
+        const members = [...new Set(groups.flat())];
+        const excluded = members.length === 0 ? null : declarationExclusions(lines, located, members, profile, scan);
+        const partitions = declarationPartitions(lines, groupIndices(lines, scope, range), located, excluded);
 
         if (partitions.length === 0) {
             return lines;
@@ -464,6 +558,37 @@ const alignSymbol =
                 changed.add(index);
             });
             prefixed.changed.forEach((index) => {
+                changed.add(index);
+            });
+        });
+
+        return { lines: current, changed: [...changed] };
+    };
+
+/**
+ * Runs one alignment pass for a group of alternative tokens.
+ *
+ * The first occurrence of any member is located on every line; the lines that
+ * carry one are padded to the right-most column of the group. The pass reuses
+ * {@link padToTargetColumn}, so only spaces are inserted and a line that does
+ * not carry a member is never touched.
+ */
+const alignGroup =
+    (group: AlignGroup, profile: LanguageProfile, scope: AlignmentScope, range: LineRange) =>
+    (lines: readonly string[]): SymbolPass => {
+        const columns = locateGroup(group, profile)(lines);
+        const groups = groupIndices(lines, scope, range);
+        const changed = new Set<number>();
+        let current = lines;
+
+        groups.forEach((indices) => {
+            const holders = indices.filter((index) => columns[index]?.column !== null);
+            if (holders.length === 0) {
+                return;
+            }
+            const padded = padToTargetColumn(current, columns, holders);
+            current = padded.lines;
+            padded.changed.forEach((index) => {
                 changed.add(index);
             });
         });
@@ -527,7 +652,8 @@ const orderByFirstOccurrence =
  * Aligns the punctuation symbols of a code snippet.
  *
  * The returned function accepts the alignment options; calling it with no
- * options uses the defaults of the language profile.
+ * options uses the defaults of the language profile. Configured groups of
+ * alternative tokens are aligned to their own column before the symbols.
  */
 export const align =
     (code: string) =>
@@ -553,21 +679,26 @@ export const alignWith =
     (options: AlignOptions) =>
     (code: string): AlignResult => {
         const profile = languageProfile(options.language ?? 'generic');
-        const symbols = options.symbols ?? profile.defaultSymbols;
+        const groups = (options.groups ?? []).map(normalizeGroup).filter((group) => group.length > 0);
+        const groupMembers = new Set(groups.flat());
+        const symbols = (options.symbols ?? profile.defaultSymbols).filter((symbol) => !groupMembers.has(symbol));
         const scope = options.scope ?? 'block';
         const lines = splitLines(code);
         const range = normalizeRange(options.range, lines.length);
 
-        if (symbols.length === 0) {
+        if (symbols.length === 0 && groups.length === 0) {
             return { code, changes: 0 };
         }
 
         const ordered = orderByFirstOccurrence(symbols, profile, range)(lines);
-        const alignDeclarationColumns = alignDeclarations(profile, scope, range, options);
+        const alignDeclarationColumns = alignDeclarations(profile, scope, range, options, groups);
 
-        /** Runs one full sequence of declaration and symbol passes over `input`. */
+        /** Runs one alignment pass for every group, in the order they are given. */
+        const alignGroups = (input: readonly string[]): readonly string[] => groups.reduce((current, group) => alignGroup(group, profile, scope, range)(current).lines, input);
+
+        /** Runs one full sequence of declaration, group and symbol passes over `input`. */
         const runPasses = (symbolsToAlign: readonly AlignSymbol[], input: readonly string[]): readonly string[] =>
-            symbolsToAlign.reduce((current, symbol) => alignSymbol(symbol, profile, scope, range)(current).lines, alignDeclarationColumns(input));
+            symbolsToAlign.reduce((current, symbol) => alignSymbol(symbol, profile, scope, range)(current).lines, alignGroups(alignDeclarationColumns(input)));
 
         /** Whether two line arrays hold the same text. */
         const sameLines = (left: readonly string[], right: readonly string[]): boolean => left.length === right.length && left.every((line, index) => line === right[index]);

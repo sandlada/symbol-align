@@ -9,6 +9,9 @@
 /** A punctuation token that can be aligned vertically, e.g. `=`, `:`, `=>`, `->`. */
 export type AlignSymbol = string;
 
+/** A group of alternative tokens that share one alignment column. */
+export type AlignGroup = readonly AlignSymbol[];
+
 /** Identifier of a supported language profile. */
 export type LanguageId =
     | 'generic'
@@ -203,9 +206,29 @@ export interface AlignOptions {
     /**
      * Symbols to align. Defaults to the language profile's `defaultSymbols`.
      *
-     * An explicit empty list aligns nothing.
+     * An explicit empty list aligns no symbols — configured groups are still
+     * aligned.
      */
     readonly symbols?: readonly AlignSymbol[];
+    /**
+     * Groups of alternative tokens. Each group is aligned to one column:
+     * the first occurrence of any member on a line is padded so that all
+     * first occurrences of the group start at the same column.
+     *
+     * Groups are aligned before the symbols and run in the order they are
+     * given. A token that appears in a group is removed from the symbol list.
+     * Duplicate and empty members are ignored.
+     *
+     * A line whose declaration prefix (`modifiers`, `type` or `name`) contains
+     * a group member is left out of the declaration alignment, so the
+     * declaration pass and the group pass never move each other's target.
+     *
+     * A group whose members alternate their order across lines can conflict
+     * with another group the same way a conflicting symbol order does:
+     * conflicting groups may under-align; the input is returned unchanged
+     * rather than diverging.
+     */
+    readonly groups?: readonly AlignGroup[];
     /** Language profile that drives string and comment handling. Defaults to `generic`. */
     readonly language?: LanguageId;
     /** Grouping strategy used before aligning. Defaults to `block`. */

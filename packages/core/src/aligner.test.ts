@@ -267,6 +267,206 @@ describe('idempotency', () => {
     });
 });
 
+describe('groups', () => {
+    it('aligns both tokens of a two member group to one column', () => {
+        const result = align(['let status = MY_STATE1;', 'let longName = MY_STATE2;'].join('\n'))({ symbols: [], groups: [['MY_STATE1', 'MY_STATE2']] });
+
+        expect(result.code).toBe(['let status =   MY_STATE1;', 'let longName = MY_STATE2;'].join('\n'));
+        expect(result.changes).toBe(1);
+    });
+
+    it('aligns three members to one column', () => {
+        const result = align(['const a = ALPHA;', 'const bbb = BETA_STATE;', 'const cc = GAMMA_STATE;'].join('\n'))({ symbols: [], groups: [['ALPHA', 'BETA_STATE', 'GAMMA_STATE']] });
+
+        expect(result.code).toBe(['const a =   ALPHA;', 'const bbb = BETA_STATE;', 'const cc =  GAMMA_STATE;'].join('\n'));
+        expect(result.changes).toBe(2);
+    });
+
+    it('respects the word boundary of a group member', () => {
+        const code = ['const a = MY_STATE1;', 'const bb = MY_STATE10;'].join('\n');
+        const result = align(code)({ symbols: [], groups: [['MY_STATE1', 'MY_STATE2']] });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('does not match a group member that is part of a longer operator', () => {
+        const code = ['f(x) ->> value;', 'flag <<- TRUE;'].join('\n');
+        const result = align(code)({ language: 'r', symbols: [], groups: [['->', '<-']] });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('leaves a line without a member untouched', () => {
+        const result = align(['const a = MY_STATE1;', 'const untouched = other;', 'const cc = MY_STATE2;'].join('\n'))({ symbols: [], groups: [['MY_STATE1', 'MY_STATE2']] });
+
+        expect(result.code).toBe(['const a =  MY_STATE1;', 'const untouched = other;', 'const cc = MY_STATE2;'].join('\n'));
+        expect(result.changes).toBe(1);
+    });
+
+    it('aligns two independent groups to their own columns', () => {
+        const result = align(['first = ALPHA;', 'longerThird = BETA;', 'second = GAMMA;', 'longerFourth = DELTA;'].join('\n'))({
+            symbols: [],
+            groups: [
+                ['ALPHA', 'BETA'],
+                ['GAMMA', 'DELTA'],
+            ],
+        });
+
+        expect(result.code).toBe(['first =       ALPHA;', 'longerThird = BETA;', 'second =       GAMMA;', 'longerFourth = DELTA;'].join('\n'));
+        expect(result.changes).toBe(2);
+    });
+
+    it('aligns a token that is both a member and a symbol once', () => {
+        const code = ['let status = MY_STATE1;', 'let longName = MY_STATE2;'].join('\n');
+        const options = { symbols: ['MY_STATE1', 'MY_STATE2'], groups: [['MY_STATE1', 'MY_STATE2']] } as const;
+        const result = align(code)(options);
+
+        expect(result.code).toBe(['let status =   MY_STATE1;', 'let longName = MY_STATE2;'].join('\n'));
+        expect(result.changes).toBe(1);
+        expect(align(result.code)(options).changes).toBe(0);
+    });
+
+    it('uses the first group member of a line and leaves the later one in place', () => {
+        const code = ['a = MY_STATE1 + MY_STATE2;', 'longName = MY_STATE2 + MY_STATE1;'].join('\n');
+        const options = { symbols: [], groups: [['MY_STATE1', 'MY_STATE2']] } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+
+        // The first line chooses MY_STATE1 at column 4, the second line
+        // chooses MY_STATE2 at column 11. The later member of the first line
+        // moves with the padding but never defines the target.
+        expect(first.code).toBe(['a =        MY_STATE1 + MY_STATE2;', 'longName = MY_STATE2 + MY_STATE1;'].join('\n'));
+        expect(first.changes).toBe(1);
+        expect(first.code.indexOf('MY_STATE1')).toBe(11);
+        expect(first.code.split('\n')[0].indexOf('MY_STATE2')).toBe(23);
+        expect(second.code).toBe(first.code);
+        expect(second.changes).toBe(0);
+    });
+
+    it('removes a group member from the symbol list', () => {
+        const code = ['export const a = 1;', 'const b = 2;'].join('\n');
+        const options = { symbols: ['export'], groups: [['export']] } as const;
+        const result = align(code)(options);
+
+        // Keeping `export` as a symbol would run its prefix padding and
+        // indent the second line to `       const b = 2;`.
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+        expect(align(result.code)(options).changes).toBe(0);
+    });
+
+    it('deduplicates members and drops empty members without changing the result', () => {
+        const code = ['first = A;', 'longerName = B;'].join('\n');
+        const expected = align(code)({ symbols: [], groups: [['A', 'B']] });
+        const result = align(code)({ symbols: [], groups: [['A', '', 'A', 'B']] });
+
+        expect(expected.changes).toBe(1);
+        expect(result.code).toBe(expected.code);
+        expect(result.changes).toBe(expected.changes);
+    });
+
+    it('treats a group that only holds empty members like no groups', () => {
+        const code = ['int a = 1;', 'long b = 2;'].join('\n');
+        const result = align(code)({ language: 'csharp', symbols: [], groups: [['']] });
+
+        // The empty group prunes away, so the call takes the early return and
+        // the declaration pass never runs; a surviving empty member would
+        // align the declaration names instead.
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('runs the groups in the order they are given', () => {
+        const code = ['x = ALPHA BETA;', 'longName = ALPHA BETA;'].join('\n');
+        const options = { symbols: [], groups: [['ALPHA'], ['BETA']] } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+
+        // ALPHA widens the first line first; BETA then finds both occurrences
+        // already in one column. Reversing the group order would make BETA pad
+        // the first line first and let the two passes climb on every run.
+        expect(first.code).toBe(['x =        ALPHA BETA;', 'longName = ALPHA BETA;'].join('\n'));
+        expect(first.changes).toBe(1);
+        expect(second.code).toBe(first.code);
+        expect(second.changes).toBe(0);
+    });
+
+    it('returns the input unchanged when two groups conflict', () => {
+        const code = ['a = AAA BBB;', 'longName = BBB AAA;'].join('\n');
+        const options = { symbols: [], groups: [['AAA'], ['BBB']] } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+
+        // The two groups alternate their order across the lines, so every
+        // pass moves the target of the other one. The aligner must fall back
+        // to the original bytes instead of returning a partial mutation.
+        expect(first.code).toBe(code);
+        expect(first.changes).toBe(0);
+        expect(second.code).toBe(code);
+        expect(second.changes).toBe(0);
+    });
+
+    it('is idempotent', () => {
+        const code = ['first = ALPHA;', 'longerThird = BETA;', 'second = GAMMA;', 'longerFourth = DELTA;'].join('\n');
+        const options = {
+            symbols: [],
+            groups: [
+                ['ALPHA', 'BETA'],
+                ['GAMMA', 'DELTA'],
+            ],
+        } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+
+        expect(second.code).toBe(first.code);
+        expect(second.changes).toBe(0);
+    });
+
+    it('honours the indent scope and the range', () => {
+        const result = align(['if (x) {', '    a = MY_STATE1;', '    longName = MY_STATE2;', '    untouchedName = MY_STATE2;', '}'].join('\n'))({
+            symbols: [],
+            groups: [['MY_STATE1', 'MY_STATE2']],
+            scope: 'indent',
+            range: { start: 2, end: 4 },
+        });
+
+        expect(result.code).toBe(['if (x) {', '    a = MY_STATE1;', '    longName =      MY_STATE2;', '    untouchedName = MY_STATE2;', '}'].join('\n'));
+        expect(result.changes).toBe(1);
+    });
+
+    it('ignores members inside strings and comments', () => {
+        const code = ['const a = "MY_STATE1";', 'const longName = MY_STATE2;', '/* MY_STATE1 */', '// MY_STATE2'].join('\n');
+        const result = align(code)({ symbols: [], groups: [['MY_STATE1', 'MY_STATE2']] });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('deduplicates members and drops empty members', () => {
+        const result = align(['let status = MY_STATE1;', 'let longName = MY_STATE2;'].join('\n'))({ symbols: [], groups: [['MY_STATE1', 'MY_STATE1', '', 'MY_STATE2']] });
+
+        expect(result.code).toBe(['let status =   MY_STATE1;', 'let longName = MY_STATE2;'].join('\n'));
+        expect(result.changes).toBe(1);
+    });
+
+    it('does not pad after a prefix keyword group member', () => {
+        const code = ['export const a = 1;', 'const b = 2;'].join('\n');
+        const result = align(code)({ symbols: [], groups: [['export']] });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('treats an empty group list like no groups', () => {
+        const code = 'const foo = 1\nconst foobar = 22';
+
+        expect(align(code)({ groups: [] }).code).toBe(align(code)().code);
+        expect(align(code)({ groups: [[]] }).code).toBe(align(code)().code);
+    });
+});
+
 describe('declarations', () => {
     it('aligns the declaration columns at their start by default', () => {
         expect(align(csharpDeclarations.input)({ language: 'csharp' }).code).toBe(csharpDeclarations.output);
@@ -539,5 +739,63 @@ describe('declarations', () => {
 
     it('aligns type-first declarations of solidity', () => {
         expect(align(solanaTypeFirst.input)({ language: 'solidity' }).code).toBe(solanaTypeFirst.output);
+    });
+
+    it('aligns a group member inside a declaration instead of ratcheting', () => {
+        const code = ['private const Product Product = new Product();', 'private const string Product = "x";'].join('\n');
+        const options = { language: 'csharp', symbols: [], groups: [['Product']] } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+        const columns = first.code.split('\n').map((line) => line.indexOf('Product'));
+
+        // Both first occurrences are Product; the declaration pass would move
+        // the type of the first line while the group pass moves the name, and
+        // every run would add more spaces. The group owns the prefix instead.
+        expect(first.code).toBe(['private const        Product Product = new Product();', 'private const string Product = "x";'].join('\n'));
+        expect(columns).toEqual([21, 21]);
+        expect(first.changes).toBe(1);
+        expect(second.code).toBe(first.code);
+        expect(second.changes).toBe(0);
+    });
+
+    it('keeps declaration alignment for lines that do not carry a group member', () => {
+        const code = ['private const string Product = "x";', 'private const int DefaultPort = 5173;', 'private const bool Enabled = true;'].join('\n');
+        const options = { language: 'csharp', symbols: [], groups: [['Product']] } as const;
+        const first = align(code)(options);
+        const second = align(first.code)(options);
+
+        // Only the Product line leaves the declaration partition; the other
+        // two lines still align their names with each other.
+        expect(first.code).toBe(['private const string Product = "x";', 'private const int  DefaultPort = 5173;', 'private const bool Enabled = true;'].join('\n'));
+        expect(first.changes).toBe(1);
+        expect(second.code).toBe(first.code);
+        expect(second.changes).toBe(0);
+    });
+
+    it.each([
+        { cell: 'modifier', group: ['private'] },
+        { cell: 'type', group: ['string'] },
+        { cell: 'name', group: ['Product'] },
+    ])('excludes a declaration whose $cell cell carries a group member', ({ group }) => {
+        const code = ['private const string Product = "x";', 'public static int DefaultPort = 5173;'].join('\n');
+        const options = { language: 'csharp', symbols: [], groups: [group] } as const;
+        const result = align(code)(options);
+
+        // The group member only occurs on the first line. Without the
+        // exclusion the second line would still be padded in front of
+        // DefaultPort, because the declaration partition would hold both.
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('does not compute group exclusions when declarations are disabled', () => {
+        const code = ['private const Product Product = new Product();', 'private const string Product = "x";'].join('\n');
+        const options = { language: 'csharp', declarations: false, symbols: [], groups: [['Product']] } as const;
+        const result = align(code)(options);
+
+        // With the declaration pass off only the group pass may run, so the
+        // first member of the first line is padded to the second line.
+        expect(result.code).toBe(['private const        Product Product = new Product();', 'private const string Product = "x";'].join('\n'));
+        expect(result.changes).toBe(1);
     });
 });

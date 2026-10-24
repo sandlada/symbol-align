@@ -3,10 +3,11 @@
  *
  * Every fixture carries the input snippet, the expected output after alignment
  * and the number of lines that are expected to change. The optional
- * `symbols`, `language`, `scope`, `range`, `declarations`, `declarationAnchor`
- * and `maxDeclarationPad` fields map directly onto `AlignOptions`.
+ * `symbols`, `groups`, `language`, `scope`, `range`, `declarations`,
+ * `declarationAnchor` and `maxDeclarationPad` fields map directly onto
+ * `AlignOptions`.
  */
-import type { AlignmentScope, AlignSymbol, DeclarationAnchor, LanguageId, LineRange } from './types.js';
+import type { AlignGroup, AlignmentScope, AlignSymbol, DeclarationAnchor, LanguageId, LineRange } from './types.js';
 
 export interface CodeFixture {
     /** Stable identifier of the fixture. */
@@ -19,6 +20,8 @@ export interface CodeFixture {
     readonly changes: number;
     /** Symbols to align. */
     readonly symbols?: readonly AlignSymbol[];
+    /** Groups of alternative tokens that share one alignment column. */
+    readonly groups?: readonly AlignGroup[];
     /** Language profile used for the alignment. */
     readonly language?: LanguageId;
     /** Grouping strategy used for the alignment. */
@@ -1010,6 +1013,19 @@ export const rangeInsideMultilineString: CodeFixture = {
 };
 
 // ────────────────────────────
+// groups — alternative tokens that share one column
+// ────────────────────────────
+
+export const groupAlternativeTokens: CodeFixture = {
+    name: 'group-alternative-tokens',
+    input: ['let status = MY_STATE1;', 'let longName = MY_STATE2;'].join('\n'),
+    output: ['let status =   MY_STATE1;', 'let longName = MY_STATE2;'].join('\n'),
+    changes: 1,
+    symbols: [],
+    groups: [['MY_STATE1', 'MY_STATE2']],
+};
+
+// ────────────────────────────
 // collect all fixtures for the batch test
 // ────────────────────────────
 
@@ -1023,6 +1039,7 @@ export const allFixtures: readonly CodeFixture[] = [
     rangeMiddleLines,
     rangeIgnoresOutsideLines,
     rangeInsideMultilineString,
+    groupAlternativeTokens,
     colonTypeAnnotations,
     colonObjectLiteral,
     arrowSimple,

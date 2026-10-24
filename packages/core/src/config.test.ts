@@ -51,6 +51,26 @@ describe('parseConfig', () => {
         expect(() => parseConfig({ symbols: [''] })).toThrow('Invalid configuration: "symbols" must be an array of strings');
     });
 
+    it('keeps the groups', () => {
+        expect(parseConfig({ groups: [['MY_STATE1', 'MY_STATE2']] })).toEqual({ groups: [['MY_STATE1', 'MY_STATE2']] });
+    });
+
+    it('rejects groups that are not an array', () => {
+        expect(() => parseConfig({ groups: 'MY_STATE1,MY_STATE2' })).toThrow('Invalid configuration: "groups" must be an array of arrays of strings');
+    });
+
+    it('rejects a group that is not an array', () => {
+        expect(() => parseConfig({ groups: ['MY_STATE1'] })).toThrow('Invalid configuration: "groups" must be an array of arrays of strings');
+    });
+
+    it('rejects a group member that is not a string', () => {
+        expect(() => parseConfig({ groups: [['MY_STATE1', 42]] })).toThrow('Invalid configuration: "groups" must be an array of arrays of strings');
+    });
+
+    it('rejects an empty group member', () => {
+        expect(() => parseConfig({ groups: [['MY_STATE1', '']] })).toThrow('Invalid configuration: "groups" must be an array of arrays of strings');
+    });
+
     it('rejects an unknown language', () => {
         expect(() => parseConfig({ language: 'cobol' })).toThrow('Invalid configuration: unknown language "cobol"');
     });
@@ -69,6 +89,10 @@ describe('parseConfig', () => {
 
     it('rejects an override with invalid symbols', () => {
         expect(() => parseConfig({ overrides: { '*.py': { symbols: '=' } } })).toThrow('Invalid configuration: invalid override "*.py": "symbols" must be an array of strings');
+    });
+
+    it('rejects an override with invalid groups', () => {
+        expect(() => parseConfig({ overrides: { '*.py': { groups: 'MY_STATE1' } } })).toThrow('Invalid configuration: invalid override "*.py": "groups" must be an array of arrays of strings');
     });
 
     it('rejects an override with an unknown language', () => {
@@ -149,6 +173,30 @@ describe('resolveConfig', () => {
         const config = parseConfig({ symbols: ['='], overrides: { '*.py': { symbols: [] } } });
 
         expect(resolveConfig(config)('main.py')).toEqual({ symbols: [] });
+    });
+
+    it('applies the groups of an override', () => {
+        const config = parseConfig({ groups: [['A', 'B']], overrides: { '*.py': { groups: [['C', 'D']] } } });
+
+        expect(resolveConfig(config)('main.py')).toEqual({ groups: [['C', 'D']] });
+    });
+
+    it('lets a later matching override win for groups', () => {
+        const config = parseConfig({
+            groups: [['A', 'B']],
+            overrides: {
+                '*.py': { groups: [['C', 'D']] },
+                'main.py': { groups: [['E', 'F']] },
+            },
+        });
+
+        expect(resolveConfig(config)('main.py')).toEqual({ groups: [['E', 'F']] });
+    });
+
+    it('keeps the base groups when no override defines them', () => {
+        const config = parseConfig({ groups: [['A', 'B']], overrides: { '*.py': { language: 'python' } } });
+
+        expect(resolveConfig(config)('main.py')).toEqual({ groups: [['A', 'B']], language: 'python' });
     });
 });
 

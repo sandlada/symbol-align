@@ -2,8 +2,9 @@
  * Project configuration for `@sandlada/symbol-align`.
  *
  * A repository can drop a `symbol-align.config.json` file next to its sources
- * to control the symbols, the language profile and the alignment scope. The
- * file may also carry per file overrides that are selected by a glob pattern.
+ * to control the symbols, the token groups, the language profile and the
+ * alignment scope. The file may also carry per file overrides that are
+ * selected by a glob pattern.
  *
  * The module is free of Node.js builtins so that it can be bundled for the
  * browser, a worker or any other JavaScript runtime. The helpers that read
@@ -11,12 +12,14 @@
  */
 
 import { isLanguageId } from './language.js';
-import type { AlignOptions, AlignSymbol, AlignmentScope, LanguageId } from './types.js';
+import type { AlignGroup, AlignOptions, AlignSymbol, AlignmentScope, LanguageId } from './types.js';
 
 /** A per file pattern override of the configuration. */
 export interface ConfigOverride {
     /** Symbols to align — an explicit empty list aligns nothing. */
     readonly symbols?: readonly AlignSymbol[];
+    /** Groups of alternative tokens that share one alignment column. */
+    readonly groups?: readonly AlignGroup[];
     readonly language?: LanguageId;
     readonly scope?: AlignmentScope;
 }
@@ -25,6 +28,8 @@ export interface ConfigOverride {
 export interface SymbolAlignConfig {
     /** Symbols to align — an explicit empty list aligns nothing. */
     readonly symbols?: readonly AlignSymbol[];
+    /** Groups of alternative tokens that share one alignment column. */
+    readonly groups?: readonly AlignGroup[];
     readonly language?: LanguageId;
     readonly scope?: AlignmentScope;
     /** Overrides keyed by a glob pattern that is matched against the file path. */
@@ -41,6 +46,9 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => type
 /** Whether `value` is an array of non empty strings. */
 const isSymbolList = (value: unknown): value is readonly AlignSymbol[] => Array.isArray(value) && value.every((symbol) => typeof symbol === 'string' && symbol.length > 0);
 
+/** Whether `value` is an array of arrays of non empty strings. */
+const isGroupList = (value: unknown): value is readonly AlignGroup[] => Array.isArray(value) && value.every((group) => isSymbolList(group));
+
 /** Whether `value` is a valid alignment scope. */
 const isScope = (value: unknown): value is AlignmentScope => value === 'block' || value === 'indent' || value === 'file';
 
@@ -54,6 +62,21 @@ const readSymbols = (source: Record<string, unknown>): readonly AlignSymbol[] | 
 
     if (!isSymbolList(value)) {
         throw new Error('Invalid configuration: "symbols" must be an array of strings');
+    }
+
+    return value;
+};
+
+/** Reads the `groups` entry of a configuration object. */
+const readGroups = (source: Record<string, unknown>): readonly AlignGroup[] | undefined => {
+    const value = source.groups;
+
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (!isGroupList(value)) {
+        throw new Error('Invalid configuration: "groups" must be an array of arrays of strings');
     }
 
     return value;
@@ -97,11 +120,13 @@ const readOverride = (pattern: string, value: unknown): ConfigOverride => {
 
     try {
         const symbols = readSymbols(value);
+        const groups = readGroups(value);
         const language = readLanguage(value);
         const scope = readScope(value);
 
         return {
             ...(symbols === undefined ? {} : { symbols }),
+            ...(groups === undefined ? {} : { groups }),
             ...(language === undefined ? {} : { language }),
             ...(scope === undefined ? {} : { scope }),
         };
@@ -243,12 +268,14 @@ export const parseConfig = (raw: unknown): SymbolAlignConfig => {
     }
 
     const symbols = readSymbols(raw);
+    const groups = readGroups(raw);
     const language = readLanguage(raw);
     const scope = readScope(raw);
     const overrides = readOverrides(raw);
 
     return {
         ...(symbols === undefined ? {} : { symbols }),
+        ...(groups === undefined ? {} : { groups }),
         ...(language === undefined ? {} : { language }),
         ...(scope === undefined ? {} : { scope }),
         ...(overrides === undefined ? {} : { overrides }),
@@ -268,6 +295,7 @@ export const resolveConfig =
     (filePath?: string): AlignOptions => {
         const base: AlignOptions = {
             ...(config.symbols === undefined ? {} : { symbols: config.symbols }),
+            ...(config.groups === undefined ? {} : { groups: config.groups }),
             ...(config.language === undefined ? {} : { language: config.language }),
             ...(config.scope === undefined ? {} : { scope: config.scope }),
         };
@@ -278,11 +306,13 @@ export const resolveConfig =
 
         const overrides = matchingOverrides(config)(filePath);
         const symbols = lastDefined((override) => override.symbols)(overrides) ?? base.symbols;
+        const groups = lastDefined((override) => override.groups)(overrides) ?? base.groups;
         const language = lastDefined((override) => override.language)(overrides) ?? base.language;
         const scope = lastDefined((override) => override.scope)(overrides) ?? base.scope;
 
         return {
             ...(symbols === undefined ? {} : { symbols }),
+            ...(groups === undefined ? {} : { groups }),
             ...(language === undefined ? {} : { language }),
             ...(scope === undefined ? {} : { scope }),
         };

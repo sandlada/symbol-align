@@ -426,6 +426,7 @@ Options:
       --write               Write the aligned code back into the file that was read
       --diff                Print a unified diff of the input and the aligned result
   -s, --symbols <list>      Comma-separated symbols to align
+  -g, --group <list>        Comma-separated tokens that share one column (repeatable)
   -l, --language <id>       Language profile to use
   -t, --stdin-filepath <p>  Path of the piped file (used for language detection)
   -c, --config <path>       Configuration file (default: nearest symbol-align.config.json)
@@ -444,6 +445,7 @@ Notes:
 Examples:
   echo "a = 1\nbb = 2" | symbol-align
   cat file.ts | symbol-align --symbols =,:
+  symbol-align --file input.ts --group MY_STATE1,MY_STATE2
   symbol-align --file input.ts
   symbol-align -f input.ts -o output.ts
   symbol-align -f input.ts --write

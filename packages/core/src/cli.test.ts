@@ -131,6 +131,37 @@ describe('parseArgs', () => {
         expect(parseArgs(['node', 'cli.js', '--symbols=']).symbols).toEqual([]);
     });
 
+    it('reads one group from --group', () => {
+        expect(parseArgs(['node', 'cli.js', '--group', 'MY_STATE1,MY_STATE2']).groups).toEqual([['MY_STATE1', 'MY_STATE2']]);
+    });
+
+    it('reads one group from -g', () => {
+        expect(parseArgs(['node', 'cli.js', '-g', 'MY_STATE1,MY_STATE2']).groups).toEqual([['MY_STATE1', 'MY_STATE2']]);
+    });
+
+    it('reads one group from --group=value', () => {
+        expect(parseArgs(['node', 'cli.js', '--group=A,B']).groups).toEqual([['A', 'B']]);
+    });
+
+    it('appends every repeated group in the order they are given', () => {
+        expect(parseArgs(['node', 'cli.js', '--group', 'A,B', '--group', 'C,D']).groups).toEqual([
+            ['A', 'B'],
+            ['C', 'D'],
+        ]);
+    });
+
+    it('trims the members of a group', () => {
+        expect(parseArgs(['node', 'cli.js', '--group', ' A , B ']).groups).toEqual([['A', 'B']]);
+    });
+
+    it('drops an all empty group', () => {
+        expect(parseArgs(['node', 'cli.js', '--group', ',', '--group', 'A,B']).groups).toEqual([['A', 'B']]);
+    });
+
+    it('reports a missing value for --group', () => {
+        expect(() => parseArgs(['node', 'cli.js', '--group'])).toThrow('Missing value for group');
+    });
+
     it('reads the language from --language', () => {
         expect(parseArgs(['node', 'cli.js', '--language', 'python']).language).toBe('python');
     });
@@ -265,6 +296,13 @@ describe('parseArgs', () => {
     });
 });
 
+describe('usage', () => {
+    it('documents the group option', () => {
+        expect(usage).toContain('-g, --group <list>');
+        expect(usage).toContain('symbol-align --file input.ts --group MY_STATE1,MY_STATE2');
+    });
+});
+
 describe('validatePath', () => {
     it('allows paths within the current directory', () => {
         const cwd = process.cwd();
@@ -369,6 +407,15 @@ describe('runCli', () => {
 
         expect(code).toBe(0);
         expect(streams.stdoutText()).toBe('a  = 1\nbb = 2\n');
+    });
+
+    it('aligns a repeated group from the command line', async () => {
+        const streams = createStreams('let status = MY_STATE1;\nlet longName = MY_STATE2;');
+
+        const code = await runCli(['node', 'cli.js', '--symbols', '', '--group', 'MY_STATE1,MY_STATE2'], streams);
+
+        expect(code).toBe(0);
+        expect(streams.stdoutText()).toBe('let status =   MY_STATE1;\nlet longName = MY_STATE2;\n');
     });
 
     it('ends the written output with exactly one newline', async () => {

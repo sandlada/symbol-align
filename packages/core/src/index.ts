@@ -7,6 +7,7 @@ export { parseConfig, resolveConfig } from './config.js';
 export type { FindOptions } from './finder.js';
 export type { ConfigOverride, SymbolAlignConfig } from './config.js';
 export type {
+    AlignGroup,
     AlignOptions,
     AlignResult,
     AlignSymbol,

@@ -15,7 +15,7 @@ import { align } from './aligner.js';
 import { resolveConfig, type SymbolAlignConfig } from './config.js';
 import { loadConfig, loadConfigFile } from './config-fs.js';
 import { detectLanguage, isLanguageId } from './language.js';
-import type { AlignmentScope, AlignOptions, LanguageId } from './types.js';
+import type { AlignGroup, AlignmentScope, AlignOptions, LanguageId } from './types.js';
 
 /* -------------------------------------------------------------------------- */
 /* Public types                                                                 */
@@ -25,6 +25,8 @@ import type { AlignmentScope, AlignOptions, LanguageId } from './types.js';
 export interface CliArgs {
     /** Symbols to align — `undefined` keeps the defaults of the language profile. */
     readonly symbols?: readonly string[];
+    /** Groups of alternative tokens that share one alignment column. */
+    readonly groups?: readonly AlignGroup[];
     /** Language profile that drives string and comment handling. */
     readonly language?: LanguageId;
     /** Path of the piped file — used to detect the language of standard input. */
@@ -76,6 +78,7 @@ Options:
       --write               Write the aligned code back into the file that was read
       --diff                Print a unified diff of the input and the aligned result
   -s, --symbols <list>      Comma-separated symbols to align
+  -g, --group <list>        Comma-separated tokens that share one column (repeatable)
   -l, --language <id>       Language profile to use
   -t, --stdin-filepath <p>  Path of the piped file (used for language detection)
   -c, --config <path>       Configuration file (default: nearest symbol-align.config.json)
@@ -94,6 +97,7 @@ Notes:
 Examples:
   echo "a = 1\\nbb = 2" | symbol-align
   cat file.ts | symbol-align --symbols =,:
+  symbol-align --file input.ts --group MY_STATE1,MY_STATE2
   symbol-align --file input.ts
   symbol-align -f input.ts -o output.ts
   symbol-align -f input.ts --write
@@ -107,7 +111,7 @@ Examples:
 /* -------------------------------------------------------------------------- */
 
 /** Long names of the options that take a value. */
-type ValueOptionName = 'file' | 'output' | 'symbols' | 'language' | 'stdin-filepath' | 'config' | 'scope';
+type ValueOptionName = 'file' | 'output' | 'symbols' | 'group' | 'language' | 'stdin-filepath' | 'config' | 'scope';
 
 /** A value taking option of the command line. */
 interface ValueOption {
@@ -130,6 +134,7 @@ const valueOptions: readonly ValueOption[] = [
     { name: 'file', short: 'f' },
     { name: 'output', short: 'o' },
     { name: 'symbols', short: 's' },
+    { name: 'group', short: 'g' },
     { name: 'language', short: 'l' },
     { name: 'stdin-filepath', short: 't' },
     { name: 'config', short: 'c' },
@@ -168,20 +173,20 @@ const matchOption = (token: string): OptionMatch | undefined => {
 };
 
 /**
- * Parses a comma separated symbol list.
+ * Parses a comma separated list of symbols or group members.
  *
  * Entries are trimmed and empty entries are dropped. An explicitly empty list
- * means "align nothing" — it matches the core library, where an empty symbol
- * list leaves the input untouched, and the configuration file, where
- * `"symbols": []` is a quiet no-op.
+ * means "align nothing" for symbols — it matches the core library, where an
+ * empty symbol list leaves the input untouched, and the configuration file,
+ * where `"symbols": []` is a quiet no-op.
  */
-const parseSymbols = (value: string): readonly string[] => {
-    const symbols = value
+const parseCommaList = (value: string): readonly string[] => {
+    const entries = value
         .split(',')
         .map((entry) => entry.trim())
         .filter((entry) => entry.length > 0);
 
-    return symbols;
+    return entries;
 };
 
 /** Parses a language id — an unknown id is an error. */
@@ -224,7 +229,12 @@ const applyOption =
             case 'output':
                 return { ...args, output: requirePath(name)(value) };
             case 'symbols':
-                return { ...args, symbols: parseSymbols(value) };
+                return { ...args, symbols: parseCommaList(value) };
+            case 'group': {
+                const group = parseCommaList(value);
+
+                return group.length === 0 ? args : { ...args, groups: [...(args.groups ?? []), group] };
+            }
             case 'language':
                 return { ...args, language: parseLanguage(value) };
             case 'stdin-filepath':
@@ -507,6 +517,7 @@ const buildOptions =
             ...base,
             ...(language === undefined ? {} : { language }),
             ...(args.symbols === undefined ? {} : { symbols: args.symbols }),
+            ...(args.groups === undefined ? {} : { groups: args.groups }),
             ...(args.scope === undefined ? {} : { scope: args.scope }),
         };
     };
