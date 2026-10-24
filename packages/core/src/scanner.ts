@@ -48,25 +48,38 @@ const matchBlockComment = (line: string, index: number, blockComments: readonly 
 };
 
 /**
- * Whether a quote at `index` opens a Rust character literal.
+ * Whether a quote at `index` opens a character literal.
  *
- * Rust lifetimes (`'a`) look exactly like character literals, so a quote only
- * starts a literal when it is closed within the next three characters — a
- * single character (`'x'`) or an escaped character (`'\n'`). A quote that
- * follows `<` or `&` is a lifetime in practice and never a literal.
+ * Rust lifetimes (`'a`, `&'a`) and F# type parameters (`'T`) look exactly
+ * like character literals, so a quote only starts a literal when it closes on
+ * the same line: a single character (`'x'`), a simple escape (`'\n'`) or a
+ * numeric escape (`'\u0041'`, `'\U00000041'`, `'\x41'`, `'\065'`). A quote
+ * that follows `<` or `&` is a lifetime in practice and never a literal.
  */
-const isRustCharLiteral = (line: string, index: number): boolean => {
+const isCharLiteral = (line: string, index: number): boolean => {
     const previous = index > 0 ? line[index - 1] : '';
     if (previous === '<' || previous === '&') return false;
-    if (line[index + 1] === '\\') return line[index + 3] === "'";
-    return line[index + 2] === "'";
+    if (line[index + 1] !== '\\') return line[index + 2] === "'";
+
+    const marker = line[index + 2];
+
+    if (marker === 'u') return /^[0-9A-Fa-f]{4}$/.test(line.slice(index + 3, index + 7)) && line[index + 7] === "'";
+    if (marker === 'U') return /^[0-9A-Fa-f]{8}$/.test(line.slice(index + 3, index + 11)) && line[index + 11] === "'";
+    if (marker === 'x') return /^[0-9A-Fa-f]{2}$/.test(line.slice(index + 3, index + 5)) && line[index + 5] === "'";
+    if (marker >= '0' && marker <= '9') {
+        let cursor = index + 2;
+        while (cursor < index + 5 && line[cursor] >= '0' && line[cursor] <= '9') cursor += 1;
+        return line[cursor] === "'";
+    }
+
+    return line[index + 3] === "'";
 };
 
 /** Whether `delimiter` is a JavaScript-style template literal with `${}` holes. */
 const isJsTemplate = (delimiter: StringDelimiter): boolean => delimiter.open === '`' && delimiter.close === '`' && delimiter.escape === 'backslash' && delimiter.multiline;
 
-/** Whether `delimiter` is a C# interpolated string with `{}` holes. */
-const isCSharpInterpolated = (delimiter: StringDelimiter): boolean => delimiter.open.startsWith('$') || delimiter.open === '@$"';
+/** Whether `delimiter` is a C#/F# interpolated string with `{}` holes. */
+const isDollarInterpolated = (delimiter: StringDelimiter): boolean => delimiter.open.startsWith('$') || delimiter.open === '@$"';
 
 /** Result of scanning an interpolated string across a single line. */
 interface InterpolatedSearch {
@@ -126,14 +139,28 @@ const findTemplateClose = (line: string, from: number, depth: number, escapedFir
 };
 
 /**
- * Scans a C# interpolated string, keeping `{}` holes opaque.
+ * Number of braces that open a hole in a brace-interpolated string.
  *
- * `{{` and `}}` in the literal part are escapes and never change the depth.
- * A quote only closes the literal when no hole is open, so nested quotes
- * inside holes cannot end the string early and leak string content.
+ * C# and F# raw interpolated strings repeat the `$` sign to widen the hole
+ * delimiter: `$"""` uses `{…}` holes while `$$"""` uses `{{…}}` holes and
+ * treats single braces as literal text. Every other brace-interpolated form
+ * uses a single brace.
+ */
+const interpolatedHoleWidth = (delimiter: StringDelimiter): number => (delimiter.open.startsWith('$$') ? 2 : 1);
+
+/**
+ * Scans a brace-interpolated string, keeping `{}` holes opaque.
+ *
+ * The hole delimiter is one brace for C#, Python and the single-`$` raw
+ * strings, and two braces for the `$$"""` raw strings. In the literal part a
+ * doubled hole delimiter is an escape and never changes the depth (a single
+ * brace is literal text when the hole delimiter is two braces wide). A quote
+ * only closes the literal when no hole is open, so nested quotes inside holes
+ * cannot end the string early and leak string content.
  */
 const findCSharpInterpolatedClose = (line: string, from: number, delimiter: StringDelimiter, depth: number, escapedFirst: boolean): InterpolatedSearch => {
     const close = delimiter.close;
+    const width = interpolatedHoleWidth(delimiter);
     let index = from;
     let currentDepth = depth;
     let escaped = escapedFirst;
@@ -158,26 +185,40 @@ const findCSharpInterpolatedClose = (line: string, from: number, delimiter: Stri
             }
         }
 
-        if (currentDepth === 0 && line[index] === '{' && line[index + 1] === '{') {
-            index += 2;
-            continue;
-        }
+        if (width === 1) {
+            if (currentDepth === 0 && line.startsWith('{{', index)) {
+                index += 2;
+                continue;
+            }
 
-        if (currentDepth === 0 && line[index] === '}' && line[index + 1] === '}') {
-            index += 2;
-            continue;
-        }
+            if (currentDepth === 0 && line.startsWith('}}', index)) {
+                index += 2;
+                continue;
+            }
 
-        if (line[index] === '{') {
-            currentDepth += 1;
-            index += 1;
-            continue;
-        }
+            if (line[index] === '{') {
+                currentDepth += 1;
+                index += 1;
+                continue;
+            }
 
-        if (line[index] === '}' && currentDepth > 0) {
-            currentDepth -= 1;
-            index += 1;
-            continue;
+            if (line[index] === '}' && currentDepth > 0) {
+                currentDepth -= 1;
+                index += 1;
+                continue;
+            }
+        } else {
+            if (currentDepth === 0 && line.startsWith('{{', index)) {
+                currentDepth += 1;
+                index += 2;
+                continue;
+            }
+
+            if (currentDepth > 0 && line.startsWith('}}', index)) {
+                currentDepth -= 1;
+                index += 2;
+                continue;
+            }
         }
 
         if (currentDepth === 0 && line.startsWith(close, index)) {
@@ -198,8 +239,8 @@ const isPythonFString = (delimiter: StringDelimiter, profile: LanguageProfile): 
     return open.startsWith('f"') || open.startsWith("f'") || open.startsWith('fr"') || open.startsWith("fr'") || open.startsWith('rf"') || open.startsWith("rf'");
 };
 
-/** Whether `delimiter` carries `{}` holes that must stay opaque (C# or Python). */
-const isBraceInterpolated = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => isCSharpInterpolated(delimiter) || isPythonFString(delimiter, profile);
+/** Whether `delimiter` carries `{}` holes that must stay opaque (C#, F# or Python). */
+const isBraceInterpolated = (delimiter: StringDelimiter, profile: LanguageProfile): boolean => isDollarInterpolated(delimiter) || isPythonFString(delimiter, profile);
 
 /** Whether `delimiter` is a Groovy/Kotlin/Dart/PowerShell/Terraform quoted string with `${}` holes. */
 const isDollarBraceString = (delimiter: StringDelimiter, profile: LanguageProfile): boolean =>
@@ -713,7 +754,28 @@ const isHeredocTerminator = (line: string, terminator: string): boolean => {
 
 /** Whether `profile` nests its `open`/`close` block comment pair. */
 const isNestingBlockComment = (profile: LanguageProfile, open: string, close: string): boolean =>
-    (profile.id === 'haskell' && open === '{-' && close === '-}') || (profile.id === 'julia' && open === '#=' && close === '=#') || ((profile.id === 'swift' || profile.id === 'rust') && open === '/*' && close === '*/');
+    (profile.id === 'haskell' && open === '{-' && close === '-}') ||
+    (profile.id === 'julia' && open === '#=' && close === '=#') ||
+    ((profile.id === 'swift' || profile.id === 'rust') && open === '/*' && close === '*/') ||
+    (profile.id === 'fsharp' && open === '(*' && close === '*)');
+
+/**
+ * Length of the F# star value that starts at `index`, or `0`.
+ *
+ * The F# compiler lexer matches the three-character `(*)` before the `(*`
+ * comment opener, so `(*)` is an ordinary value (the multiplication function)
+ * rather than the start of a block comment. `(**)` is covered as well: the
+ * operator and its closing parenthesis stay code instead of opening an empty
+ * comment. Inside an already open comment the token never nests either, so
+ * `(* (*) *)` still closes at its `*)`.
+ */
+const fsharpStarValueLength = (profile: LanguageProfile, line: string, index: number): number => {
+    if (profile.id !== 'fsharp') return 0;
+    if (line.startsWith('(**)', index)) return 4;
+    if (line.startsWith('(*)', index)) return 3;
+
+    return 0;
+};
 
 /** Block comment that is currently open, tracking nesting depth. */
 interface OpenBlock {
@@ -795,7 +857,7 @@ const matchString = (line: string, index: number, profile: LanguageProfile): Str
     }
 
     if (best === null) return null;
-    if (profile.id === 'rust' && best.open === "'" && !isRustCharLiteral(line, index)) return null;
+    if ((profile.id === 'rust' || profile.id === 'fsharp') && best.open === "'" && !isCharLiteral(line, index)) return null;
 
     return best;
 };
@@ -990,6 +1052,12 @@ export const scanSource =
                         continue;
                     }
 
+                    const star = fsharpStarValueLength(profile, line, index);
+                    if (star > 0) {
+                        index += star;
+                        continue;
+                    }
+
                     if (line.startsWith(openBlock.open, index)) {
                         openBlock.depth += 1;
                         index += openBlock.open.length;
@@ -1148,7 +1216,7 @@ export const scanSource =
                 }
 
                 const block = matchBlockComment(line, index, profile.blockComments);
-                if (block !== null) {
+                if (block !== null && fsharpStarValueLength(profile, line, index) === 0) {
                     closeRegion(index);
                     index += block[0].length;
                     openBlock = { open: block[0], close: block[1], nesting: isNestingBlockComment(profile, block[0], block[1]), depth: 1 };

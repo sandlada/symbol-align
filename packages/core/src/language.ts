@@ -40,6 +40,13 @@ const doubledDoubleQuote: StringDelimiter = { open: '"', close: '"', escape: 'do
 const backtickSingleLine: StringDelimiter = { open: '`', close: '`', escape: 'backslash', multiline: false };
 const luaLongString: StringDelimiter = { open: '[[', close: ']]', escape: 'backslash', multiline: true };
 const groovyDollarSlashyString: StringDelimiter = { open: '$/', close: '/$', escape: 'backslash', multiline: true };
+const fsharpTripleQuote: StringDelimiter = { open: '"""', close: '"""', escape: 'none', multiline: true };
+const fsharpVerbatimString: StringDelimiter = { open: '@"', close: '"', escape: 'doubled', multiline: true };
+const fsharpInterpolatedTripleQuote: StringDelimiter = { open: '$"""', close: '"""', escape: 'none', multiline: true };
+const fsharpDoubleInterpolatedTripleQuote: StringDelimiter = { open: '$$"""', close: '"""', escape: 'none', multiline: true };
+const fsharpInterpolatedVerbatimString: StringDelimiter = { open: '$@"', close: '"', escape: 'doubled', multiline: true };
+const fsharpVerbatimInterpolatedString: StringDelimiter = { open: '@$"', close: '"', escape: 'doubled', multiline: true };
+const fsharpInterpolatedString: StringDelimiter = { open: '$"', close: '"', escape: 'backslash', multiline: false };
 
 /* -------------------------------------------------------------------------- */
 /* Shared operator tables (always sorted longest-first)                        */
@@ -691,6 +698,9 @@ const declarationOperators = [
 /** The C family operators without `=>` and `::` — Zig has neither. */
 const zigOperators = ['<<=', '>>=', '==', '!=', '<=', '>=', '+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', '&&', '||', '++', '--', '->', '=', '+', '-', '*', '/', '%', '<', '>', '!', '&', '|', '^', '?', ':'] as const;
 
+/** The F# operators, longest first — the pipeline, composition and cast operators must never be split. */
+const fsharpOperators = [':?>', '**', '|>', '<|', '>>', '<<', '->', '<-', '::', ':>', ':?', '>=', '<=', '<>', '||', '&&', ':=', '..', '=', '+', '-', '*', '/', '%', '@', '^', '|', '&', '<', '>'] as const;
+
 /* -------------------------------------------------------------------------- */
 /* Profiles                                                                    */
 /* -------------------------------------------------------------------------- */
@@ -718,6 +728,7 @@ const DECLARATION_STYLES = {
     kotlin: 'none',
     swift: 'none',
     csharp: 'prefix',
+    fsharp: 'none',
     cpp: 'prefix',
     c: 'prefix',
     ruby: 'none',
@@ -893,6 +904,27 @@ const profileTable = {
         operators: cFamilyOperators,
         defaultSymbols: ['='],
         declarations: DECLARATION_STYLES.csharp,
+    },
+    fsharp: {
+        id: 'fsharp',
+        name: 'F#',
+        extensions: ['fs', 'fsi', 'fsx'],
+        lineComments: ['//'],
+        blockComments: [['(*', '*)']],
+        strings: [
+            fsharpDoubleInterpolatedTripleQuote,
+            fsharpInterpolatedTripleQuote,
+            fsharpVerbatimInterpolatedString,
+            fsharpInterpolatedVerbatimString,
+            fsharpTripleQuote,
+            fsharpInterpolatedString,
+            fsharpVerbatimString,
+            doubleQuote,
+            singleQuote,
+        ],
+        operators: fsharpOperators,
+        defaultSymbols: ['=', '->', ':'],
+        declarations: DECLARATION_STYLES.fsharp,
     },
     cpp: {
         id: 'cpp',

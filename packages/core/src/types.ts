@@ -24,6 +24,7 @@ export type LanguageId =
     | 'kotlin'
     | 'swift'
     | 'csharp'
+    | 'fsharp'
     | 'cpp'
     | 'c'
     | 'ruby'

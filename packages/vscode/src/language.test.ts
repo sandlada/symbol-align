@@ -26,6 +26,8 @@ const mappedIds: ReadonlyArray<readonly [string, string]> = [
     ['kotlin', 'kotlin'],
     ['swift', 'swift'],
     ['csharp', 'csharp'],
+    ['fsharp', 'fsharp'],
+    ['f#', 'fsharp'],
     ['cpp', 'cpp'],
     ['c', 'c'],
     ['objectivec', 'objectivec'],

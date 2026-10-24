@@ -19,6 +19,7 @@ const LANGUAGE_IDS = {
     kotlin: true,
     swift: true,
     csharp: true,
+    fsharp: true,
     cpp: true,
     c: true,
     ruby: true,
@@ -144,6 +145,7 @@ describe('allLanguages', () => {
             kotlin: ['=>', '->', '?.'],
             swift: ['->', '?.', '??'],
             csharp: ['=>', '??=', '?.', '??'],
+            fsharp: ['->', '<-', '|>', '<|', '::', ':>'],
             cpp: ['=>', '::', '<<', '>>'],
             c: ['<<', '>>', '<<=', '>>='],
             ruby: ['=>', '::', '->', '===', '<=>'],
@@ -265,6 +267,59 @@ describe('languageProfile', () => {
     });
 });
 
+describe('fsharp profile', () => {
+    const profile = languageProfile('fsharp');
+
+    it('identifies itself as fsharp', () => {
+        expect(profile.id).toBe('fsharp');
+        expect(profile.name).toBe('F#');
+    });
+
+    it('handles the fs, fsi and fsx extensions', () => {
+        expect(profile.extensions).toEqual(['fs', 'fsi', 'fsx']);
+    });
+
+    it('lists the F# operators longest first', () => {
+        expect(profile.operators).toEqual([':?>', '**', '|>', '<|', '>>', '<<', '->', '<-', '::', ':>', ':?', '>=', '<=', '<>', '||', '&&', ':=', '..', '=', '+', '-', '*', '/', '%', '@', '^', '|', '&', '<', '>']);
+    });
+
+    it('keeps the compound operators that carry an alignable symbol intact', () => {
+        for (const operator of ['->', '<-', '|>', '<|', '::', ':>']) {
+            expect(profile.operators).toContain(operator);
+        }
+    });
+
+    it('aligns at least one symbol by default', () => {
+        expect(profile.defaultSymbols.length).toBeGreaterThan(0);
+        expect(profile.defaultSymbols).toContain('=');
+    });
+
+    it('lists the string delimiters longest opener first', () => {
+        const opens = profile.strings.map((delimiter) => delimiter.open);
+
+        expect(opens).toEqual(['$$"""', '$"""', '@$"', '$@"', '"""', '$"', '@"', '"', "'"]);
+        for (let index = 1; index < opens.length; index += 1) {
+            expect(opens[index - 1].length).toBeGreaterThanOrEqual(opens[index].length);
+        }
+    });
+
+    it('closes the F# interpolated raw strings at a triple quote', () => {
+        for (const open of ['$$"""', '$"""']) {
+            expect(profile.strings.find((delimiter) => delimiter.open === open)).toEqual({ open, close: '"""', escape: 'none', multiline: true });
+        }
+    });
+
+    it('uses doubled quotes for the F# interpolated verbatim strings', () => {
+        for (const open of ['$@"', '@$"']) {
+            expect(profile.strings.find((delimiter) => delimiter.open === open)).toEqual({ open, close: '"', escape: 'doubled', multiline: true });
+        }
+    });
+
+    it('uses backslash escapes for the F# interpolated regular string', () => {
+        expect(profile.strings.find((delimiter) => delimiter.open === '$"')).toEqual({ open: '$"', close: '"', escape: 'backslash', multiline: false });
+    });
+});
+
 describe('isLanguageId', () => {
     it('accepts known ids', () => {
         expect(isLanguageId('javascript')).toBe(true);
@@ -301,6 +356,18 @@ describe('detectLanguage', () => {
 
     it('detects csharp', () => {
         expect(detectLanguage('a.cs')).toBe('csharp');
+    });
+
+    it('detects fsharp source files', () => {
+        expect(detectLanguage('a.fs')).toBe('fsharp');
+    });
+
+    it('detects fsharp signature files', () => {
+        expect(detectLanguage('a.fsi')).toBe('fsharp');
+    });
+
+    it('detects fsharp script files', () => {
+        expect(detectLanguage('a.fsx')).toBe('fsharp');
     });
 
     it('detects ruby', () => {

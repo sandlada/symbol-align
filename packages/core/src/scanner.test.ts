@@ -73,6 +73,27 @@ const csharpProfile = profile({
     defaultSymbols: ['='],
 });
 
+const fsharpProfile = profile({
+    id: 'fsharp',
+    name: 'F#',
+    extensions: ['fs', 'fsi', 'fsx'],
+    lineComments: ['//'],
+    blockComments: [['(*', '*)']],
+    strings: [
+        { open: '$$"""', close: '"""', escape: 'none', multiline: true },
+        { open: '$"""', close: '"""', escape: 'none', multiline: true },
+        { open: '$@"', close: '"', escape: 'doubled', multiline: true },
+        { open: '@$"', close: '"', escape: 'doubled', multiline: true },
+        { open: '"""', close: '"""', escape: 'none', multiline: true },
+        { open: '$"', close: '"', escape: 'backslash', multiline: false },
+        { open: '@"', close: '"', escape: 'doubled', multiline: true },
+        { open: '"', close: '"', escape: 'backslash', multiline: false },
+        { open: "'", close: "'", escape: 'backslash', multiline: false },
+    ],
+    operators: ['|>', '<|', '->', '<-', '::', ':>', '=', '>', '<'],
+    defaultSymbols: ['=', '->', ':'],
+});
+
 const rustProfile = profile({
     id: 'rust',
     name: 'Rust',
@@ -175,6 +196,115 @@ describe('scanSource', () => {
             { start: 0, end: 8 },
             { start: 11, end: 12 },
         ]);
+    });
+
+    it('treats a nested F# block comment as one comment', () => {
+        const result = scanSource(['let x = 1 (* a (* b *) c *)', 'let y = 2'].join('\n'))(fsharpProfile);
+
+        expect(result.codeRegions[0]).toEqual([{ start: 0, end: 10 }]);
+        expect(result.codeRegions[1]).toEqual([{ start: 0, end: 9 }]);
+        expect(result.lineComments[0]).toBeUndefined();
+    });
+
+    it('excludes an F# triple quoted string that spans several lines', () => {
+        const result = scanSource(['let s = """a', 'b = c', 'd"""'].join('\n'))(fsharpProfile);
+
+        expect(result.codeRegions[0]).toEqual([{ start: 0, end: 8 }]);
+        expect(result.codeRegions[1]).toEqual([]);
+        expect(result.codeRegions[2]).toEqual([]);
+    });
+
+    it('does not end an F# verbatim string at a doubled quote', () => {
+        const result = scanSource('let s = @"a""b = c"')(fsharpProfile);
+
+        expect(result.codeRegions[0]).toEqual([{ start: 0, end: 8 }]);
+    });
+
+    it('treats an F# type parameter as code', () => {
+        const result = scanSource("let f (x: 'T) = x")(fsharpProfile);
+
+        expect(result.codeRegions[0]).toEqual([{ start: 0, end: 17 }]);
+    });
+
+    it('treats an F# char literal as a string', () => {
+        const result = scanSource("let c = 'a'")(fsharpProfile);
+
+        expect(result.codeRegions[0]).toEqual([{ start: 0, end: 8 }]);
+    });
+
+    it('treats an escaped F# char literal as a string', () => {
+        const result = scanSource("let c = '\\n'")(fsharpProfile);
+
+        expect(result.codeRegions[0]).toEqual([{ start: 0, end: 8 }]);
+    });
+
+    it('treats an escaped quote inside an F# char literal as string content', () => {
+        const result = scanSource("let c = '\\''")(fsharpProfile);
+
+        expect(result.codeRegions[0]).toEqual([{ start: 0, end: 8 }]);
+    });
+
+    it('treats an F# unicode char escape as a string', () => {
+        const result = scanSource("let c = '\\u0041'")(fsharpProfile);
+
+        expect(result.codeRegions[0]).toEqual([{ start: 0, end: 8 }]);
+    });
+
+    it('treats the F# (*) operator as code', () => {
+        const result = scanSource(['let mul = (*)', 'let x = 1'].join('\n'))(fsharpProfile);
+
+        expect(result.codeRegions[0]).toEqual([{ start: 0, end: 13 }]);
+        expect(result.codeRegions[1]).toEqual([{ start: 0, end: 9 }]);
+    });
+
+    it('treats the F# (**) operator as code', () => {
+        const result = scanSource('let mul = (**)')(fsharpProfile);
+
+        expect(result.codeRegions[0]).toEqual([{ start: 0, end: 14 }]);
+    });
+
+    it('does not nest an F# comment at the (*) operator', () => {
+        const result = scanSource(['x = 1 (* a (*) b *)', 'y = 2'].join('\n'))(fsharpProfile);
+
+        expect(result.codeRegions[0]).toEqual([{ start: 0, end: 6 }]);
+        expect(result.codeRegions[1]).toEqual([{ start: 0, end: 5 }]);
+    });
+
+    it('keeps a later F# string intact after the (*) operator', () => {
+        const result = scanSource(['let mul = (*)', 'let s = "*) a = b"'].join('\n'))(fsharpProfile);
+
+        expect(result.codeRegions[1]).toEqual([{ start: 0, end: 8 }]);
+    });
+
+    it('hides an F# interpolated hole with nested indexing', () => {
+        const result = scanSource('printfn $"{dict.["a = b"]}"')(fsharpProfile);
+
+        expect(result.codeRegions[0]).toEqual([{ start: 0, end: 8 }]);
+    });
+
+    it('hides an F# interpolated hole with a verbatim doubled quote', () => {
+        const result = scanSource('let s = $@"He said ""{name = 1}"""')(fsharpProfile);
+
+        expect(result.codeRegions[0]).toEqual([{ start: 0, end: 8 }]);
+    });
+
+    it('hides an F# triple quoted interpolated hole', () => {
+        const result = scanSource('let s = $"""Name: {"Phillip"}"""')(fsharpProfile);
+
+        expect(result.codeRegions[0]).toEqual([{ start: 0, end: 8 }]);
+    });
+
+    it('hides an F# double interpolated triple quoted hole', () => {
+        const result = scanSource('let s = $$"""Name: {{dict.["a = b"]}}"""')(fsharpProfile);
+
+        expect(result.codeRegions[0]).toEqual([{ start: 0, end: 8 }]);
+    });
+
+    it('keeps a single literal brace inside an F# double interpolated string', () => {
+        const result = scanSource(['let s = $$"""open { brace"""', 'let x = 1'].join('\n'))(fsharpProfile);
+
+        expect(result.codeRegions[0]).toEqual([{ start: 0, end: 8 }]);
+        expect(result.codeRegions[1]).toEqual([{ start: 0, end: 9 }]);
     });
 
     it('does not end a string at an escaped quote', () => {

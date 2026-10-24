@@ -471,6 +471,22 @@ export const rustLifetimeIsNotAString: CodeFixture = {
     language: 'rust',
 };
 
+export const fsharpLets: CodeFixture = {
+    name: 'fsharp-lets',
+    input: ['let project = "symbol-align"', 'let version = "0.1.0"', 'let defaultPort = 5173'].join('\n'),
+    output: ['let project     = "symbol-align"', 'let version     = "0.1.0"', 'let defaultPort = 5173'].join('\n'),
+    changes: 2,
+    language: 'fsharp',
+};
+
+export const fsharpMatch: CodeFixture = {
+    name: 'fsharp-match',
+    input: ['type Status =', '    | Active', '    | InactiveLong', '', 'let describe status =', '    match status with', '    | Active -> "active"', '    | InactiveLong -> "inactive"'].join('\n'),
+    output: ['type Status =', '    | Active', '    | InactiveLong', '', 'let describe status =', '    match status with', '    | Active       -> "active"', '    | InactiveLong -> "inactive"'].join('\n'),
+    changes: 1,
+    language: 'fsharp',
+};
+
 export const javaConstants: CodeFixture = {
     name: 'java-constants',
     input: ['private static final int MAX_SIZE = 100;', 'private static final int MIN = 1;'].join('\n'),
@@ -613,6 +629,14 @@ export const languageCsharp: CodeFixture = {
     output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
     changes: 2,
     language: 'csharp',
+};
+
+export const languageFsharp: CodeFixture = {
+    name: 'language-fsharp',
+    input: ['value = 1', 'longerValue = 22', 'v = 333'].join('\n'),
+    output: ['value       = 1', 'longerValue = 22', 'v           = 333'].join('\n'),
+    changes: 2,
+    language: 'fsharp',
 };
 
 export const languageCpp: CodeFixture = {
@@ -1081,6 +1105,8 @@ export const allFixtures: readonly CodeFixture[] = [
     goShortDeclaration,
     rustStruct,
     rustLifetimeIsNotAString,
+    fsharpLets,
+    fsharpMatch,
     javaConstants,
     csharpProperties,
     rubyHash,
@@ -1098,6 +1124,7 @@ export const allFixtures: readonly CodeFixture[] = [
     languageKotlin,
     languageSwift,
     languageCsharp,
+    languageFsharp,
     languageCpp,
     languageC,
     languageRuby,

@@ -77,6 +77,104 @@ describe('strings are never touched', () => {
         expect(align(result.code)({ language: 'rust' }).changes).toBe(0);
     });
 
+    it('keeps a line comment marker inside an F# triple quoted string', () => {
+        const code = 'let url = """http://example.com = x"""\nlet longerName = 1';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe('let url        = """http://example.com = x"""\nlet longerName = 1');
+        expect(align(result.code)({ language: 'fsharp' }).changes).toBe(0);
+    });
+
+    it('treats the F# (*) operator as code', () => {
+        const code = 'let mul = (*)\nlet project = "symbol-align"\nlet version = "0.1.0"';
+        const result = align(code)({ language: 'fsharp' });
+
+        // Only `let mul` grows: the other two prefixes already share one width.
+        expect(result.code).toBe('let mul     = (*)\nlet project = "symbol-align"\nlet version = "0.1.0"');
+        expect(result.changes).toBe(1);
+        expect(align(result.code)({ language: 'fsharp' }).changes).toBe(0);
+    });
+
+    it('keeps an F# string intact after the (*) operator', () => {
+        const code = 'let mul = (*)\nlet s = "*) a = b"\nlet muchLongerName = 1';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe('let mul            = (*)\nlet s              = "*) a = b"\nlet muchLongerName = 1');
+        expect(result.changes).toBe(2);
+        expect(align(result.code)({ language: 'fsharp' }).changes).toBe(0);
+    });
+
+    it('treats the F# (**) operator as code', () => {
+        const code = 'let mul = (**)\nlet s = "*) a = b"\nlet muchLongerName = 1';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe('let mul            = (**)\nlet s              = "*) a = b"\nlet muchLongerName = 1');
+        expect(result.changes).toBe(2);
+    });
+
+    it('closes an F# comment that contains the (*) operator', () => {
+        const code = '(* (*) *)\nlet a = 1\nlet aMuchMuchLongerName = 2';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe('(* (*) *)\nlet a                   = 1\nlet aMuchMuchLongerName = 2');
+        expect(result.changes).toBe(1);
+    });
+
+    it('hides an F# interpolated hole with nested indexing', () => {
+        const code = 'printfn $"{dict.["a = b"]}"';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('hides an F# verbatim interpolated string', () => {
+        const code = 'let s = $@"He said ""{name = 1}"""';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('hides an F# triple quoted interpolated string', () => {
+        const code = 'let s = $"""Name: {"Phillip"}"""';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('hides an F# double interpolated triple quoted string', () => {
+        const code = 'let s = $$"""Name: {{dict.["a = b"]}}"""';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('hides an F# regular interpolated string', () => {
+        const code = 'let s = $"plain {value} text"';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('aligns the next F# let after an interpolated string', () => {
+        const code = 'let s = $"plain {value} text"\nlet a = 1\nlet aMuchMuchLongerName = 2';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe('let s                   = $"plain {value} text"\nlet a                   = 1\nlet aMuchMuchLongerName = 2');
+    });
+
+    it('keeps a single literal brace inside an F# double interpolated string', () => {
+        const code = 'let s = $$"""open { brace"""\nlet a = 1\nlet aMuchMuchLongerName = 2';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe('let s                   = $$"""open { brace"""\nlet a                   = 1\nlet aMuchMuchLongerName = 2');
+        expect(result.changes).toBe(2);
+    });
+
     it('hides Lua long strings with levels', () => {
         const code = 'x = [=[s=t]=]\nlonger = 1';
         const result = align(code)({ language: 'lua' });

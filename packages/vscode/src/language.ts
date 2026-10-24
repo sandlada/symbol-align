@@ -59,6 +59,8 @@ const languageTable: Readonly<Record<string, string>> = Object.freeze({
     kotlin: 'kotlin',
     scala: 'scala',
     csharp: 'csharp',
+    fsharp: 'fsharp',
+    'f#': 'fsharp',
     groovy: 'groovy',
     elixir: 'elixir',
     erlang: 'erlang',
