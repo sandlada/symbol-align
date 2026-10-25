@@ -1,11 +1,13 @@
-# @sandlada/symbol-align-ts — Agent Guidelines
+# @sandlada/symbol-align — Agent Guidelines
 
 ## Project Overview
 
-TypeScript + ESM **pnpm workspace** for the `symbol-align` product. The
-executable TypeScript reference implementation lives in `packages/core-ts`
-(published as `@sandlada/symbol-align-ts`); the Rust core is being added in
-`packages/core`. The TypeScript package has zero runtime dependencies.
+TypeScript + Rust **pnpm workspace** for the `symbol-align` product. The shipped
+package is the Rust core in `packages/core`: a `wasm32-unknown-unknown` module
+with a thin TypeScript API wrapper and the platform adapters. The original
+TypeScript implementation lives in `packages/core-ts` as
+`@sandlada/symbol-align-ts` and is the behavioural reference of the conformance
+suite.
 
 **What this project is:** a *code-snippet symbol-alignment formatter*. It pads
 punctuation symbols (`=`, `:`, `=>`, `->`, `//`, `#`, …) so that they line up
@@ -23,12 +25,15 @@ extension) can be added later without restructuring the repository.
 
 ## Tech Stack
 
-- **Language:** TypeScript 7 (`typescript@^7.0.2`, native compiler `tsc`)
-- **Runtime:** Node.js ESM (`"type": "module"`)
+- **Core:** Rust (edition 2024, `serde_json` only), compiled to
+  `wasm32-unknown-unknown` and inlined into the TypeScript wrapper
+- **Wrapper / adapters:** TypeScript 7 (`typescript@^7.0.2`, native compiler `tsc`)
+- **Runtime:** Node.js ESM (`"type": "module"`); the main entry point is
+  runtime independent and also runs in browsers and workers
 - **Package manager:** pnpm (workspace + dependency `catalog`)
-- **Test:** Vitest 5
-- **Build:** `tsc` (TypeScript compiler) for the library, Vite for the playground
-- **Lint/format:** Biome 2 (`@biomejs/biome`)
+- **Test:** Vitest 5 (the conformance suite is shared with the TypeScript core)
+- **Build:** `cargo` for the wasm module, `tsc` for the wrapper, Vite for the playground
+- **Lint/format:** Biome 2 (`@biomejs/biome`); Rust is formatted with `cargo fmt`
 - **Dev runner:** `tsx` for the CLI, Vite for the playground
 
 ## Engineering Rules
@@ -88,37 +93,38 @@ Concretely:
 ```
 .
 ├── packages/
-│   ├── core-ts/               # @sandlada/symbol-align-ts — TypeScript reference implementation
+│   ├── core/                  # @sandlada/symbol-align — Rust core + wasm + TS wrapper
+│   │   ├── rust/              # Rust crate (edition 2024)
+│   │   │   └── src/
+│   │   │       ├── types.rs       # owned data model
+│   │   │       ├── line.rs        # Vec<char> + UTF-16 column table
+│   │   │       ├── language.rs    # profile lookup and detection
+│   │   │       ├── language_data.rs # generated from languages.json
+│   │   │       ├── vocabulary.rs  # cross-language keyword sets
+│   │   │       ├── scanner.rs     # lexical scanner (strings/comments)
+│   │   │       ├── finder.rs      # symbol finder
+│   │   │       ├── declarations.rs # declaration cell locator
+│   │   │       ├── aligner.rs     # alignment engine
+│   │   │       ├── json.rs        # boundary payloads
+│   │   │       └── abi.rs         # raw wasm ABI (alloc/dealloc/align/…)
 │   │   ├── src/
-│   │   │   ├── types.ts       # public type contract (LanguageProfile, AlignOptions, …)
-│   │   │   ├── language.ts     # language profiles: comments, strings, operators, default symbols
-│   │   │   ├── vocabulary.ts   # cross-language modifier/type/keyword vocabularies
-│   │   │   ├── scanner.ts      # lexical scanner — finds real code regions (strings/comments removed)
-│   │   │   ├── declarations.ts # findDeclarationCells() — locates the declaration cells of a line
-│   │   │   ├── finder.ts       # findSymbolPositions() — locates symbols inside code regions
-│   │   │   ├── aligner.ts      # align() — vertical alignment engine
-│   │   │   ├── config.ts       # symbol-align.config.json — parsing and glob overrides (pure)
-│   │   │   ├── config-fs.ts   # symbol-align.config.json — discovery and loading (Node.js)
-│   │   │   ├── cli.ts          # CLI implementation — pure, side effect free
-│   │   │   ├── bin.ts          # executable entry point — owns the process plumbing
-│   │   │   ├── index.ts        # Public API exports
-│   │   │   ├── fixtures.ts     # Multi-line code test fixtures
-│   │   │   ├── language.test.ts  # Language profile tests
-│   │   │   ├── scanner.test.ts   # Scanner tests
-│   │   │   ├── finder.test.ts    # Finder unit tests
-│   │   │   ├── aligner.test.ts   # Aligner unit tests
-│   │   │   ├── declarations.test.ts # Declaration locator and language classification tests
-│   │   │   ├── cli.test.ts       # CLI argument/path tests
-│   │   │   ├── config.test.ts    # Configuration tests
-│   │   │   ├── config-fs.test.ts # Filesystem configuration tests
-│   │   │   ├── runtime.test.ts   # Runtime independence guard (no Node.js builtins)
-│   │   │   ├── invariants.test.ts # Property-style invariant tests over every language
-│   │   │   └── fixtures.test.ts  # Fixture-driven alignment tests
-│   │   ├── package.json       # Package manifest (published)
-│   │   ├── schemas/            # JSON schema of symbol-align.config.json
-│   │   ├── tsconfig.json      # Build config (emits to dist/)
-│   │   ├── tsconfig.test.json # Type-check config (src incl. tests, no emit)
-│   │   └── vitest.config.ts   # Package-level test config
+│   │   │   ├── abi.ts         # inline-base64 wasm loader
+│   │   │   ├── aligner.ts     # curried public API around the core
+│   │   │   ├── scanner.ts     # scanSource adapter
+│   │   │   ├── finder.ts      # findSymbolPositions adapter
+│   │   │   ├── declarations.ts # findDeclarationCells adapter
+│   │   │   ├── language.ts    # generated profile table + detection
+│   │   │   ├── config.ts      # symbol-align.config.json parsing (pure)
+│   │   │   ├── config-fs.ts   # configuration discovery/loading (Node.js)
+│   │   │   ├── cli.ts         # CLI implementation
+│   │   │   ├── bin.ts         # executable entry point
+│   │   │   └── index.ts       # public API exports
+│   │   ├── languages.json     # single source of truth for the 57 profiles
+│   │   ├── schemas/           # JSON schema of symbol-align.config.json
+│   │   └── package.json
+│   ├── core-ts/               # @sandlada/symbol-align-ts — TypeScript reference implementation
+│   │   ├── src/               # library + CLI sources (the conformance reference)
+│   │   └── package.json
 │   ├── vscode/                # VS Code extension that drives the library
 │   │   ├── src/
 │   │   │   ├── extension.ts    # VS Code adapter (provider + commands)
@@ -167,10 +173,10 @@ Concretely:
 The package has two entry points. The main entry point is free of Node.js
 builtins, so it can be bundled for the browser, a worker or any other
 JavaScript runtime. The helpers that touch the filesystem live in the
-`@sandlada/symbol-align-ts/node` entry point.
+`@sandlada/symbol-align/node` entry point.
 
 ```ts
-// @sandlada/symbol-align-ts
+// @sandlada/symbol-align
 align(code: string): (options?: AlignOptions) => AlignResult
 alignWith(options: AlignOptions): (code: string) => AlignResult
 alignSymbols(...symbols: string[]): (code: string) => AlignResult
@@ -181,7 +187,7 @@ findDeclarationCells(line: string): (options: DeclarationOptions) => readonly De
 parseConfig(raw: unknown): SymbolAlignConfig
 resolveConfig(config: SymbolAlignConfig): (filePath?: string) => AlignOptions
 
-// @sandlada/symbol-align-ts/node
+// @sandlada/symbol-align/node
 findConfigFile(startDir: string): string | undefined
 loadConfig(startDir: string): SymbolAlignConfig | undefined
 loadConfigFile(path: string): SymbolAlignConfig
@@ -255,20 +261,44 @@ loadConfigFile(path: string): SymbolAlignConfig
 
 ## Implementation Notes
 
+- `packages/core` is the shipped Rust core. `packages/core-ts` is the
+  TypeScript reference implementation; the two must stay behaviourally
+  identical, and the Vitest suite of `core-ts` is copied into `core` unchanged
+  as the conformance contract. Never weaken a test to make the port pass.
+- The Rust core is a **faithful baseline port** of the TypeScript pipeline:
+  re-scan per symbol pass, five-iteration fixpoint, leading-symbol fallback.
+  Algorithmic changes are a separate, measured step (report2).
+- `Line` stores `Vec<char>` plus a UTF-16 column table. Internal positions are
+  character indices; public positions are UTF-16 columns. The conversion lives
+  at the JSON/wasm boundary (`json.rs`, `abi.ts`). This is what keeps `😀`
+  aligned like JavaScript does.
+- `languages.json` is the single source of truth for the 57 profiles.
+  `pnpm --filter @sandlada/symbol-align generate:languages` regenerates
+  `rust/src/language_data.rs` and `src/generated/languages.ts`; a parity test
+  compares the Rust table with the TypeScript table at runtime.
+- The wasm module is built by `scripts/build-wasm.mjs` with plain
+  `wasm32-unknown-unknown` and a hand-written C ABI (`alloc`, `dealloc`,
+  `align`, `scan`, `find_symbols`, `find_declarations`, `profiles`). There is
+  no wasm-bindgen and no asset file: the base64 payload is inlined into
+  `src/generated/wasm-binary.ts`.
+- `abi.rs` is the only module allowed to use `unsafe`; every other module is
+  safe Rust. The core modules never touch the filesystem, the process or the
+  environment.
 - `scanSource()` is a single-pass lexical scanner; it is the only place that
   knows about strings and comments
 - `findSymbolPositions()` only ever looks inside the code regions reported by
   the scanner
 - `findDeclarationCells()` only inspects the first code region of a line; it
   tokenises that region and relies on the cross-language supersets of
-  `vocabulary.ts` instead of a per-language grammar
-- `declarations.ts` is conservative: a member access, a statement or a
-  construct without a type returns `null` and the line stays untouched
+  `vocabulary.rs` instead of a per-language grammar
+- `declarations.rs` is conservative: a member access, a statement or a
+  construct without a type returns `None` and the line stays untouched
 - the declaration pass runs before the groups in every fixpoint iteration; the
   group exclusions are only computed when groups are configured, so
   `declarations: false` and the no-group output stay byte-identical
 - Language specific behaviour (comment markers, string delimiters, operators)
-  lives in `language.ts` — never hard-code it in the scanner or the aligner
+  lives in `languages.json` / `language_data.rs` — never hard-code it in the
+  scanner or the aligner
 - The aligner re-scans between symbol passes because earlier passes insert
   spaces and shift the columns of later symbols
 - `changes` counts **distinct** modified lines
@@ -283,8 +313,11 @@ worker or any other JavaScript runtime.
 - `cli.ts` and `config-fs.ts` are the **platform adapters**; they are the only
   modules that may import `node:` builtins
 - `cli.ts` and `config-fs.ts` are **not** reachable from `index.ts` — the
-  filesystem helpers are published as the `@sandlada/symbol-align-ts/node`
+  filesystem helpers are published as the `@sandlada/symbol-align/node`
   subpath export
+- `abi.ts` instantiates the inline wasm payload synchronously with the
+  `WebAssembly` global and the platform `TextEncoder` / `TextDecoder`; it must
+  never import `node:fs` or rely on `Buffer`
 - `runtime.test.ts` guards the invariant: it walks the module graph of
   `index.ts` and fails when a Node.js builtin is imported
 
@@ -295,7 +328,7 @@ dependency other than the core** (Vite is the only external package in its
 manifest; TypeScript and Vitest come from the workspace root as dev tools) and
 deliberately uses no UI framework, no icon pack and no syntax highlighter.
 
-- The Vite alias resolves `@sandlada/symbol-align-ts` to `../core-ts/src/index.ts`,
+- The Vite alias resolves `@sandlada/symbol-align` to `../core/src/index.ts`,
   so the dev server doubles as a real-time test bench and the production bundle
   always contains the current core source
 - The language selector is generated from `allLanguages`; `samples.ts` is typed
@@ -316,14 +349,17 @@ deliberately uses no UI framework, no icon pack and no syntax highlighter.
 
 - Shared dependency versions live in the `catalog` section of `pnpm-workspace.yaml`
   and are referenced as `"catalog:"` from a package manifest
-- `packages/core-ts` links `README.md`, `LICENSE`, `SECURITY.md` and
-  `CODE_OF_CONDUCT.md` back to the repository root copies
+- `packages/core` and `packages/core-ts` link `README.md`, `LICENSE`,
+  `SECURITY.md` and `CODE_OF_CONDUCT.md` back to the repository root copies
 - `npm-packlist` skips symlinked files, so `scripts/sync-docs.mjs` replaces the
   links with real copies in `prepack` and restores them in `postpack`
 - New packages are added by creating `packages/<name>/package.json` — no root
   change is required, the `packages/*` glob picks them up automatically
 - `pnpm-lock.yaml` and `pnpm-workspace.yaml` are written by pnpm and are
   excluded from the Biome configuration
+- `packages/core/rust/Cargo.lock` is committed so the wasm build is
+  reproducible; `packages/core/src/generated/wasm-binary.ts` is generated and
+  gitignored
 - The VS Code extension pins `@types/vscode` explicitly instead of using the
   catalog, because `vsce` parses that version to validate it against
   `engines.vscode` and cannot resolve the `catalog:` protocol
@@ -332,26 +368,41 @@ deliberately uses no UI framework, no icon pack and no syntax highlighter.
 
 ```bash
 pnpm install        # install workspace dependencies
-pnpm build          # build every package
+pnpm build          # build every package (Rust wasm + tsc)
 pnpm test           # test every package
 pnpm typecheck      # type-check every package (incl. tests)
 pnpm lint           # lint the workspace (Biome)
 pnpm format         # format the workspace (Biome)
 pnpm format:check   # verify formatting without writing
 pnpm clean          # remove build output
+pnpm bench          # write report1.md (baseline performance report)
 
-pnpm --filter @sandlada/symbol-align-ts build   # build a single package
-pnpm --filter @sandlada/symbol-align-ts dev     # run the CLI from source
+pnpm --filter @sandlada/symbol-align build      # build the Rust core + wrapper
+pnpm --filter @sandlada/symbol-align dev        # run the CLI from source
+pnpm --filter @sandlada/symbol-align-ts test    # run the TypeScript reference suite
 pnpm dev:playground                          # run the Vite playground (localhost:5173)
 pnpm --filter @sandlada/playground build     # static site in packages/playground/dist
 pnpm exec vitest run                          # run all projects from the root
+
+cargo test --manifest-path packages/core/rust/Cargo.toml          # Rust unit tests
+cargo clippy --manifest-path packages/core/rust/Cargo.toml -- -D warnings
 ```
+
+The Rust wasm build requires the `wasm32-unknown-unknown` target:
+
+```bash
+rustup target add wasm32-unknown-unknown
+```
+
+On a Windows host without the MSVC linker, use the GNU toolchain
+(`RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-gnu`) or install the Visual Studio
+C++ build tools.
 
 ## Release Flow
 
-1. `pnpm --filter @sandlada/symbol-align-ts version <major|minor|patch>`
+1. `pnpm --filter @sandlada/symbol-align version <major|minor|patch>`
 2. `pnpm build`
 3. `pnpm test`
-4. `pnpm --filter @sandlada/symbol-align-ts publish`
+4. `pnpm --filter @sandlada/symbol-align publish`
 
 When modifying this project, maintain the existing conventions. If adding new symbols or behaviors, ensure tests cover both the finder and aligner layers.

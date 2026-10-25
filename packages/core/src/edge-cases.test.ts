@@ -1,0 +1,706 @@
+import { describe, expect, it } from 'vitest';
+import { align } from './aligner.js';
+import { allLanguages, languageProfile } from './language.js';
+import { scanSource } from './scanner.js';
+
+describe('strings are never touched', () => {
+    it('ignores a nested template literal', () => {
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains a template hole
+        const code = 'x = `o${`i=j`}e`\nlonger = 1';
+        const result = align(code)({ language: 'javascript' });
+
+        expect(result.code).not.toContain('i =');
+        expect(result.code).not.toContain('i= ');
+        const second = align(result.code)({ language: 'javascript' });
+
+        expect(second.code).toBe(result.code);
+        expect(second.changes).toBe(0);
+    });
+
+    it('hides JavaScript template holes', () => {
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains a template hole
+        const code = '`${p=q}`\nxx = 1';
+        const result = align(code)({ language: 'javascript' });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('hides C# interpolated holes', () => {
+        const code = 'var s = $"x{"a=b"}y"\nvar longer = 1';
+        const result = align(code)({ language: 'csharp' });
+
+        expect(result.code).toBe('var s      = $"x{"a=b"}y"\nvar longer = 1');
+        expect(result.code).toContain('"a=b"');
+    });
+
+    it('hides a C# verbatim interpolated hole', () => {
+        const code = 'var s = @$"a""b=c""d"\nvar longer = 1';
+        const result = align(code)({ language: 'csharp' });
+
+        expect(result.code).toContain('b=c');
+        expect(result.code).not.toContain('b =c');
+        expect(result.code).not.toContain('b= c');
+    });
+
+    it('treats SQL double quotes as strings', () => {
+        const code = 'SELECT "x=y"\nSELECT a=1';
+        const result = align(code)({ language: 'sql' });
+        const profile = languageProfile('sql');
+        const scan = scanSource(code)(profile);
+
+        expect(scan.codeRegions[0]).toEqual([{ start: 0, end: 7 }]);
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('hides GraphQL block strings', () => {
+        const code = 'desc = """x: y = z"""\nlonger = 1';
+        const result = align(code)({ language: 'graphql' });
+
+        expect(result.code).toContain('x: y = z');
+        expect(align(result.code)({ language: 'graphql' }).changes).toBe(0);
+    });
+
+    it('hides Scala triple-quoted strings', () => {
+        const code = 'v = """x=y"""\nlonger = 1';
+        const result = align(code)({ language: 'scala' });
+
+        expect(result.code).toContain('x=y');
+    });
+
+    it('hides Rust raw strings', () => {
+        const code = 's = r#"x=y"#\nlonger = 1';
+        const result = align(code)({ language: 'rust' });
+
+        expect(result.code).toContain('x=y');
+        expect(align(result.code)({ language: 'rust' }).changes).toBe(0);
+    });
+
+    it('keeps a line comment marker inside an F# triple quoted string', () => {
+        const code = 'let url = """http://example.com = x"""\nlet longerName = 1';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe('let url        = """http://example.com = x"""\nlet longerName = 1');
+        expect(align(result.code)({ language: 'fsharp' }).changes).toBe(0);
+    });
+
+    it('treats the F# (*) operator as code', () => {
+        const code = 'let mul = (*)\nlet project = "symbol-align"\nlet version = "0.1.0"';
+        const result = align(code)({ language: 'fsharp' });
+
+        // Only `let mul` grows: the other two prefixes already share one width.
+        expect(result.code).toBe('let mul     = (*)\nlet project = "symbol-align"\nlet version = "0.1.0"');
+        expect(result.changes).toBe(1);
+        expect(align(result.code)({ language: 'fsharp' }).changes).toBe(0);
+    });
+
+    it('keeps an F# string intact after the (*) operator', () => {
+        const code = 'let mul = (*)\nlet s = "*) a = b"\nlet muchLongerName = 1';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe('let mul            = (*)\nlet s              = "*) a = b"\nlet muchLongerName = 1');
+        expect(result.changes).toBe(2);
+        expect(align(result.code)({ language: 'fsharp' }).changes).toBe(0);
+    });
+
+    it('treats the F# (**) operator as code', () => {
+        const code = 'let mul = (**)\nlet s = "*) a = b"\nlet muchLongerName = 1';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe('let mul            = (**)\nlet s              = "*) a = b"\nlet muchLongerName = 1');
+        expect(result.changes).toBe(2);
+    });
+
+    it('closes an F# comment that contains the (*) operator', () => {
+        const code = '(* (*) *)\nlet a = 1\nlet aMuchMuchLongerName = 2';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe('(* (*) *)\nlet a                   = 1\nlet aMuchMuchLongerName = 2');
+        expect(result.changes).toBe(1);
+    });
+
+    it('hides an F# interpolated hole with nested indexing', () => {
+        const code = 'printfn $"{dict.["a = b"]}"';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('hides an F# verbatim interpolated string', () => {
+        const code = 'let s = $@"He said ""{name = 1}"""';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('hides an F# triple quoted interpolated string', () => {
+        const code = 'let s = $"""Name: {"Phillip"}"""';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('hides an F# double interpolated triple quoted string', () => {
+        const code = 'let s = $$"""Name: {{dict.["a = b"]}}"""';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('hides an F# regular interpolated string', () => {
+        const code = 'let s = $"plain {value} text"';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('aligns the next F# let after an interpolated string', () => {
+        const code = 'let s = $"plain {value} text"\nlet a = 1\nlet aMuchMuchLongerName = 2';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe('let s                   = $"plain {value} text"\nlet a                   = 1\nlet aMuchMuchLongerName = 2');
+    });
+
+    it('keeps a single literal brace inside an F# double interpolated string', () => {
+        const code = 'let s = $$"""open { brace"""\nlet a = 1\nlet aMuchMuchLongerName = 2';
+        const result = align(code)({ language: 'fsharp' });
+
+        expect(result.code).toBe('let s                   = $$"""open { brace"""\nlet a                   = 1\nlet aMuchMuchLongerName = 2');
+        expect(result.changes).toBe(2);
+    });
+
+    it('hides Lua long strings with levels', () => {
+        const code = 'x = [=[s=t]=]\nlonger = 1';
+        const result = align(code)({ language: 'lua' });
+
+        expect(result.code).toContain('s=t');
+        expect(align(result.code)({ language: 'lua' }).changes).toBe(0);
+    });
+
+    it('hides Python f-string holes with nested quotes', () => {
+        const code = 'f"{"x=1"}"\nlonger_var = 2';
+        const result = align(code)({ language: 'python' });
+
+        expect(result.code).toBe(code);
+        expect(result.changes).toBe(0);
+    });
+
+    it('hides TOML triple-quoted strings', () => {
+        const code = 'a = """\nx = 1\n"""\nbb = 2';
+        const result = align(code)({ language: 'toml' });
+
+        expect(result.code).toContain('x = 1');
+        expect(align(result.code)({ language: 'toml' }).changes).toBe(0);
+    });
+
+    it('hides Lua block comments', () => {
+        const code = '--[[\nx = 1\n]]\na = 1\nbb = 2';
+        const result = align(code)({ language: 'lua' });
+
+        expect(result.code).toContain('x = 1');
+        expect(align(result.code)({ language: 'lua' }).changes).toBe(0);
+    });
+
+    it('hides PowerShell here-strings', () => {
+        const code = '$a = @"\nkey = value\n"@\n$longer_var = 2';
+        const result = align(code)({ language: 'powershell' });
+
+        expect(result.code).toContain('key = value');
+        expect(align(result.code)({ language: 'powershell' }).changes).toBe(0);
+    });
+
+    it('hides shell heredoc bodies', () => {
+        const code = 'cat <<EOF\nkey = value\nEOF\nshort=1\nlonger_var=2';
+        const result = align(code)({ language: 'shell' });
+
+        expect(result.code).toContain('key = value');
+        expect(align(result.code)({ language: 'shell' }).changes).toBe(0);
+    });
+
+    it('hides quoted and indented shell heredocs without touching herestrings', () => {
+        const quoted = align("cat <<'EOF'\na=b\nEOF\nx=1\nyy=2")({ language: 'shell' });
+        expect(quoted.code).toContain('a=b');
+
+        const herestring = align('cat <<< "a=b"\nxx = 1')({ language: 'shell' });
+        expect(herestring.code).toContain('"a=b"');
+        expect(herestring.changes).toBe(0);
+    });
+
+    it('hides ruby, perl and php heredoc bodies', () => {
+        const ruby = align('cat <<~EOS\nkey = value\nEOS\nshort=1\nlonger_var=2')({ language: 'ruby' });
+        expect(ruby.code).toContain('key = value');
+        expect(align(ruby.code)({ language: 'ruby' }).changes).toBe(0);
+
+        const perl = align('print <<EOF;\nkey = value\nEOF\nshort=1\nlonger_var=2')({ language: 'perl' });
+        expect(perl.code).toContain('key = value');
+        expect(align(perl.code)({ language: 'perl' }).changes).toBe(0);
+
+        const php = align('$x = <<<EOF\nkey = value\nEOF;\n$short=1\n$longer_var=2')({ language: 'php' });
+        expect(php.code).toContain('key = value');
+        expect(align(php.code)({ language: 'php' }).changes).toBe(0);
+    });
+
+    it('leaves Haskell primes, Clojure quotes and BOM lines stable and untouched', () => {
+        expect(align("foo' = 1\nfoobar = 2")({ language: 'haskell' }).changes).toBe(0);
+        expect(align("'a = 1\n'bb = 2")({ language: 'clojure' }).changes).toBe(0);
+        expect(align('﻿a = 1\nbb = 2')({}).changes).toBe(0);
+    });
+
+    it('hides Scala interpolated strings with nested quotes', () => {
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        expect(align('s"a ${"b=c"} d"\nxx = 1')({ language: 'scala' }).code).toBe('s"a ${"b=c"} d"\nxx = 1');
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        expect(align('f"a ${x} c"\nxx = 1')({ language: 'scala' }).changes).toBe(0);
+        expect(align('raw"a=b"\nxx = 1')({ language: 'scala' }).changes).toBe(0);
+
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        const outer = align('val s = s"a ${"b=c"} d"\nval longer = 1')({ language: 'scala' });
+        expect(outer.code).toContain('"b=c"');
+        expect(align(outer.code)({ language: 'scala' }).changes).toBe(0);
+    });
+
+    it('hides Swift interpolation holes with nested quotes', () => {
+        expect(align('"a \\("b=c") d"\nxx = 1')({ language: 'swift' }).code).toBe('"a \\("b=c") d"\nxx = 1');
+
+        const outer = align('let s = "a \\("b=c") d"\nlet longer = 1')({ language: 'swift' });
+        expect(outer.code).toContain('"b=c"');
+        expect(align(outer.code)({ language: 'swift' }).changes).toBe(0);
+    });
+
+    it('hides nested block comments where the language nests them', () => {
+        const nested = align('{- a = b {- c = d -} e = f -}\nx = 1\nyy = 2')({ language: 'haskell' });
+        expect(nested.code).toBe('{- a = b {- c = d -} e = f -}\nx  = 1\nyy = 2');
+        expect(align(nested.code)({ language: 'haskell' }).changes).toBe(0);
+
+        const julia = align('#= a #= b =# c =#\nx = 1\nyy = 2')({ language: 'julia' });
+        expect(julia.code).toBe('#= a #= b =# c =#\nx  = 1\nyy = 2');
+    });
+
+    it('keeps non-nesting block comments closing at the first terminator', () => {
+        expect(align('/* a /* b */\nx = 1\nyy = 2')({ language: 'c' }).code).toBe('/* a /* b */\nx  = 1\nyy = 2');
+    });
+
+    it('leaves documentation comments untouched while aligning nearby code', () => {
+        expect(align('/// a = b\n/// aa = bb\n')({}).code).toBe('/// a = b\n/// aa = bb\n');
+        expect(align('/** a = b */\n/** aa = bb */\n')({}).code).toBe('/** a = b */\n/** aa = bb */\n');
+
+        const mixed = align('a=1\n/// a = b\nbb=2\n')({});
+        expect(mixed.code).toBe('a =1\n/// a = b\nbb=2\n');
+        expect(align(mixed.code)({}).changes).toBe(0);
+    });
+
+    it('hides Delphi, Erlang, Clojure and VB comment bodies', () => {
+        expect(align('{ a = b }\nx = 1\nyy = 2')({ language: 'delphi' }).code).toBe('{ a = b }\nx  = 1\nyy = 2');
+        expect(align('(* a = b *)\nx = 1\nyy = 2')({ language: 'delphi' }).code).toBe('(* a = b *)\nx  = 1\nyy = 2');
+        expect(align('%% a = b\nx = 1\nyy = 2')({ language: 'erlang' }).code).toBe('%% a = b\nx  = 1\nyy = 2');
+        expect(align('; a = b\nx = 1\nyy = 2')({ language: 'clojure' }).code).toBe('; a = b\nx  = 1\nyy = 2');
+        expect(align("' a = b\nx = 1\nyy = 2")({ language: 'vb' }).code).toBe("' a = b\nx  = 1\nyy = 2");
+    });
+
+    it('hides deeply nested holes and comments', () => {
+        expect(align('{- a {- b {- c -} d -} e -}\nx = 1\nyy = 2')({ language: 'haskell' }).code).toBe('{- a {- b {- c -} d -} e -}\nx  = 1\nyy = 2');
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        expect(align('"${"${"x=y"}"}"\nxx = 1')({ language: 'javascript' }).changes).toBe(0);
+    });
+
+    it('never treats heredoc markers inside strings as openers', () => {
+        const quoted = align('x = "cat <<EOF"\nxx = 1')({ language: 'shell' });
+        expect(quoted.code).toBe('x  = "cat <<EOF"\nxx = 1');
+
+        const opener = align('cat <<EOF "a=b"\nkey = value\nEOF\nx = 1\nyy = 2')({ language: 'shell' });
+        expect(opener.code).toContain('"a=b"');
+        expect(opener.code).toContain('key = value');
+        expect(align(opener.code)({ language: 'shell' }).changes).toBe(0);
+    });
+
+    it('treats TOML literal strings as escape-free', () => {
+        const backslash = align("key = 'C:\\path = x'\nlongkey = 2")({ language: 'toml' });
+        expect(backslash.code).toBe("key     = 'C:\\path = x'\nlongkey = 2");
+        expect(align(backslash.code)({ language: 'toml' }).changes).toBe(0);
+
+        const multiline = align("a = '''\nx = 1\n'''\nbb = 2")({ language: 'toml' });
+        expect(multiline.code).toContain('x = 1');
+        expect(align(multiline.code)({ language: 'toml' }).changes).toBe(0);
+    });
+
+    it('hides Groovy, Kotlin and Dart interpolation holes with nested quotes', () => {
+        for (const language of ['groovy', 'kotlin', 'dart'] as const) {
+            // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+            const leaked = align('"a ${"b=c"}"\nxx = 1')({ language });
+            // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+            expect(leaked.code).toBe('"a ${"b=c"}"\nxx = 1');
+            expect(leaked.changes).toBe(0);
+
+            // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+            const nested = align('val s = "a ${"b=c"} d"\nval longer = 1')({ language });
+            expect(nested.code).toContain('"b=c"');
+            expect(align(nested.code)({ language }).changes).toBe(0);
+        }
+    });
+
+    it('hides Ruby and Elixir interpolation holes with nested quotes', () => {
+        for (const language of ['ruby', 'elixir'] as const) {
+            expect(align('"a #{"b=c"}"\nxx = 1')({ language }).code).toBe('"a #{"b=c"}"\nxx = 1');
+
+            const nested = align('s = "a #{"b=c"} d"\nlonger = 1')({ language });
+            expect(nested.code).toContain('"b=c"');
+            expect(align(nested.code)({ language }).changes).toBe(0);
+        }
+    });
+
+    it('hides holes and quote-likes of the remaining interpolated languages', () => {
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        expect(align('"a ${"b=c"}"\nxx = 1')({ language: 'powershell' }).code).toBe('"a ${"b=c"}"\nxx = 1');
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        expect(align('"a ${"b=c"}"\nxx = 1')({ language: 'terraform' }).code).toBe('"a ${"b=c"}"\nxx = 1');
+        expect(align('"a #{"b=c"}"\nxx = 1')({ language: 'crystal' }).code).toBe('"a #{"b=c"}"\nxx = 1');
+        expect(align('"a $("b=c")" d"\nxx = 1')({ language: 'julia' }).code).toBe('"a $("b=c")" d"\nxx = 1');
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        expect(align('"a ${"b=c"} d"\nxx = 1')({ language: 'php' }).code).toBe('"a ${"b=c"} d"\nxx = 1');
+        expect(align('fmt"a {"b=c"} d"\nxx = 1')({ language: 'nim' }).code).toBe('fmt"a {"b=c"} d"\nxx = 1');
+        expect(align('qq{a = b}\nxx = 1')({ language: 'perl' }).code).toBe('qq{a = b}\nxx = 1');
+        expect(align('s/a=b/c/\nxx = 1')({ language: 'perl' }).code).toBe('s/a=b/c/\nxx = 1');
+        expect(align('~s|a #{"b=c"} d|\nxx = 1')({ language: 'elixir' }).code).toBe('~s|a #{"b=c"} d|\nxx = 1');
+        expect(align('%w[a=b c]\nxx = 1')({ language: 'ruby' }).code).toBe('%w[a=b c]\nxx = 1');
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        expect(align('$/a ${"b=c"} d/$\nxx = 1')({ language: 'groovy' }).code).toBe('$/a ${"b=c"} d/$\nxx = 1');
+
+        const outer = align('s = "a #{"b=c"} d"\nlonger = 1')({ language: 'crystal' });
+        expect(outer.code).toContain('"b=c"');
+        expect(align(outer.code)({ language: 'crystal' }).changes).toBe(0);
+    });
+
+    it('hides both segments of Perl s/tr/y substitutions', () => {
+        expect(align('s{a=b}{c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s{a=b}{c=d}\nlonger = 1');
+        expect(align('s/a=b/c=d/\nx = 1')({ language: 'perl' }).changes).toBe(0);
+        expect(align('tr/a=b/c=d/\nx = 1')({ language: 'perl' }).changes).toBe(0);
+        expect(align('y{a=b}{c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('y{a=b}{c=d}\nlonger = 1');
+        expect(align('s{a=b} {c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s{a=b} {c=d}\nlonger = 1');
+        expect(align('s/a=b/c=d/g\nlonger = 1')({ language: 'perl' }).code).toBe('s/a=b/c=d/g\nlonger = 1');
+        expect(align('s{aa\nbb}{c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa\nbb}{c=d}\nlonger = 1');
+        expect(align('s{aa}{c\nd=e}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}{c\nd=e}\nlonger = 1');
+
+        const outer = align('$x =~ s{aa}{bb};\n$yy =~ s{c}{d};')({ language: 'perl', symbols: ['=~'] });
+        expect(outer.code).toBe('$x  =~ s{aa}{bb};\n$yy =~ s{c}{d};');
+        expect(align(outer.code)({ language: 'perl', symbols: ['=~'] }).changes).toBe(0);
+    });
+
+    it('balances nested brackets inside Perl quote-like segments', () => {
+        expect(align('s{a{b}c}{d=e}\nlonger = 1')({ language: 'perl' }).code).toBe('s{a{b}c}{d=e}\nlonger = 1');
+        expect(align('s{aa}{b{c}d=e}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}{b{c}d=e}\nlonger = 1');
+        expect(align('qq{a{b}c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('qq{a{b}c=d}\nlonger = 1');
+        expect(align('m{a{b}c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('m{a{b}c=d}\nlonger = 1');
+        expect(align('s{a{b\nc}d}{e=f}\nlonger = 1')({ language: 'perl' }).code).toBe('s{a{b\nc}d}{e=f}\nlonger = 1');
+        expect(align('s{aa}{b{c\nd}e}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}{b{c\nd}e}\nlonger = 1');
+    });
+
+    it('hides a Perl replacement that starts on the next line', () => {
+        expect(align('s{aa}\n{c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}\n{c=d}\nlonger = 1');
+        expect(align('s{aa}\n\n{c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}\n\n{c=d}\nlonger = 1');
+        expect(align('s{aa}\n{c\nd=e}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}\n{c\nd=e}\nlonger = 1');
+        expect(align('s{aa}\n/c=d/\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}\n/c=d/\nlonger = 1');
+        expect(align('s{aa}\n# note\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}\n# note\nlonger = 1');
+        expect(align('s{aa}\nfoo = 1\nlonger = 2')({ language: 'perl' }).code).toBe('s{aa}\nfoo    = 1\nlonger = 2');
+    });
+
+    it('hides Perl format blocks', () => {
+        expect(align('format STDOUT =\nName: @<<<<\n$name\n.\nmy $longer = 2;')({ language: 'perl' }).code).toBe('format STDOUT =\nName: @<<<<\n$name\n.\nmy $longer = 2;');
+        expect(align('format STDOUT =\nkey = value\n.\nmy $longer = 2;')({ language: 'perl' }).code).toBe('format STDOUT =\nkey = value\n.\nmy $longer = 2;');
+        expect(align('format STDOUT =\n$name\n.\nmy $x = 1;\nmy $longer = 2;')({ language: 'perl' }).code).toBe('format STDOUT =\n$name\n.\nmy $x      = 1;\nmy $longer = 2;');
+        expect(align('my $x = 1.\nmy $longer = 2;')({ language: 'perl' }).code).toBe('my $x      = 1.\nmy $longer = 2;');
+    });
+    it('hides Ruby embedded documents and trailing data', () => {
+        expect(align('=begin\na = b\n=end\nx = 1\nyy = 2')({ language: 'ruby' }).code).toBe('=begin\na = b\n=end\nx  = 1\nyy = 2');
+        expect(align('x = 1\n__END__\na = b\nlonger = 2')({ language: 'ruby' }).code).toBe('x = 1\n__END__\na = b\nlonger = 2');
+        expect(align('  =begin\na = b\n  =end\nx = 1\nyy = 2')({ language: 'ruby' }).code).toBe('   =begin\na  = b\n   =end\nx  = 1\nyy = 2');
+    });
+
+    it('balances leveled Lua long brackets', () => {
+        expect(align('--[=[\na = b\n]=]\nx = 1\nyy = 2')({ language: 'lua' }).code).toBe('--[=[\na = b\n]=]\nx  = 1\nyy = 2');
+        expect(align('--[==[\na = b\n]==]\nx = 1\nyy = 2')({ language: 'lua' }).code).toBe('--[==[\na = b\n]==]\nx  = 1\nyy = 2');
+        expect(align('--[=[\na ]] b\n]=]\nx = 1\nyy = 2')({ language: 'lua' }).code).toBe('--[=[\na ]] b\n]=]\nx  = 1\nyy = 2');
+        expect(align('x = [=[a=b]=]\nlonger = 1')({ language: 'lua' }).code).toBe('x      = [=[a=b]=]\nlonger = 1');
+    });
+    it('hides Perl POD and data sections', () => {
+        expect(align('=head1 FOO=BAR\nlonger = 1')({ language: 'perl' }).code).toBe('=head1 FOO=BAR\nlonger = 1');
+        expect(align('=pod\na = b\n=cut\nx = 1\nyy = 2')({ language: 'perl' }).code).toBe('=pod\na = b\n=cut\nx  = 1\nyy = 2');
+        expect(align('my $x = 1;\n=pod\nnote = here\n=cut\nmy $longer = 2;')({ language: 'perl' }).code).toBe('my $x      = 1;\n=pod\nnote = here\n=cut\nmy $longer = 2;');
+        expect(align('x = 1\n__END__\na = b\nlonger = 2')({ language: 'perl' }).code).toBe('x = 1\n__END__\na = b\nlonger = 2');
+        expect(align('s{aa}\n=head1 x\n=cut\n{c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}\n=head1 x\n=cut\n{c=d}\nlonger = 1');
+    });
+    it('hides a bare Perl match after a filehandle verb', () => {
+        expect(align('print FH /a=b/;\nlonger = 1')({ language: 'perl' }).code).toBe('print FH /a=b/;\nlonger = 1');
+        expect(align('printf FH /a=b/;\nlonger = 1')({ language: 'perl' }).code).toBe('printf FH /a=b/;\nlonger = 1');
+        expect(align('say FH /a=b/;\nlonger = 1')({ language: 'perl' }).code).toBe('say FH /a=b/;\nlonger = 1');
+        expect(align('elsif (/a=b/) {}\nlonger = 1')({ language: 'perl' }).code).toBe('elsif (/a=b/) {}\nlonger = 1');
+        expect(align('print $fh / 2\nlonger = 1')({ language: 'perl' }).code).toBe('print $fh / 2\nlonger = 1');
+    });
+
+    it('treats a Perl comment between substitution parts as a comment', () => {
+        expect(align('s{aa} # c=d\nx = 1\nyy = 2')({ language: 'perl' }).code).toBe('s{aa} # c=d\nx  = 1\nyy = 2');
+        expect(align('s{aa} # c\n{c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa} # c\n{c=d}\nlonger = 1');
+        expect(align('s{aa}\n# note\n{c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s{aa}\n# note\n{c=d}\nlonger = 1');
+    });
+    it('honours backslash escapes inside Perl quote-like segments', () => {
+        expect(align('qq{a\\}b=c}\nlonger = 1')({ language: 'perl' }).code).toBe('qq{a\\}b=c}\nlonger = 1');
+        expect(align('qq{a\\\\}b=c}\nlonger = 1')({ language: 'perl' }).code).toBe('qq{a\\\\}b=c}\nlonger  = 1');
+        expect(align('qq{a\\{b}c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('qq{a\\{b}c=d}\nlonger   = 1');
+    });
+
+    it('hides bare Perl matches but leaves division alone', () => {
+        expect(align('/a=b/\nlonger = 1')({ language: 'perl' }).code).toBe('/a=b/\nlonger = 1');
+        expect(align('if (/a=b/) {}\nlonger = 1')({ language: 'perl' }).code).toBe('if (/a=b/) {}\nlonger = 1');
+        expect(align('x =~ /a=b/;\nlonger_var = 1')({ language: 'perl' }).code).toBe('x =~ /a=b/;\nlonger_var = 1');
+        expect(align('x = a / b\nlonger = 1')({ language: 'perl' }).code).toBe('x      = a / b\nlonger = 1');
+        expect(align('x = a/2\nlonger = 1')({ language: 'perl' }).code).toBe('x      = a/2\nlonger = 1');
+        expect(align('x = a /2\nlonger = 1')({ language: 'perl' }).code).toBe('x      = a /2\nlonger = 1');
+        expect(align('x = $a // $b\nlonger = 1')({ language: 'perl' }).code).toBe('x      = $a // $b\nlonger = 1');
+        expect(align('x /= 2\nlonger = 3')({ language: 'perl' }).code).toBe('x /= 2\nlonger = 3');
+        expect(align('($x) / 2\nlonger = 1')({ language: 'perl' }).code).toBe('($x) / 2\nlonger = 1');
+    });
+
+    it('hides spaced Perl quote-like openers except comments, fat commas and sub names', () => {
+        expect(align('s {a=b} {c=d}\nlonger = 1')({ language: 'perl' }).code).toBe('s {a=b} {c=d}\nlonger = 1');
+        expect(align('m /a=b/\nlonger = 1')({ language: 'perl' }).code).toBe('m /a=b/\nlonger = 1');
+        expect(align('qq {a=b}\nlonger = 1')({ language: 'perl' }).code).toBe('qq {a=b}\nlonger = 1');
+        expect(align('tr /a=b/c=d/\nlonger = 1')({ language: 'perl' }).code).toBe('tr /a=b/c=d/\nlonger = 1');
+        expect(align('q #foo#\nlonger = 1')({ language: 'perl' }).code).toBe('q #foo#\nlonger = 1');
+        expect(align('my %h = (s => 1);\nmy $longer = 2;')({ language: 'perl' }).code).toBe('my %h      = (s => 1);\nmy $longer = 2;');
+        expect(align('sub s { $x = 1 }\nsub longer { $y = 2 }')({ language: 'perl' }).code).toBe('sub s { $x      = 1 }\nsub longer { $y = 2 }');
+        expect(align('package s { $x = 1 }\npackage longer { $y = 2 }')({ language: 'perl' }).code).toBe('package s { $x      = 1 }\npackage longer { $y = 2 }');
+        expect(align('my $m = 4;\n$x = $m / 2;')({ language: 'perl' }).code).toBe('my $m = 4;\n$x    = $m / 2;');
+    });
+
+    it('counts columns in UTF-16 code units and preserves line endings', () => {
+        expect(align('あ = 1\nbb = 2')({}).code).toBe('あ  = 1\nbb = 2');
+        expect(align('😀 = 1\nb = 2')({}).code).toBe('😀 = 1\nb  = 2');
+        expect(align('\ta = 1\n\t\tbb = 2')({}).code).toBe('\ta   = 1\n\t\tbb = 2');
+        expect(align('a = 1\r\nbb = 22')({}).code).toBe('a  = 1\r\nbb = 22');
+
+        expect(align('a ＝ 1\nbb = 2')({}).changes).toBe(0);
+        expect(align('   \n  \n')({}).changes).toBe(0);
+        expect(align('a = 1\n   \nbb = 2')({}).changes).toBe(0);
+    });
+
+    it('keeps comment and string markers from leaking into each other', () => {
+        expect(align('/* // a = b */\nx = 1\nyy = 2')({}).code).toBe('/* // a = b */\nx  = 1\nyy = 2');
+        expect(align('x = 1 // /* a = b\nxx = 2')({}).code).toBe('x  = 1 // /* a = b\nxx = 2');
+        expect(align('x = "// a = b"\nxx = 2')({}).code).toBe('x  = "// a = b"\nxx = 2');
+        expect(align('// "a = b\nx = 1\nxx = 2')({}).code).toBe('// "a = b\nx  = 1\nxx = 2');
+        expect(align('x = "a = b\nxx = 2')({}).code).toBe('x  = "a = b\nxx = 2');
+        expect(align('/* a = b\nx = 1\nyy = 2')({}).changes).toBe(0);
+        expect(align('x = ""\nxx = 2')({}).code).toBe('x  = ""\nxx = 2');
+        expect(align('x = "a" "b=c"\nxx = 2')({}).code).toBe('x  = "a" "b=c"\nxx = 2');
+    });
+
+    it('treats out-of-order, past-end and single-line ranges as no-ops', () => {
+        expect(align('a = 1\nbb = 2')({ range: { start: 2, end: 1 } }).changes).toBe(0);
+        expect(align('a = 1')({ range: { start: 5, end: 9 } }).changes).toBe(0);
+        expect(align('a = 1\nbb = 2')({ range: { start: 0, end: 1 } }).changes).toBe(0);
+    });
+
+    it('tolerates overlapping, duplicate and empty symbols', () => {
+        expect(align('a == 1\nbb = 2')({ symbols: ['=', '=='] }).code).toBe('a == 1\nbb = 2');
+        expect(align('x := 1\nyy = 2')({ symbols: [':', '='], language: 'go' }).code).toBe('x := 1\nyy = 2');
+        expect(align('a = 1\nbb = 2')({ symbols: ['=', '='] }).code).toBe('a  = 1\nbb = 2');
+        expect(align('a = 1')({ symbols: [''] }).changes).toBe(0);
+        expect(align('a = 1\nbb = 2')({ symbols: [] }).code).toBe('a = 1\nbb = 2');
+        expect(align('a = 1\nbb = 2')({ symbols: [' '] }).changes).toBe(0);
+        expect(align('a = 1\nbb = 2')({ symbols: ['=\n'] }).changes).toBe(0);
+        expect(align('readonlyx = 1\nvalue = 2')({ symbols: ['readonly', '='] }).code).toBe('readonlyx = 1\nvalue     = 2');
+    });
+
+    it('aligns word operators without matching them inside longer words', () => {
+        expect(align('x in a\nyy in b')({ language: 'nim', symbols: ['in'] }).code).toBe('x  in a\nyy in b');
+        expect(align('x notin a\nyy in b')({ language: 'nim', symbols: ['in', 'notin'] }).code).toBe('x notin a\nyy in b');
+        expect(align('x notin a\nyy notin b')({ language: 'nim', symbols: ['notin'] }).code).toBe('x  notin a\nyy notin b');
+        expect(align('x of a\nyy of b')({ language: 'nim', symbols: ['of'] }).code).toBe('x  of a\nyy of b');
+        expect(align('within x\nlonger = 1')({ language: 'nim', symbols: ['in'] }).code).toBe('within x\nlonger = 1');
+
+        const aligned = align('x in a\nyy in b')({ language: 'nim', symbols: ['in'] });
+        expect(align(aligned.code)({ language: 'nim', symbols: ['in'] }).changes).toBe(0);
+    });
+    it('never claims a keyword inside a longer Unicode identifier', () => {
+        expect(align('exporté = 1\nvalue = 2')({ symbols: ['export', '='] }).code).toBe('exporté = 1\nvalue   = 2');
+        expect(align('export变量 = 1\nvalue = 2')({ symbols: ['export', '='] }).code).toBe('export变量 = 1\nvalue    = 2');
+        expect(align('readonlyé = 1\nvalue = 2')({ symbols: ['readonly', '='] }).code).toBe('readonlyé = 1\nvalue     = 2');
+    });
+
+    it('never aligns the `=` inside a longer operator', () => {
+        expect(align('x := 1\nlonger = 2')({ language: 'python' }).code).toBe('x := 1\nlonger = 2');
+        expect(align('#{a := 1}\nxx = 1')({ language: 'erlang' }).code).toBe('#{a := 1}\nxx = 1');
+        expect(align('a::before\nxx: 1')({ language: 'css', symbols: [':'] }).code).toBe('a::before\nxx: 1');
+        expect(align('x ??= 1\nlonger = 2')({ language: 'csharp' }).code).toBe('x ??= 1\nlonger = 2');
+        expect(align('x = a?.b\nxx = c')({ language: 'csharp', symbols: ['?'] }).code).toBe('x = a?.b\nxx = c');
+    });
+
+    it('never fragments any operator of any language', () => {
+        for (const profile of allLanguages) {
+            const symbols = [...languageProfile(profile.id).defaultSymbols];
+
+            for (const operator of profile.operators) {
+                const hitsSymbol = symbols.some((symbol) => symbol.length > 0 && operator.includes(symbol));
+                if (!hitsSymbol || symbols.includes(operator)) continue;
+
+                expect(align(`a ${operator} b\nlongerName = 1`)({ language: profile.id }).code).toBe(`a ${operator} b\nlongerName = 1`);
+            }
+        }
+    });
+
+    it('resolves conflicting symbols without drifting', () => {
+        expect(align('a = 1\nbb == 2\nccc => 3')({ symbols: ['=', '==', '=>'] }).code).toBe('a = 1\nbb == 2\nccc => 3');
+        expect(align('x := 1\nyy = 2\nzzz == 3')({ symbols: [':=', '=', '=='] }).code).toBe('x := 1\nyy = 2\nzzz == 3');
+
+        const conflicted = align('a?.b = 1\ncc = d?.e')({ language: 'csharp', symbols: ['?', '?.', '='] });
+        expect(conflicted.code).toBe('a     ?.b = 1\ncc = d?.e');
+        expect(align(conflicted.code)({ language: 'csharp', symbols: ['?', '?.', '='] }).changes).toBe(0);
+
+        const prefixed = align('export const a = 1;\nreadonly b = 2;\nccc = 3;')({ symbols: ['export', 'readonly', '='] });
+        expect(prefixed.code).toBe('export const a             = 1;\n       readonly b          = 2;\n                ccc        = 3;');
+        expect(align(prefixed.code)({ symbols: ['export', 'readonly', '='] }).changes).toBe(0);
+    });
+
+    it('keeps comment and string openers from leaking into each other', () => {
+        expect(align('x = "//" // real\nxx = 1')({ symbols: ['//'] }).code).toBe('x = "//" // real\nxx = 1');
+        expect(align('x = "/*" /* real */\nxx = 1')({}).code).toBe('x  = "/*" /* real */\nxx = 1');
+        expect(align('/* " */\nx = 1\nyy = 2')({}).code).toBe('/* " */\nx  = 1\nyy = 2');
+        expect(align('x = /**/ 1\nxx = 2')({}).code).toBe('x  = /**/ 1\nxx = 2');
+        expect(align("x = 'it''s = y'\nxx = 1")({ language: 'sql' }).code).toBe("x  = 'it''s = y'\nxx = 1");
+    });
+
+    it('handles unclosed inputs and exotic line content without throwing', () => {
+        expect(align('x = "a = b\nxx = 2')({}).code).toBe('x  = "a = b\nxx = 2');
+        expect(align('/* a = b\nx = 1\nyy = 2')({}).changes).toBe(0);
+        expect(align('x = `a ${b')({ language: 'javascript' }).changes).toBe(0);
+        expect(align('a = 1\rbb = 2')({}).changes).toBe(0);
+        expect(align('cat <<EOF // note\nkey = value\nEOF\nx = 1\nyy = 2')({ language: 'shell' }).code).toBe('cat <<EOF // note\nkey = value\nEOF\nx  = 1\nyy = 2');
+    });
+
+    it('treats raw prefixes as plain strings and holes as opaque across lines', () => {
+        expect(align('r"a\\"b=c"\nxx = 1')({ language: 'python' }).code).toBe('r"a\\"b=c"\nxx = 1');
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        expect(align('x = `a${`b\nc=d`}e`\nlonger = 1')({ language: 'javascript' }).changes).toBe(1);
+        expect(align('x = %w[a=b\nc=d]\nlonger = 1')({ language: 'ruby' }).code).toBe('x      = %w[a=b\nc=d]\nlonger = 1');
+        expect(align('x = ~s|a #{"b=c"}\nd|\nlonger = 1')({ language: 'elixir' }).code).toBe('x      = ~s|a #{"b=c"}\nd|\nlonger = 1');
+
+        const second = align('x      = %w[a=b\nc=d]\nlonger = 1')({ language: 'ruby' });
+        expect(second.changes).toBe(0);
+    });
+
+    it('keeps quote-like and document constructs intact and stable in every language', () => {
+        const snippets = [
+            's{a{b}c}{d=e}\nprint FH /a=b/;\nmy $longer = 2;',
+            '=pod\ndoc = here\n=cut\nx = 1\nyy = 2',
+            '--[=[\na = b\n]=]\nformat STDOUT =\nkey = value\n.\nlonger = 1',
+            's{aa}\n# note\n{c=d}\n=begin\ndoc\n=end\n__END__\ntail = data',
+        ];
+        const withoutWhitespace = (text: string): string => text.replace(/\s/g, '');
+
+        for (const profile of allLanguages) {
+            for (const code of snippets) {
+                const first = align(code)({ language: profile.id });
+                const second = align(first.code)({ language: profile.id });
+
+                expect(withoutWhitespace(first.code)).toBe(withoutWhitespace(code));
+                expect(first.code.length).toBeGreaterThanOrEqual(code.length);
+                expect(second.code).toBe(first.code);
+                expect(second.changes).toBe(0);
+            }
+        }
+    });
+    it('keeps hostile snippets intact and stable in every language', () => {
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: test data contains interpolation holes
+        const snippets = ['a = "x = y"\nlonger = \'p = q\'\n// c = d\nx := 1', 's = $"a {b=c} d"\nt = `o ${p=q} r`\ncat <<EOF\nkey = value\nEOF\nlast = 1', 'café = 1\n😀 = 😀\n# tag = v\n/* blk = w */\nif (a == b) {}'];
+        const withoutWhitespace = (text: string): string => text.replace(/\s/g, '');
+
+        for (const profile of allLanguages) {
+            for (const code of snippets) {
+                const first = align(code)({ language: profile.id });
+                const second = align(first.code)({ language: profile.id });
+
+                expect(withoutWhitespace(first.code)).toBe(withoutWhitespace(code));
+                expect(first.code.length).toBeGreaterThanOrEqual(code.length);
+                expect(second.code).toBe(first.code);
+                expect(second.changes).toBe(0);
+            }
+        }
+    });
+
+    it('splits indent groups on tab, space and blank boundaries', () => {
+        expect(align('\ta = 1\n  bb = 2')({ scope: 'indent' }).code).toBe('\ta = 1\n  bb = 2');
+        expect(align('\ta = 1\n\tbb = 2')({ scope: 'indent' }).code).toBe('\ta  = 1\n\tbb = 2');
+        expect(align('  a = 1\n    bb = 2\n  ccc = 3')({ scope: 'indent' }).code).toBe('  a = 1\n    bb = 2\n  ccc = 3');
+        expect(align('  a = 1\n   \n  bb = 2')({ scope: 'indent' }).code).toBe('  a = 1\n   \n  bb = 2');
+
+        const second = align('\ta = 1\n\tbb = 2')({ scope: 'indent' });
+        expect(align(second.code)({ scope: 'indent' }).changes).toBe(0);
+    });
+});
+
+describe('already formatted code stays untouched', () => {
+    it('is stable for a conflicting symbol order', () => {
+        const first = align('const a  = 1 : x;\nconst bb : 2 = y;')({ symbols: ['=', ':'] });
+        const second = align(first.code)({ symbols: ['=', ':'] });
+
+        expect(second.code).toBe(first.code);
+        expect(second.changes).toBe(0);
+    });
+
+    it('does not ratchet conflicting symbols wider', () => {
+        const first = align('const a  = 1 : x;\nconst bb : 2 = y;')({ symbols: ['=', ':'] });
+        const second = align(first.code)({ symbols: ['=', ':'] });
+        const third = align(second.code)({ symbols: ['=', ':'] });
+
+        expect(third.code).toBe(first.code);
+    });
+
+    it('falls back to the leading symbol when symbols conflict across lines', () => {
+        const first = align('a = 1 : x\nbb : 22 = y\nccc = 333 : zzz')({ symbols: ['=', ':'] });
+
+        expect(first.code).toBe('a       = 1 : x\nbb : 22 = y\nccc     = 333 : zzz');
+        expect(first.changes).toBe(2);
+
+        const second = align(first.code)({ symbols: ['=', ':'] });
+        const third = align(second.code)({ symbols: ['=', ':'] });
+
+        expect(second.code).toBe(first.code);
+        expect(second.changes).toBe(0);
+        expect(third.code).toBe(first.code);
+    });
+
+    it('is stable for prefix padding in reverse order', () => {
+        const first = align('const bb   = 2;\nexport const a = 1;')({ symbols: ['export', '='] });
+        const second = align(first.code)({ symbols: ['export', '='] });
+
+        expect(second.code).toBe(first.code);
+        expect(second.changes).toBe(0);
+    });
+
+    it('keeps every fixture idempotent', async () => {
+        const { allFixtures } = await import('./fixtures.js');
+
+        for (const fixture of allFixtures) {
+            const first = align(fixture.input)({
+                symbols: fixture.symbols,
+                language: fixture.language,
+                scope: fixture.scope,
+                range: fixture.range,
+            });
+            const second = align(first.code)({
+                symbols: fixture.symbols,
+                language: fixture.language,
+                scope: fixture.scope,
+                range: fixture.range,
+            });
+
+            expect(second.code).toBe(first.code);
+            expect(second.changes).toBe(0);
+        }
+    });
+});

@@ -26,3 +26,6 @@ yarn.lock
 .codex
 superpower*
 !*/skills
+
+# Generated benchmark corpora and results
+benchmarks/

@@ -1,4 +1,4 @@
-import type { LanguageId } from '@sandlada/symbol-align-ts';
+import type { LanguageId } from '@sandlada/symbol-align';
 
 /** Joins the lines of a snippet without adding indentation to the source. */
 const lines = (...snippet: readonly string[]): string => snippet.join('\n');

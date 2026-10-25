@@ -1,0 +1,224 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://raw.githubusercontent.com/sandlada/symbol-align/main/packages/core/schemas/symbol-align.config.schema.json",
+    "title": "Symbol Align configuration",
+    "description": "Configuration of the symbol-align code snippet formatter.",
+    "type": "object",
+    "properties": {
+        "symbols": {
+            "type": "array",
+            "description": "Symbols to align. Defaults to the symbols that are conventional for the language. An explicit empty list aligns nothing.",
+            "items": {
+                "type": "string",
+                "minLength": 1
+            }
+        },
+        "groups": {
+            "type": "array",
+            "description": "Groups of alternative tokens that share one alignment column.",
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            }
+        },
+        "language": {
+            "type": "string",
+            "description": "Language profile that drives string and comment handling.",
+            "enum": [
+                "generic",
+                "javascript",
+                "typescript",
+                "python",
+                "go",
+                "rust",
+                "java",
+                "kotlin",
+                "swift",
+                "csharp",
+                "fsharp",
+                "cpp",
+                "c",
+                "ruby",
+                "php",
+                "dart",
+                "shell",
+                "sql",
+                "yaml",
+                "json",
+                "css",
+                "html",
+                "xml",
+                "markdown",
+                "plaintext",
+                "elixir",
+                "haskell",
+                "lua",
+                "scala",
+                "objectivec",
+                "perl",
+                "julia",
+                "zig",
+                "powershell",
+                "clojure",
+                "erlang",
+                "r",
+                "fortran",
+                "nim",
+                "crystal",
+                "gleam",
+                "odin",
+                "solidity",
+                "groovy",
+                "terraform",
+                "toml",
+                "ini",
+                "makefile",
+                "dockerfile",
+                "graphql",
+                "vb",
+                "delphi",
+                "vue",
+                "svelte",
+                "astro",
+                "protobuf",
+                "v"
+            ]
+        },
+        "scope": {
+            "type": "string",
+            "description": "How the lines are grouped before they are aligned.",
+            "enum": ["block", "indent", "file"]
+        },
+        "declarations": {
+            "type": "boolean",
+            "description": "Whether the declaration columns of the language profile are aligned."
+        },
+        "declarationAnchor": {
+            "type": "string",
+            "description": "Which edge of a declaration cell is aligned: the cells start or their content ends.",
+            "enum": ["start", "end"]
+        },
+        "maxDeclarationPad": {
+            "type": "integer",
+            "description": "Largest start-column difference that still joins a declaration column. Defaults to 12.",
+            "minimum": 1
+        },
+        "overrides": {
+            "type": "object",
+            "description": "Per file pattern overrides of symbols, groups, language, scope and declaration options.",
+            "propertyNames": {
+                "minLength": 1
+            },
+            "additionalProperties": {
+                "$ref": "#/$defs/override"
+            }
+        }
+    },
+    "additionalProperties": true,
+    "$defs": {
+        "override": {
+            "type": "object",
+            "properties": {
+                "symbols": {
+                    "type": "array",
+                    "description": "Symbols to align. An explicit empty list aligns nothing.",
+                    "items": {
+                        "type": "string",
+                        "minLength": 1
+                    }
+                },
+                "language": {
+                    "type": "string",
+                    "enum": [
+                        "generic",
+                        "javascript",
+                        "typescript",
+                        "python",
+                        "go",
+                        "rust",
+                        "java",
+                        "kotlin",
+                        "swift",
+                        "csharp",
+                        "fsharp",
+                        "cpp",
+                        "c",
+                        "ruby",
+                        "php",
+                        "dart",
+                        "shell",
+                        "sql",
+                        "yaml",
+                        "json",
+                        "css",
+                        "html",
+                        "xml",
+                        "markdown",
+                        "plaintext",
+                        "elixir",
+                        "haskell",
+                        "lua",
+                        "scala",
+                        "objectivec",
+                        "perl",
+                        "julia",
+                        "zig",
+                        "powershell",
+                        "clojure",
+                        "erlang",
+                        "r",
+                        "fortran",
+                        "nim",
+                        "crystal",
+                        "gleam",
+                        "odin",
+                        "solidity",
+                        "groovy",
+                        "terraform",
+                        "toml",
+                        "ini",
+                        "makefile",
+                        "dockerfile",
+                        "graphql",
+                        "vb",
+                        "delphi",
+                        "vue",
+                        "svelte",
+                        "astro",
+                        "protobuf",
+                        "v"
+                    ]
+                },
+                "scope": {
+                    "type": "string",
+                    "enum": ["block", "indent", "file"]
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minLength": 1
+                        }
+                    }
+                },
+                "declarations": {
+                    "type": "boolean"
+                },
+                "declarationAnchor": {
+                    "type": "string",
+                    "enum": ["start", "end"]
+                },
+                "maxDeclarationPad": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            },
+            "additionalProperties": true
+        }
+    }
+}

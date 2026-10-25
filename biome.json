@@ -6,7 +6,7 @@
         "useIgnoreFile": true
     },
     "files": {
-        "includes": ["**", "!**/dist", "!**/node_modules", "!**/coverage", "!**/*.md", "!pnpm-lock.yaml", "!pnpm-workspace.yaml"]
+        "includes": ["**", "!**/dist", "!**/node_modules", "!**/coverage", "!**/*.md", "!pnpm-lock.yaml", "!pnpm-workspace.yaml", "!packages/core/src/generated", "!packages/core/rust/target"]
     },
     "formatter": {
         "enabled": true,

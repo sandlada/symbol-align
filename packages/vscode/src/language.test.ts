@@ -1,4 +1,4 @@
-import { allLanguages, isLanguageId } from '@sandlada/symbol-align-ts';
+import { allLanguages, isLanguageId } from '@sandlada/symbol-align';
 import { describe, expect, it } from 'vitest';
 
 import { resolveLanguage } from './language.js';

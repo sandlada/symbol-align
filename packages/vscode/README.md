@@ -8,7 +8,7 @@ const name    = 'symbol-align';
 const version = '0.0.1';
 ```
 
-The extension is powered by [`@sandlada/symbol-align-ts`](https://github.com/sandlada/symbol-align).
+The extension is powered by [`@sandlada/symbol-align`](https://github.com/sandlada/symbol-align).
 It only ever **inserts spaces** — it never reorders, rewraps or rewrites your
 code, and it never touches symbols that live inside a string or a comment.
 
@@ -62,7 +62,7 @@ not know — is left untouched.
 ## Development
 
 ```bash
-pnpm --filter @sandlada/symbol-align-ts build   # build the core library
+pnpm --filter @sandlada/symbol-align build   # build the core library
 pnpm --filter symbol-align build             # bundle the extension
 pnpm --filter symbol-align typecheck         # type-check the extension
 pnpm --filter symbol-align test              # run the unit tests

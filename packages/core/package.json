@@ -1,0 +1,83 @@
+{
+    "name": "@sandlada/symbol-align",
+    "version": "0.2.0",
+    "description": "Code-snippet symbol-alignment formatter with a Rust core - lines up =, :, =>, //, # and more. CLI & API",
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "publishConfig": {
+        "access": "public"
+    },
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        },
+        "./node": {
+            "types": "./dist/config-fs.d.ts",
+            "import": "./dist/config-fs.js"
+        }
+    },
+    "bin": {
+        "symbol-align": "./dist/bin.js"
+    },
+    "files": [
+        "dist",
+        "schemas",
+        "README.md",
+        "CHANGELOG.md",
+        "LICENSE",
+        "SECURITY.md",
+        "CODE_OF_CONDUCT.md"
+    ],
+    "scripts": {
+        "bench": "node bench/run.mjs",
+        "build": "pnpm run build:wasm && tsc",
+        "build:wasm": "node scripts/build-wasm.mjs",
+        "clean": "node -e \"const fs=require('node:fs'); for (const path of ['dist','rust/target','src/generated/wasm-binary.ts']) fs.rmSync(path,{recursive:true,force:true})\"",
+        "dev": "tsx src/bin.ts",
+        "generate:languages": "node scripts/generate-languages.mjs",
+        "pretest": "pnpm run build:wasm",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "pretypecheck": "pnpm run build:wasm",
+        "typecheck": "tsc --noEmit -p tsconfig.test.json",
+        "prepack": "node ../../scripts/sync-docs.mjs materialize",
+        "postpack": "node ../../scripts/sync-docs.mjs restore",
+        "prepublishOnly": "pnpm run build && pnpm run test"
+    },
+    "keywords": [
+        "align",
+        "alignment",
+        "code",
+        "code-snippet",
+        "format",
+        "formatter",
+        "vertical",
+        "symbol",
+        "equals",
+        "colon",
+        "arrow",
+        "rust",
+        "wasm"
+    ],
+    "engines": {
+        "node": ">=24"
+    },
+    "author": "Kai Orion",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/sandlada/symbol-align.git"
+    },
+    "bugs": {
+        "url": "https://github.com/sandlada/symbol-align/issues"
+    },
+    "homepage": "https://github.com/sandlada/symbol-align#readme",
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "tsx": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:"
+    }
+}

@@ -1,5 +1,5 @@
-import type { AlignGroup, AlignmentScope, AlignResult, DeclarationAnchor, LanguageId } from '@sandlada/symbol-align-ts';
-import { align, allLanguages, languageProfile } from '@sandlada/symbol-align-ts';
+import type { AlignGroup, AlignmentScope, AlignResult, DeclarationAnchor, LanguageId } from '@sandlada/symbol-align';
+import { align, allLanguages, languageProfile } from '@sandlada/symbol-align';
 
 /** The profile selected when the playground is opened. */
 export const DEFAULT_LANGUAGE: LanguageId = 'csharp';

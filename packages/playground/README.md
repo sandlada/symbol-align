@@ -1,6 +1,6 @@
 # Symbol Align Playground
 
-A live, no-framework playground for [`@sandlada/symbol-align-ts`](../core-ts) — the
+A live, no-framework playground for [`@sandlada/symbol-align`](../core) — the
 code-snippet symbol-alignment formatter. It runs the real core library in the
 browser, so it doubles as an interactive test bench for every language profile.
 
@@ -51,7 +51,7 @@ packages/playground/
 
 ### Why the core source is aliased
 
-`vite.config.ts` resolves `@sandlada/symbol-align-ts` to `../core-ts/src/index.ts`.
+`vite.config.ts` resolves `@sandlada/symbol-align` to `../core/src/index.ts`.
 That means:
 
 - `pnpm dev:playground` picks up core changes with HMR — no intermediate build.

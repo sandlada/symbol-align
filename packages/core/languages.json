@@ -1,0 +1,2768 @@
+[
+    {
+        "id": "generic",
+        "name": "Generic",
+        "extensions": [],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "`",
+                "close": "`",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": [
+            ">>>=",
+            "===",
+            "!==",
+            "**=",
+            ">>>",
+            "&&=",
+            "||=",
+            "??=",
+            "<<=",
+            ">>=",
+            "=>",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "**",
+            "&&",
+            "||",
+            "??",
+            "?.",
+            "++",
+            "--",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "~",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "javascript",
+        "name": "JavaScript",
+        "extensions": ["js", "mjs", "cjs", "jsx"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "`",
+                "close": "`",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": [
+            ">>>=",
+            "===",
+            "!==",
+            "**=",
+            ">>>",
+            "&&=",
+            "||=",
+            "??=",
+            "<<=",
+            ">>=",
+            "=>",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "**",
+            "&&",
+            "||",
+            "??",
+            "?.",
+            "++",
+            "--",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "~",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "typescript",
+        "name": "TypeScript",
+        "extensions": ["ts", "mts", "cts", "tsx"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "`",
+                "close": "`",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": [
+            ">>>=",
+            "===",
+            "!==",
+            "**=",
+            ">>>",
+            "&&=",
+            "||=",
+            "??=",
+            "<<=",
+            ">>=",
+            "=>",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "**",
+            "&&",
+            "||",
+            "??",
+            "?.",
+            "++",
+            "--",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "~",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "python",
+        "name": "Python",
+        "extensions": ["py", "pyi", "pyw"],
+        "lineComments": ["#"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "'''",
+                "close": "'''",
+                "escape": "backslash",
+                "multiline": true
+            },
+            {
+                "open": "\"\"\"",
+                "close": "\"\"\"",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": ["**=", "//=", ">>=", "<<=", ":=", "@=", "->", "==", "!=", "<=", ">=", "+=", "-=", "*=", "/=", "%=", "//", "**", "<<", ">>", "=", "+", "-", "*", "/", "%", "<", ">", "!", "&", "|", "^", "~", "?", ":"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "go",
+        "name": "Go",
+        "extensions": ["go"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "`",
+                "close": "`",
+                "escape": "none",
+                "multiline": true
+            }
+        ],
+        "operators": [
+            "...",
+            "&^=",
+            "<<=",
+            ">>=",
+            ":=",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "&&",
+            "||",
+            "&^",
+            "<<",
+            ">>",
+            "<-",
+            "->",
+            "&=",
+            "|=",
+            "^=",
+            "++",
+            "--",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "~",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["=", ":="],
+        "declarations": "none"
+    },
+    {
+        "id": "rust",
+        "name": "Rust",
+        "extensions": ["rs"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "r##\"",
+                "close": "\"##",
+                "escape": "none",
+                "multiline": true
+            },
+            {
+                "open": "r#\"",
+                "close": "\"#",
+                "escape": "none",
+                "multiline": true
+            },
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": ["..=", "<<=", ">>=", "==", "!=", "<=", ">=", "+=", "-=", "*=", "/=", "%=", "&&", "||", "<<", ">>", "->", "=>", "::", "..", "&=", "|=", "^=", "=", "+", "-", "*", "/", "%", "<", ">", "!", "&", "|", "^", "?", ":"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "java",
+        "name": "Java",
+        "extensions": ["java"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"\"\"",
+                "close": "\"\"\"",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": [
+            ">>>=",
+            ">>>",
+            "<<=",
+            ">>=",
+            "??=",
+            "...",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "&&",
+            "||",
+            "++",
+            "--",
+            "->",
+            "=>",
+            "::",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "?.",
+            "??",
+            "?:",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "prefix"
+    },
+    {
+        "id": "kotlin",
+        "name": "Kotlin",
+        "extensions": ["kt", "kts"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"\"\"",
+                "close": "\"\"\"",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": [
+            ">>>=",
+            ">>>",
+            "<<=",
+            ">>=",
+            "??=",
+            "...",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "&&",
+            "||",
+            "++",
+            "--",
+            "->",
+            "=>",
+            "::",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "?.",
+            "??",
+            "?:",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "swift",
+        "name": "Swift",
+        "extensions": ["swift"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"\"\"",
+                "close": "\"\"\"",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": [
+            ">>>=",
+            ">>>",
+            "<<=",
+            ">>=",
+            "??=",
+            "...",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "&&",
+            "||",
+            "++",
+            "--",
+            "->",
+            "=>",
+            "::",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "?.",
+            "??",
+            "?:",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "csharp",
+        "name": "C#",
+        "extensions": ["cs", "csx"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "$@\"",
+                "close": "\"",
+                "escape": "doubled",
+                "multiline": true
+            },
+            {
+                "open": "@$\"",
+                "close": "\"",
+                "escape": "doubled",
+                "multiline": true
+            },
+            {
+                "open": "$$\"\"\"",
+                "close": "\"\"\"",
+                "escape": "none",
+                "multiline": true
+            },
+            {
+                "open": "$\"\"\"",
+                "close": "\"\"\"",
+                "escape": "none",
+                "multiline": true
+            },
+            {
+                "open": "$\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "@\"",
+                "close": "\"",
+                "escape": "doubled",
+                "multiline": true
+            },
+            {
+                "open": "\"\"\"",
+                "close": "\"\"\"",
+                "escape": "none",
+                "multiline": true
+            }
+        ],
+        "operators": [
+            ">>>=",
+            ">>>",
+            "<<=",
+            ">>=",
+            "??=",
+            "...",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "&&",
+            "||",
+            "++",
+            "--",
+            "->",
+            "=>",
+            "::",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "?.",
+            "??",
+            "?:",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "prefix"
+    },
+    {
+        "id": "fsharp",
+        "name": "F#",
+        "extensions": ["fs", "fsi", "fsx"],
+        "lineComments": ["//"],
+        "blockComments": [["(*", "*)"]],
+        "strings": [
+            {
+                "open": "$$\"\"\"",
+                "close": "\"\"\"",
+                "escape": "none",
+                "multiline": true
+            },
+            {
+                "open": "$\"\"\"",
+                "close": "\"\"\"",
+                "escape": "none",
+                "multiline": true
+            },
+            {
+                "open": "@$\"",
+                "close": "\"",
+                "escape": "doubled",
+                "multiline": true
+            },
+            {
+                "open": "$@\"",
+                "close": "\"",
+                "escape": "doubled",
+                "multiline": true
+            },
+            {
+                "open": "\"\"\"",
+                "close": "\"\"\"",
+                "escape": "none",
+                "multiline": true
+            },
+            {
+                "open": "$\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "@\"",
+                "close": "\"",
+                "escape": "doubled",
+                "multiline": true
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": [":?>", "**", "|>", "<|", ">>", "<<", "->", "<-", "::", ":>", ":?", ">=", "<=", "<>", "||", "&&", ":=", "..", "=", "+", "-", "*", "/", "%", "@", "^", "|", "&", "<", ">"],
+        "defaultSymbols": ["=", "->", ":"],
+        "declarations": "none"
+    },
+    {
+        "id": "cpp",
+        "name": "C++",
+        "extensions": ["cpp", "cc", "cxx", "hpp", "hh", "hxx"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": [
+            ">>>=",
+            ">>>",
+            "<<=",
+            ">>=",
+            "??=",
+            "...",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "&&",
+            "||",
+            "++",
+            "--",
+            "->",
+            "=>",
+            "::",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "?.",
+            "??",
+            "?:",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "prefix"
+    },
+    {
+        "id": "c",
+        "name": "C",
+        "extensions": ["c", "h"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": [
+            ">>>=",
+            ">>>",
+            "<<=",
+            ">>=",
+            "??=",
+            "...",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "&&",
+            "||",
+            "++",
+            "--",
+            "->",
+            "=>",
+            "::",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "?.",
+            "??",
+            "?:",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "prefix"
+    },
+    {
+        "id": "ruby",
+        "name": "Ruby",
+        "extensions": ["rb", "rake", "gemspec"],
+        "lineComments": ["#"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": ["===", "<=>", "...", "==", "!=", "<=", ">=", "+=", "-=", "*=", "/=", "%=", "&&", "||", "=>", "**", "::", "->", "=~", "!~", "..", "<<", ">>", "=", "+", "-", "*", "/", "%", "<", ">", "!", "&", "|", "^", "?", ":"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "php",
+        "name": "PHP",
+        "extensions": ["php", "phtml"],
+        "lineComments": ["//", "#"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": [
+            "===",
+            "!==",
+            "<=>",
+            "??=",
+            "?->",
+            "**=",
+            "...",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            ".=",
+            "%=",
+            "&&",
+            "||",
+            "??",
+            "->",
+            "=>",
+            "::",
+            "**",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "prefix"
+    },
+    {
+        "id": "dart",
+        "name": "Dart",
+        "extensions": ["dart"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": [
+            ">>>=",
+            ">>>",
+            "<<=",
+            ">>=",
+            "??=",
+            "...",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "&&",
+            "||",
+            "++",
+            "--",
+            "->",
+            "=>",
+            "::",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "?.",
+            "??",
+            "?:",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "prefix"
+    },
+    {
+        "id": "shell",
+        "name": "Shell",
+        "extensions": ["sh", "bash", "zsh", "fish"],
+        "lineComments": ["#"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": ["==", "!=", "<=", ">=", "=~", "&&", "||", ">>", "<<", ":=", ":-", ":?", ":+", "=", "+", "-", "*", "/", "%", "<", ">", "!", "?", ":"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "sql",
+        "name": "SQL",
+        "extensions": ["sql"],
+        "lineComments": ["--"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "doubled",
+                "multiline": true
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "doubled",
+                "multiline": true
+            }
+        ],
+        "operators": ["||", "<>", "<=", ">=", "!=", "::", ":=", "=", "+", "-", "*", "/", "%", "<", ">"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "yaml",
+        "name": "YAML",
+        "extensions": ["yaml", "yml"],
+        "lineComments": ["#"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": ["=", ":"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "json",
+        "name": "JSON",
+        "extensions": ["json"],
+        "lineComments": [],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": [":"],
+        "defaultSymbols": [":"],
+        "declarations": "none"
+    },
+    {
+        "id": "css",
+        "name": "CSS",
+        "extensions": ["css"],
+        "lineComments": [],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": ["::", "=", "+", "-", "*", "/"],
+        "defaultSymbols": [":"],
+        "declarations": "none"
+    },
+    {
+        "id": "html",
+        "name": "HTML",
+        "extensions": ["html", "htm"],
+        "lineComments": [],
+        "blockComments": [["<!--", "-->"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": ["="],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "xml",
+        "name": "XML",
+        "extensions": ["xml"],
+        "lineComments": [],
+        "blockComments": [["<!--", "-->"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": ["="],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "markdown",
+        "name": "Markdown",
+        "extensions": ["md", "markdown"],
+        "lineComments": [],
+        "blockComments": [],
+        "strings": [],
+        "operators": ["="],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "plaintext",
+        "name": "Plain Text",
+        "extensions": ["txt", "text"],
+        "lineComments": [],
+        "blockComments": [],
+        "strings": [],
+        "operators": ["="],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "elixir",
+        "name": "Elixir",
+        "extensions": ["ex", "exs", "eex", "heex"],
+        "lineComments": ["#"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "'''",
+                "close": "'''",
+                "escape": "backslash",
+                "multiline": true
+            },
+            {
+                "open": "\"\"\"",
+                "close": "\"\"\"",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": ["===", "!==", "&&&", "|||", "<<<", ">>>", "==", "!=", "<=", ">=", "=~", "=>", "<-", "->", "|>", "||", "&&", "++", "--", "**", "//", "<>", "<<", ">>", "::", "..", "|", "&", "+", "-", "*", "/", "!", "^", "~", "?", "="],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "haskell",
+        "name": "Haskell",
+        "extensions": ["hs", "lhs"],
+        "lineComments": ["--"],
+        "blockComments": [["{-", "-}"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": [">>=", "=<<", "<$>", "<*>", "->", "=>", "<-", "::", ">>", "==", "/=", "<=", ">=", "&&", "||", "++", "<>", "..", "!!", "+", "-", "*", "/", "=", ":", ".", "!", "$"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "lua",
+        "name": "Lua",
+        "extensions": ["lua"],
+        "lineComments": ["--"],
+        "blockComments": [["--[==[", "]==]"], ["--[=[", "]=]"], ["--[[", "]]"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "[==[",
+                "close": "]==]",
+                "escape": "none",
+                "multiline": true
+            },
+            {
+                "open": "[=[",
+                "close": "]=]",
+                "escape": "none",
+                "multiline": true
+            },
+            {
+                "open": "[[",
+                "close": "]]",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": ["...", "==", "~=", "<=", ">=", "..", "//", "<<", ">>", "::", "=", "+", "-", "*", "/", "%", "^", "#", "<", ">", "~", "&", "|"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "scala",
+        "name": "Scala",
+        "extensions": ["scala", "sc", "sbt"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"\"\"",
+                "close": "\"\"\"",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": ["===", "!==", "==", "!=", "<=", ">=", "+=", "-=", "*=", "/=", "%=", "&&", "||", "=>", "->", "<-", "::", "=", "+", "-", "*", "/", "%", "<", ">", "!", "&", "|", "^", "?", ":"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "objectivec",
+        "name": "Objective-C",
+        "extensions": ["m", "mm"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": [
+            ">>>=",
+            ">>>",
+            "<<=",
+            ">>=",
+            "??=",
+            "...",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "&&",
+            "||",
+            "++",
+            "--",
+            "->",
+            "=>",
+            "::",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "?.",
+            "??",
+            "?:",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "prefix"
+    },
+    {
+        "id": "perl",
+        "name": "Perl",
+        "extensions": ["pl", "pm"],
+        "lineComments": ["#"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": ["<=>", "**=", "||=", "&&=", "//=", "...", "==", "!=", "<=", ">=", "=~", "!~", "~~", "+=", "-=", "*=", "/=", ".=", "x=", "||", "&&", "//", "**", "->", "=>", "=", "+", "-", "*", "/", ".", "!", "?", ":"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "julia",
+        "name": "Julia",
+        "extensions": ["jl"],
+        "lineComments": ["#"],
+        "blockComments": [["#=", "=#"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"\"\"",
+                "close": "\"\"\"",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": [
+            "===",
+            "!==",
+            "<<=",
+            ">>=",
+            "//=",
+            "...",
+            ".==",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "->",
+            "=>",
+            "<-",
+            "&&",
+            "||",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "//",
+            "<<",
+            ">>",
+            "**",
+            "::",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "~",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "zig",
+        "name": "Zig",
+        "extensions": ["zig"],
+        "lineComments": ["//"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": ["<<=", ">>=", "==", "!=", "<=", ">=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "&&", "||", "++", "--", "->", "=", "+", "-", "*", "/", "%", "<", ">", "!", "&", "|", "^", "?", ":"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "powershell",
+        "name": "PowerShell",
+        "extensions": ["ps1", "psm1", "psd1"],
+        "lineComments": ["#"],
+        "blockComments": [["<#", "#>"]],
+        "strings": [
+            {
+                "open": "@\"",
+                "close": "\"@",
+                "escape": "none",
+                "multiline": true
+            },
+            {
+                "open": "@'",
+                "close": "'@",
+                "escape": "none",
+                "multiline": true
+            },
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "doubled",
+                "multiline": false
+            }
+        ],
+        "operators": [
+            "-notcontains",
+            "-notmatch",
+            "-contains",
+            "-replace",
+            "-notlike",
+            "-isnot",
+            "-match",
+            "-split",
+            "-notin",
+            "-bnot",
+            "-like",
+            "-join",
+            "-band",
+            "-bxor",
+            "-not",
+            "-and",
+            "-xor",
+            "-bor",
+            "-shl",
+            "-shr",
+            "-is",
+            "-as",
+            "-or",
+            "-in",
+            "-eq",
+            "-ne",
+            "-ge",
+            "-gt",
+            "-le",
+            "-lt",
+            "-f",
+            "::",
+            "++",
+            "--",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "!",
+            "?"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "clojure",
+        "name": "Clojure",
+        "extensions": ["clj", "cljs", "cljc", "edn"],
+        "lineComments": [";"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": ["->>", "==", "!=", "<=", ">=", "->", "::", "=", "+", "-", "*", "/", "<", ">"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "erlang",
+        "name": "Erlang",
+        "extensions": ["erl", "hrl"],
+        "lineComments": ["%%"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": ["=:=", "=/=", "==", "/=", "=<", ">=", "++", "--", "=>", "<<", ">>", "||", "&&", ":=", "->", "=", "+", "-", "*", "/", "<", ">", "!", "?"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "r",
+        "name": "R",
+        "extensions": ["r", "rmd"],
+        "lineComments": ["#"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "`",
+                "close": "`",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": ["%/%", "<<-", "->>", ":::", "%>%", "<-", "->", "==", "!=", "<=", ">=", "%%", "::", ":=", "|>", "=", "+", "-", "*", "/", "^", "<", ">", "!", "&", "|"],
+        "defaultSymbols": ["<-", "="],
+        "declarations": "none"
+    },
+    {
+        "id": "fortran",
+        "name": "Fortran",
+        "extensions": ["f90", "f95", "f03", "f08"],
+        "lineComments": ["!"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": ["**", "==", "/=", "<=", ">=", "=>", "::", "//", "=", "+", "-", "*", "/", "<", ">", ":", "."],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "nim",
+        "name": "Nim",
+        "extensions": ["nim", "nims"],
+        "lineComments": ["#"],
+        "blockComments": [["#[", "]#"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": ["notin", "**=", "//=", "<<=", ">>=", "==", "!=", "<=", ">=", "+=", "-=", "*=", "/=", "%=", "in", "of", "->", "..", "=", "+", "-", "*", "/", "%", "<", ">", "!", "&", "|", "^", "?", ":"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "crystal",
+        "name": "Crystal",
+        "extensions": ["cr"],
+        "lineComments": ["#"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"\"\"",
+                "close": "\"\"\"",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": [
+            "===",
+            "!==",
+            "**=",
+            "//=",
+            "<<=",
+            ">>=",
+            "&&=",
+            "||=",
+            "...",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "&&",
+            "||",
+            "=>",
+            "->",
+            "::",
+            "=~",
+            "!~",
+            "**",
+            "//",
+            "<<",
+            ">>",
+            "..",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "gleam",
+        "name": "Gleam",
+        "extensions": ["gleam"],
+        "lineComments": ["//"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": [
+            ">>>=",
+            ">>>",
+            "<<=",
+            ">>=",
+            "??=",
+            "...",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "&&",
+            "||",
+            "++",
+            "--",
+            "->",
+            "=>",
+            "::",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "?.",
+            "??",
+            "?:",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "odin",
+        "name": "Odin",
+        "extensions": ["odin"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": [
+            "<<=",
+            ">>=",
+            "??=",
+            "...",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "&&",
+            "||",
+            "++",
+            "--",
+            "->",
+            "=>",
+            "::",
+            ":=",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "?.",
+            "??",
+            "?:",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "solidity",
+        "name": "Solidity",
+        "extensions": ["sol"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": [
+            ">>>=",
+            ">>>",
+            "<<=",
+            ">>=",
+            "??=",
+            "...",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "&&",
+            "||",
+            "++",
+            "--",
+            "->",
+            "=>",
+            "::",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "?.",
+            "??",
+            "?:",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "type-first"
+    },
+    {
+        "id": "groovy",
+        "name": "Groovy",
+        "extensions": ["groovy", "gvy", "gradle"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "'''",
+                "close": "'''",
+                "escape": "backslash",
+                "multiline": true
+            },
+            {
+                "open": "\"\"\"",
+                "close": "\"\"\"",
+                "escape": "backslash",
+                "multiline": true
+            },
+            {
+                "open": "$/",
+                "close": "/$",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": [
+            "===",
+            "!==",
+            "**=",
+            "<<=",
+            ">>=",
+            "<=>",
+            "==~",
+            "...",
+            "?=",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "&&",
+            "||",
+            "**",
+            "=~",
+            "=>",
+            "->",
+            "::",
+            "?.",
+            "?:",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "prefix"
+    },
+    {
+        "id": "terraform",
+        "name": "Terraform",
+        "extensions": ["tf", "tfvars", "hcl"],
+        "lineComments": ["#", "//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": ["...", "==", "!=", "<=", ">=", "&&", "||", "=>", "=", "+", "-", "*", "/", "%", "!", "?", ":"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "toml",
+        "name": "TOML",
+        "extensions": ["toml"],
+        "lineComments": ["#"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "none",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "'''",
+                "close": "'''",
+                "escape": "none",
+                "multiline": true
+            },
+            {
+                "open": "\"\"\"",
+                "close": "\"\"\"",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": ["=", "+", "-"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "ini",
+        "name": "INI",
+        "extensions": ["ini", "cfg", "conf", "properties"],
+        "lineComments": [";", "#"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": ["=", "+", "-"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "makefile",
+        "name": "Makefile",
+        "extensions": ["mk", "makefile", "mak"],
+        "lineComments": ["#"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": ["::=", ":=", "+=", "?=", "!=", "==", "::", "=", "+", "-", "*", "/", "%", "?", "!"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "dockerfile",
+        "name": "Dockerfile",
+        "extensions": ["dockerfile"],
+        "lineComments": ["#"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": ["=", "+", "-"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "graphql",
+        "name": "GraphQL",
+        "extensions": ["graphql", "gql"],
+        "lineComments": ["#"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"\"\"",
+                "close": "\"\"\"",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": ["...", ":", "=", "!", "@", "&", "|"],
+        "defaultSymbols": [":"],
+        "declarations": "none"
+    },
+    {
+        "id": "vb",
+        "name": "Visual Basic",
+        "extensions": ["vb"],
+        "lineComments": ["'"],
+        "blockComments": [],
+        "strings": [
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "doubled",
+                "multiline": false
+            }
+        ],
+        "operators": ["<>", "<=", ">=", "<<", ">>", "&=", "^=", "=", "+", "-", "*", "/", "\\", "^", "&", "<", ">", "?"],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "delphi",
+        "name": "Delphi",
+        "extensions": ["pas", "dpr", "pp"],
+        "lineComments": ["//"],
+        "blockComments": [["{", "}"], ["(*", "*)"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": [
+            "<<=",
+            ">>=",
+            "??=",
+            "...",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "&&",
+            "||",
+            "++",
+            "--",
+            "->",
+            "=>",
+            "::",
+            ":=",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "?.",
+            "??",
+            "?:",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "vue",
+        "name": "Vue",
+        "extensions": ["vue"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"], ["<!--", "-->"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "`",
+                "close": "`",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": [
+            ">>>=",
+            "===",
+            "!==",
+            "**=",
+            ">>>",
+            "&&=",
+            "||=",
+            "??=",
+            "<<=",
+            ">>=",
+            "=>",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "**",
+            "&&",
+            "||",
+            "??",
+            "?.",
+            "++",
+            "--",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "~",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "svelte",
+        "name": "Svelte",
+        "extensions": ["svelte"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"], ["<!--", "-->"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "`",
+                "close": "`",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": [
+            ">>>=",
+            "===",
+            "!==",
+            "**=",
+            ">>>",
+            "&&=",
+            "||=",
+            "??=",
+            "<<=",
+            ">>=",
+            "=>",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "**",
+            "&&",
+            "||",
+            "??",
+            "?.",
+            "++",
+            "--",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "~",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "astro",
+        "name": "Astro",
+        "extensions": ["astro"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"], ["<!--", "-->"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "`",
+                "close": "`",
+                "escape": "backslash",
+                "multiline": true
+            }
+        ],
+        "operators": [
+            ">>>=",
+            "===",
+            "!==",
+            "**=",
+            ">>>",
+            "&&=",
+            "||=",
+            "??=",
+            "<<=",
+            ">>=",
+            "=>",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "**",
+            "&&",
+            "||",
+            "??",
+            "?.",
+            "++",
+            "--",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "~",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "protobuf",
+        "name": "Protocol Buffers",
+        "extensions": ["proto"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": [
+            ">>>=",
+            ">>>",
+            "<<=",
+            ">>=",
+            "??=",
+            "...",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "&&",
+            "||",
+            "++",
+            "--",
+            "->",
+            "=>",
+            "::",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "?.",
+            "??",
+            "?:",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    },
+    {
+        "id": "v",
+        "name": "V",
+        "extensions": ["v"],
+        "lineComments": ["//"],
+        "blockComments": [["/*", "*/"]],
+        "strings": [
+            {
+                "open": "'",
+                "close": "'",
+                "escape": "backslash",
+                "multiline": false
+            },
+            {
+                "open": "\"",
+                "close": "\"",
+                "escape": "backslash",
+                "multiline": false
+            }
+        ],
+        "operators": [
+            "<<=",
+            ">>=",
+            "??=",
+            "...",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%=",
+            "&&",
+            "||",
+            "++",
+            "--",
+            "->",
+            "=>",
+            ":=",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "?.",
+            "??",
+            "?:",
+            "=",
+            "+",
+            "-",
+            "*",
+            "/",
+            "%",
+            "<",
+            ">",
+            "!",
+            "&",
+            "|",
+            "^",
+            "?",
+            ":"
+        ],
+        "defaultSymbols": ["="],
+        "declarations": "none"
+    }
+]

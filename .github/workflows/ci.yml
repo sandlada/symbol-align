@@ -28,6 +28,16 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/core/rust
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 

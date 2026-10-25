@@ -5,8 +5,8 @@
  * `language.ts` — this module only wires the editor API to that logic.
  */
 
-import type { AlignmentScope, DeclarationAnchor, LanguageId, LineRange } from '@sandlada/symbol-align-ts';
-import { isLanguageId } from '@sandlada/symbol-align-ts';
+import type { AlignmentScope, DeclarationAnchor, LanguageId, LineRange } from '@sandlada/symbol-align';
+import { isLanguageId } from '@sandlada/symbol-align';
 import * as vscode from 'vscode';
 import type { FormatResponse } from './format.js';
 import { formatText, linesOfRange, selectionLineRange } from './format.js';

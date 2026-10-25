@@ -1,5 +1,5 @@
-import type { AlignmentScope, DeclarationAnchor, LanguageId } from '@sandlada/symbol-align-ts';
-import { isLanguageId, languageProfile } from '@sandlada/symbol-align-ts';
+import type { AlignmentScope, DeclarationAnchor, LanguageId } from '@sandlada/symbol-align';
+import { isLanguageId, languageProfile } from '@sandlada/symbol-align';
 import { renderAlignedLines } from './highlight.js';
 import type { AlignmentSnapshot } from './model.js';
 import {

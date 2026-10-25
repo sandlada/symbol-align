@@ -1,0 +1,2 @@
+rust/target/
+src/generated/wasm-binary.ts
