@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-25
+
 ### Added
 
 - **Declaration columns for typed languages.** When the profile knows how a
@@ -29,6 +31,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The alignment engine now runs in Rust.** The Rust core is compiled to
+  `wasm32-unknown-unknown` and inlined as a base64 payload, so it loads
+  synchronously in Node.js, the browser, a worker and the VS Code extension
+  host without an asset loader. The TypeScript API, CLI and configuration layer
+  are unchanged; the TypeScript implementation remains the behavioural
+  reference in the workspace.
+- **The source is scanned once per `align` call.** Every declaration, group
+  and symbol pass reuses that scan instead of running the lexer again.
 - **The core library is free of Node.js builtins.** The modules that the main
   entry point re-exports no longer import `node:fs` or `node:path`, so
   `@sandlada/symbol-align` can be bundled for the browser, a worker or any
@@ -125,4 +135,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The prefix keyword padding (`readonly `, `export `, …) now aligns the content
   of the lines that miss the keyword.
 
+[0.2.0]: https://github.com/sandlada/symbol-align/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/sandlada/symbol-align/compare/v0.0.1-20260710.a...v0.1.0

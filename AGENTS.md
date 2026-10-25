@@ -135,6 +135,7 @@ Concretely:
 │   └── playground/            # Vite-powered live playground (private, not published)
 │       ├── index.html         # SEO shell + static content + playground markup
 │       ├── public/            # favicon, OG artwork, manifest, robots.txt
+│       ├── samples/           # vendored real-world sources + licenses
 │       ├── src/
 │       │   ├── main.ts        # DOM wiring and live updates
 │       │   ├── model.ts       # pure options/state helpers around the core API
@@ -340,6 +341,9 @@ deliberately uses no UI framework, no icon pack and no syntax highlighter.
 - The language selector is generated from `allLanguages`; `samples.ts` is typed
   as `Record<LanguageId, string>`, so a new core profile fails the build until
   it gets a starter snippet
+- The popular programming languages load real, long source files from
+  `packages/playground/samples` through dynamic `?raw` imports; only the default
+  C# file is in the initial bundle, the rest are split into per-language chunks
 - `main.ts` owns DOM effects; option/symbol logic and output highlighting stay
   in pure modules and are covered by Vitest
 - The toolbar exposes the symbol list, the scope, declarations on/off, the
@@ -355,10 +359,12 @@ deliberately uses no UI framework, no icon pack and no syntax highlighter.
 
 - Shared dependency versions live in the `catalog` section of `pnpm-workspace.yaml`
   and are referenced as `"catalog:"` from a package manifest
-- `packages/core` and `packages/core-ts` link `README.md`, `LICENSE`,
-  `SECURITY.md` and `CODE_OF_CONDUCT.md` back to the repository root copies
+- `packages/core` is the only published package; it links `README.md`,
+  `CHANGELOG.md`, `LICENSE`, `SECURITY.md` and `CODE_OF_CONDUCT.md` back to the
+  repository root copies
 - `npm-packlist` skips symlinked files, so `scripts/sync-docs.mjs` replaces the
-  links with real copies in `prepack` and restores them in `postpack`
+  `packages/core` links with real copies in `prepack` and restores them in
+  `postpack`; the workspace-only packages are never touched
 - New packages are added by creating `packages/<name>/package.json` — no root
   change is required, the `packages/*` glob picks them up automatically
 - `pnpm-lock.yaml` and `pnpm-workspace.yaml` are written by pnpm and are

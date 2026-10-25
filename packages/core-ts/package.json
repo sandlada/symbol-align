@@ -1,13 +1,11 @@
 {
     "name": "@sandlada/symbol-align-ts",
     "version": "0.1.0",
+    "private": true,
     "description": "TypeScript reference implementation of the code-snippet symbol-alignment formatter - lines up =, :, =>, //, # and more. CLI & API",
     "type": "module",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
-    "publishConfig": {
-        "access": "public"
-    },
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
@@ -38,8 +36,6 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "typecheck": "tsc --noEmit -p tsconfig.test.json",
-        "prepack": "node ../../scripts/sync-docs.mjs materialize",
-        "postpack": "node ../../scripts/sync-docs.mjs restore",
         "prepublishOnly": "pnpm run build && pnpm run test"
     },
     "keywords": [

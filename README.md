@@ -45,12 +45,12 @@ clean vertical columns.
 
 This repository is a [pnpm](https://pnpm.io) workspace (`packages/*`).
 
-| Package                                                   | Description                            |
-| --------------------------------------------------------- | -------------------------------------- |
-| [`@sandlada/symbol-align`](packages/core)                 | Rust core (wasm) + TypeScript API + CLI |
-| [`@sandlada/symbol-align-ts`](packages/core-ts)           | TypeScript reference implementation     |
-| [Symbol Align](packages/vscode)                            | VS Code extension                      |
-| [Playground](packages/playground)                          | Vite-powered live playground           |
+| Package | Description |
+| --- | --- |
+| [`@sandlada/symbol-align`](packages/core) | Rust core (wasm) + TypeScript API + CLI |
+| [`@sandlada/symbol-align-ts`](packages/core-ts) | TypeScript reference implementation (workspace only) |
+| [Symbol Align](packages/vscode) | VS Code extension (workspace only) |
+| [Playground](packages/playground) | Vite-powered live playground (workspace only) |
 
 The shipped package is the Rust core in `packages/core`. It compiles to a
 single `wasm32-unknown-unknown` module that is inlined into the TypeScript
@@ -67,6 +67,9 @@ pnpm add -D @sandlada/symbol-align
 ```bash
 npm install -D @sandlada/symbol-align
 ```
+
+Requires Node.js 24 or newer. The package is ESM-first and also loads from
+`require()` on Node.js 24+.
 
 ## What it does
 
@@ -824,11 +827,12 @@ symbol-align/
 ```
 
 Documentation files (`README.md`, `CHANGELOG.md`, `LICENSE`, `SECURITY.md`,
-`CODE_OF_CONDUCT.md`) live in the repository root. Each package links them back
-to the root copies so that a document is edited in exactly one place.
-`scripts/sync-docs.mjs` turns the links into real files while packing
-(`prepack`) and restores them afterwards (`postpack`), because `npm-packlist`
-skips symlinked files.
+`CODE_OF_CONDUCT.md`) live in the repository root. The published `packages/core`
+links them back to the root copies so that a document is edited in exactly one
+place. `scripts/sync-docs.mjs` turns the core links into real files while
+packing (`prepack`) and restores them afterwards (`postpack`), because
+`npm-packlist` skips symlinked files. The workspace-only packages are never
+touched.
 
 ## Development
 

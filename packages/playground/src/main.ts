@@ -80,6 +80,7 @@ const createPlayground = (): void => {
     let maxDeclarationPad: number = DEFAULT_SETTINGS.maxDeclarationPad;
     let groups: readonly (readonly string[])[] = DEFAULT_SETTINGS.groups;
     let usingSample = true;
+    let sampleRequest = 0;
     let splitPercent = 50;
     let pendingFrame = 0;
     let announcementTimer = 0;
@@ -326,7 +327,7 @@ const createPlayground = (): void => {
     };
 
     /** Switches the language profile and loads its sample when the editor is pristine. */
-    const changeLanguage = (value: string): void => {
+    const changeLanguage = async (value: string): Promise<void> => {
         if (!isLanguageId(value)) {
             return;
         }
@@ -336,7 +337,14 @@ const createPlayground = (): void => {
         customSymbols = [];
 
         if (usingSample) {
-            source.value = sampleFor(language);
+            const request = ++sampleRequest;
+            const sample = await sampleFor(language);
+
+            if (request !== sampleRequest || !usingSample) {
+                return;
+            }
+
+            source.value = sample;
         }
 
         renderSymbols();
@@ -395,9 +403,16 @@ const createPlayground = (): void => {
     };
 
     /** Loads the starter snippet of the current language. */
-    const loadCurrentExample = (): void => {
-        source.value = sampleFor(language);
+    const loadCurrentExample = async (): Promise<void> => {
+        const request = ++sampleRequest;
         usingSample = true;
+        const sample = await sampleFor(language);
+
+        if (request !== sampleRequest || !usingSample) {
+            return;
+        }
+
+        source.value = sample;
         symbols = defaultSymbols(language);
         customSymbols = [];
         renderSymbols();
@@ -414,7 +429,7 @@ const createPlayground = (): void => {
         });
 
         languageSelect.addEventListener('change', () => {
-            changeLanguage(languageSelect.value);
+            void changeLanguage(languageSelect.value);
         });
 
         for (const input of scopeInputs) {
@@ -490,7 +505,9 @@ const createPlayground = (): void => {
             }
         });
 
-        loadExample.addEventListener('click', loadCurrentExample);
+        loadExample.addEventListener('click', () => {
+            void loadCurrentExample();
+        });
 
         customForm.addEventListener('submit', (event) => {
             event.preventDefault();
@@ -622,16 +639,16 @@ const createPlayground = (): void => {
     };
 
     /** Boots the playground. */
-    const start = (): void => {
+    const start = async (): Promise<void> => {
         populateLanguages();
-        source.value = sampleFor(language);
+        source.value = await sampleFor(language);
         renderSymbols();
         setSplit(50);
         bindEvents();
         render();
     };
 
-    start();
+    void start();
 };
 
 createPlayground();

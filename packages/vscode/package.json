@@ -3,6 +3,7 @@
     "displayName": "Symbol Align",
     "description": "Vertically aligns punctuation symbols such as =, : and => inside your code.",
     "version": "0.0.1",
+    "private": true,
     "publisher": "sandlada",
     "license": "MIT",
     "type": "module",

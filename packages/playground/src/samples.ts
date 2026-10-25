@@ -1,10 +1,34 @@
 import type { LanguageId } from '@sandlada/symbol-align';
+import jsonSerializerOptions from '../samples/json-serializer-options.cs?raw';
 
 /** Joins the lines of a snippet without adding indentation to the source. */
 const lines = (...snippet: readonly string[]): string => snippet.join('\n');
 
+/** Removes the trailing newline of a vendored source file. */
+const vendored = (source: string): string => source.trimEnd();
+
+/**
+ * Real-world sources are split into their own chunks so the initial playground
+ * bundle only carries the default C# file. Vite inlines each file as a string.
+ */
+const realWorldLoaders: Partial<Record<LanguageId, () => Promise<string>>> = {
+    javascript: () => import('../samples/javascript-express-application.js?raw').then((module) => module.default),
+    typescript: () => import('../samples/typescript-vscode-arrays.ts?raw').then((module) => module.default),
+    python: () => import('../samples/python-requests-sessions.py?raw').then((module) => module.default),
+    go: () => import('../samples/go-gin-context.go?raw').then((module) => module.default),
+    rust: () => import('../samples/rust-axum-routing.rs?raw').then((module) => module.default),
+    java: () => import('../samples/java-guava-immutablelist.java?raw').then((module) => module.default),
+    kotlin: () => import('../samples/kotlin-okhttp-client.kt?raw').then((module) => module.default),
+    swift: () => import('../samples/swift-vapor-application.swift?raw').then((module) => module.default),
+    cpp: () => import('../samples/cpp-fmt-ranges.h?raw').then((module) => module.default),
+};
+
 /**
  * One realistic starter snippet per language profile.
+ *
+ * The popular programming languages use real, long source files from their
+ * ecosystems; the remaining entries are short starters that show the profile's
+ * syntax. The real files and their licenses live in `packages/playground/samples`.
  *
  * The map is exhaustive: when a new `LanguageId` is added to the core, this
  * object no longer satisfies its type and the playground stops compiling until
@@ -29,37 +53,7 @@ export const samples = {
 
     swift: lines('struct Config {', '    let project = "symbol-align"', '    let version = "0.1.0"', '    let port = 5173', '}'),
 
-    csharp: lines(
-        'using System;',
-        'using System.Text.Json;',
-        '',
-        'public static class Program',
-        '{',
-        '    private const string Product = "symbol-align";',
-        '    private const string Version = "0.1.0";',
-        '    private const int DefaultPort = 5173;',
-        '    private const int RequestTimeout = 30;',
-        '',
-        '    public static void Main(string[] args)',
-        '    {',
-        '        var endpoint = "https://localhost:5001";',
-        '        var retries = args.Length > 0 ? int.Parse(args[0]) : 3;',
-        '        var banner = "key = value stays in this string";',
-        '        var payload = JsonSerializer.Serialize(new { name = "Ada" });',
-        '',
-        '        if (retries == 0)',
-        '        {',
-        '            Console.WriteLine("== is an operator, so it is never split.");',
-        '        }',
-        '',
-        '        Console.WriteLine($"Product: {Product}");',
-        '        Console.WriteLine($"Endpoint: {endpoint}");',
-        '        Console.WriteLine($"Timeout: {RequestTimeout}s, retries: {retries}");',
-        '        Console.WriteLine($"Payload: {payload}");',
-        '        Console.WriteLine(banner);',
-        '    }',
-        '}',
-    ),
+    csharp: vendored(jsonSerializerOptions),
 
     fsharp: lines(
         'type Config =',
@@ -170,5 +164,18 @@ export const samples = {
     v: lines("const project = 'symbol-align'", "const version = '0.1.0'", 'const port = 5173'),
 } as const satisfies Record<LanguageId, string>;
 
-/** Returns the starter snippet of a language, falling back to the generic one. */
-export const sampleFor = (language: LanguageId): string => samples[language] ?? samples.generic;
+/**
+ * Returns the sample of a language, falling back to the generic one.
+ *
+ * The popular programming languages load their real-world source on demand;
+ * every other language resolves immediately from the starter map.
+ */
+export const sampleFor = async (language: LanguageId): Promise<string> => {
+    const loader = realWorldLoaders[language];
+
+    if (loader !== undefined) {
+        return (await loader()).trimEnd();
+    }
+
+    return samples[language] ?? samples.generic;
+};

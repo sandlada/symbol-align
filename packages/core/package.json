@@ -11,12 +11,16 @@
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
-            "import": "./dist/index.js"
+            "import": "./dist/index.js",
+            "default": "./dist/index.js"
         },
         "./node": {
             "types": "./dist/config-fs.d.ts",
-            "import": "./dist/config-fs.js"
-        }
+            "import": "./dist/config-fs.js",
+            "default": "./dist/config-fs.js"
+        },
+        "./package.json": "./package.json",
+        "./schemas/symbol-align.config.schema.json": "./schemas/symbol-align.config.schema.json"
     },
     "bin": {
         "symbol-align": "./dist/bin.js"
@@ -43,9 +47,9 @@
         "test:watch": "vitest",
         "pretypecheck": "pnpm run build:wasm",
         "typecheck": "tsc --noEmit -p tsconfig.test.json",
-        "prepack": "node ../../scripts/sync-docs.mjs materialize",
+        "prepack": "pnpm run build && node ../../scripts/sync-docs.mjs materialize",
         "postpack": "node ../../scripts/sync-docs.mjs restore",
-        "prepublishOnly": "pnpm run build && pnpm run test"
+        "prepublishOnly": "pnpm run typecheck && pnpm run test"
     },
     "keywords": [
         "align",
@@ -69,7 +73,8 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/sandlada/symbol-align.git"
+        "url": "git+https://github.com/sandlada/symbol-align.git",
+        "directory": "packages/core"
     },
     "bugs": {
         "url": "https://github.com/sandlada/symbol-align/issues"

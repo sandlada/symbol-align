@@ -6,7 +6,7 @@ browser, so it doubles as an interactive test bench for every language profile.
 
 - **Default input:** a realistic C# snippet.
 - **Live output:** every keystroke re-runs the aligner.
-- **Language selector:** all 57 core profiles, each with a starter snippet.
+- **Language selector:** all 57 core profiles; the popular programming languages load long real-world sources on demand.
 - **Symbols:** toggle the common ones or add a custom symbol.
 - **Scopes:** `block`, `indent` and `file`, matching `AlignOptions.scope`.
 - **Diff view:** inserted spaces are highlighted in the aligned output.
@@ -38,6 +38,7 @@ pnpm dev:playground
 packages/playground/
 ├── index.html              # SEO shell, static content, playground markup
 ├── public/                 # favicon, Open Graph artwork, manifest, robots.txt
+├── samples/                # vendored real-world sources + licenses
 ├── src/
 │   ├── main.ts             # DOM wiring, live updates, keyboard interactions
 │   ├── model.ts            # pure state/options helpers around the core API
@@ -65,6 +66,14 @@ Add its starter snippet to `samples.ts`. The map is typed as
 `Record<LanguageId, string>`, so a new core profile fails type-checking until it
 gets a sample. The language selector itself is generated from `allLanguages` at
 runtime.
+
+The popular programming languages - C#, TypeScript, JavaScript, Python, Go,
+Rust, Java, Kotlin, Swift and C++ - use real, unmodified source files from their
+ecosystems, vendored under `samples/` together with their licenses. The C#
+entry is the .NET runtime's `JsonSerializerOptions.cs`, so the default
+playground opens on a realistic 1,253-line file instead of a toy snippet. The
+other real-world files are loaded on demand, so the initial bundle only carries
+the C# sample.
 
 ### Tests
 
