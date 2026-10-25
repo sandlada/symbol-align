@@ -163,10 +163,15 @@ fn comment_at(scan: &ScanResult, index: usize) -> Option<&LineComment> {
 
 /// Locates the first occurrence of a symbol on every line.
 ///
-/// The scan is redone for every pass because earlier passes insert spaces and
-/// therefore shift the positions of the symbols that come later.
-fn locate_symbol(symbol: &str, profile: &LanguageProfile, lines: &[Line]) -> Vec<Position> {
-    let scan = scan_source(&join_lines(lines), profile);
+/// The scan is shared by every pass of one alignment run. Insertions shift the
+/// regions and comments of the affected lines, so the shared scan always
+/// describes the current line text without re-running the lexer.
+fn locate_symbol(
+    symbol: &str,
+    profile: &LanguageProfile,
+    scan: &ScanResult,
+    lines: &[Line],
+) -> Vec<Position> {
     let requested = [symbol.to_owned()];
 
     lines
@@ -176,10 +181,10 @@ fn locate_symbol(symbol: &str, profile: &LanguageProfile, lines: &[Line]) -> Vec
             let positions = find_symbol_positions(
                 line,
                 &FindOptions {
-                    regions: regions_at(&scan, index),
+                    regions: regions_at(scan, index),
                     symbols: &requested,
                     operators: &profile.operators,
-                    comment: comment_at(&scan, index),
+                    comment: comment_at(scan, index),
                 },
             );
 
@@ -227,12 +232,12 @@ fn first_group_column(
 }
 
 /// Locates the first occurrence of any member of a group on every line.
-///
-/// The scan is redone for every pass because earlier passes insert spaces and
-/// therefore shift the positions of the members that come later.
-fn locate_group(group: &[String], profile: &LanguageProfile, lines: &[Line]) -> Vec<Position> {
-    let scan = scan_source(&join_lines(lines), profile);
-
+fn locate_group(
+    group: &[String],
+    profile: &LanguageProfile,
+    scan: &ScanResult,
+    lines: &[Line],
+) -> Vec<Position> {
     lines
         .iter()
         .enumerate()
@@ -240,8 +245,8 @@ fn locate_group(group: &[String], profile: &LanguageProfile, lines: &[Line]) -> 
             first_group_column(
                 group,
                 line,
-                regions_at(&scan, index),
-                comment_at(&scan, index),
+                regions_at(scan, index),
+                comment_at(scan, index),
                 &profile.operators,
             )
         })
@@ -259,24 +264,41 @@ fn locate_group(group: &[String], profile: &LanguageProfile, lines: &[Line]) -> 
 fn locate_groups(
     groups: &[Vec<String>],
     profile: &LanguageProfile,
+    scan: &ScanResult,
     lines: &[Line],
 ) -> Vec<Vec<Position>> {
-    let scan = scan_source(&join_lines(lines), profile);
+    let members = collect_members(groups);
+
+    if members.is_empty() {
+        return vec![vec![None; groups.len()]; lines.len()];
+    }
 
     lines
         .iter()
         .enumerate()
         .map(|(index, line)| {
+            let positions = find_symbol_positions(
+                line,
+                &FindOptions {
+                    regions: regions_at(scan, index),
+                    symbols: &members,
+                    operators: &profile.operators,
+                    comment: comment_at(scan, index),
+                },
+            );
+
             groups
                 .iter()
                 .map(|group| {
-                    first_group_column(
-                        group,
-                        line,
-                        regions_at(&scan, index),
-                        comment_at(&scan, index),
-                        &profile.operators,
-                    )
+                    group
+                        .iter()
+                        .filter_map(|member| {
+                            positions
+                                .iter()
+                                .find(|(name, _)| name == member)
+                                .and_then(|(_, columns)| columns.first().copied())
+                        })
+                        .min()
                 })
                 .collect()
         })
@@ -388,12 +410,13 @@ fn groups_conflict(
     profile: &LanguageProfile,
     scope: AlignmentScope,
     range: LineRange,
+    scan: &ScanResult,
 ) -> bool {
     if groups.len() < 2 {
         return false;
     }
 
-    let columns = locate_groups(groups, profile, lines);
+    let columns = locate_groups(groups, profile, scan, lines);
 
     group_indices(lines, scope, range)
         .iter()
@@ -419,10 +442,11 @@ fn pad_to_target_column(
     lines: &[Line],
     positions: &[Position],
     members: &[usize],
-) -> (Vec<Line>, Vec<usize>) {
+) -> (Vec<Line>, Vec<usize>, Vec<DeclarationInsertion>) {
     let target = target_column(lines, positions, members);
     let mut padded = lines.to_vec();
     let mut changed: Vec<usize> = Vec::new();
+    let mut insertions: Vec<DeclarationInsertion> = Vec::new();
 
     for &index in members {
         let Some(position) = positions.get(index).copied().flatten() else {
@@ -440,13 +464,19 @@ fn pad_to_target_column(
         }
 
         if let Some(slot) = padded.get_mut(index) {
-            let next = slot.insert_spaces(position, target - column);
+            let width = target - column;
+            let next = slot.insert_spaces(position, width);
             *slot = next;
             changed.push(index);
+            insertions.push(DeclarationInsertion {
+                index,
+                offset: position,
+                width,
+            });
         }
     }
 
-    (padded, changed)
+    (padded, changed, insertions)
 }
 
 /// Aligns the content that follows a prefix keyword.
@@ -459,7 +489,7 @@ fn pad_after_prefix_keyword(
     lines: &[Line],
     positions: &[Position],
     group: &[usize],
-) -> (Vec<Line>, Vec<usize>) {
+) -> (Vec<Line>, Vec<usize>, Vec<DeclarationInsertion>) {
     let holders: Vec<usize> = group
         .iter()
         .copied()
@@ -475,7 +505,7 @@ fn pad_after_prefix_keyword(
         .collect();
 
     if holders.is_empty() || without_symbol.is_empty() {
-        return (lines.to_vec(), Vec::new());
+        return (lines.to_vec(), Vec::new(), Vec::new());
     }
 
     // The keyword boundary is a character position: `line.indent()` is the
@@ -505,14 +535,14 @@ fn pad_after_prefix_keyword(
     });
 
     if !all_prefix {
-        return (lines.to_vec(), Vec::new());
+        return (lines.to_vec(), Vec::new(), Vec::new());
     }
 
     let Some(symbol_indent) = holders
         .first()
         .and_then(|&index| lines.get(index).map(Line::indent_column))
     else {
-        return (lines.to_vec(), Vec::new());
+        return (lines.to_vec(), Vec::new(), Vec::new());
     };
 
     if !holders.iter().all(|&index| {
@@ -520,12 +550,13 @@ fn pad_after_prefix_keyword(
             .get(index)
             .is_some_and(|line| line.indent_column() == symbol_indent)
     }) {
-        return (lines.to_vec(), Vec::new());
+        return (lines.to_vec(), Vec::new(), Vec::new());
     }
 
     let target_indent = target_column(lines, positions, &holders) + width + 1;
     let mut padded = lines.to_vec();
     let mut changed: Vec<usize> = Vec::new();
+    let mut insertions: Vec<DeclarationInsertion> = Vec::new();
 
     for &index in &without_symbol {
         let Some(line) = lines.get(index) else {
@@ -548,10 +579,15 @@ fn pad_after_prefix_keyword(
             let next = slot.prepend_spaces(needed);
             *slot = next;
             changed.push(index);
+            insertions.push(DeclarationInsertion {
+                index,
+                offset: 0,
+                width: needed,
+            });
         }
     }
 
-    (padded, changed)
+    (padded, changed, insertions)
 }
 
 /// Turns `max_declaration_pad` into the effective limit.
@@ -881,6 +917,61 @@ fn apply_declaration_insertions(lines: &[Line], insertions: &[DeclarationInserti
         .collect()
 }
 
+/// Shifts the shared scan after a pass inserted spaces.
+///
+/// The scanner's regions and line comments are char-index ranges into the line
+/// text. Inserting spaces in a code region cannot change the lexical structure
+/// (a space never creates or splits a string delimiter or a comment marker),
+/// so the ranges only have to move with the inserted text. A start at the
+/// insertion offset shifts with the spaces; an end at the offset does not,
+/// because the spaces sit behind the code.
+fn shift_scan(scan: &mut ScanResult, insertions: &[DeclarationInsertion]) {
+    if insertions.is_empty() {
+        return;
+    }
+
+    let mut by_line: Vec<Vec<(usize, usize)>> = vec![Vec::new(); scan.code_regions.len()];
+
+    for insertion in insertions {
+        if let Some(list) = by_line.get_mut(insertion.index) {
+            list.push((insertion.offset, insertion.width));
+        }
+    }
+
+    for (line_index, mut list) in by_line.into_iter().enumerate() {
+        if list.is_empty() {
+            continue;
+        }
+
+        list.sort_unstable_by_key(|(offset, _)| *offset);
+
+        let shifted = |position: usize, inclusive: bool| -> usize {
+            let mut width = 0;
+
+            for &(offset, amount) in &list {
+                if offset < position || (inclusive && offset == position) {
+                    width += amount;
+                } else {
+                    break;
+                }
+            }
+
+            position + width
+        };
+
+        if let Some(regions) = scan.code_regions.get_mut(line_index) {
+            for region in regions {
+                region.start = shifted(region.start, true);
+                region.end = shifted(region.end, false);
+            }
+        }
+
+        if let Some(Some(comment)) = scan.line_comments.get_mut(line_index) {
+            comment.column = shifted(comment.column, true);
+        }
+    }
+}
+
 /// Aligns the declaration columns of every line.
 ///
 /// The pass is the first stage of every fixpoint iteration. It only inserts
@@ -901,12 +992,12 @@ fn align_declarations(
     options: &AlignOptions,
     groups: &[Vec<String>],
     lines: &[Line],
-) -> Vec<Line> {
+    scan: &ScanResult,
+) -> (Vec<Line>, Vec<DeclarationInsertion>) {
     if profile.declarations == DeclarationStyle::None || options.declarations == Some(false) {
-        return lines.to_vec();
+        return (lines.to_vec(), Vec::new());
     }
 
-    let scan = scan_source(&join_lines(lines), profile);
     let located: Vec<Option<Vec<DeclarationCell>>> = lines
         .iter()
         .enumerate()
@@ -914,7 +1005,7 @@ fn align_declarations(
             find_declaration_cells(
                 line,
                 &DeclarationOptions {
-                    regions: regions_at(&scan, index),
+                    regions: regions_at(scan, index),
                     style: profile.declarations,
                 },
             )
@@ -925,7 +1016,7 @@ fn align_declarations(
         None
     } else {
         Some(declaration_exclusions(
-            lines, &located, &members, profile, &scan,
+            lines, &located, &members, profile, scan,
         ))
     };
     let partitions = declaration_partitions(
@@ -936,7 +1027,7 @@ fn align_declarations(
     );
 
     if partitions.is_empty() {
-        return lines.to_vec();
+        return (lines.to_vec(), Vec::new());
     }
 
     let anchor = options
@@ -951,9 +1042,9 @@ fn align_declarations(
         .collect();
 
     if insertions.is_empty() {
-        lines.to_vec()
+        (lines.to_vec(), Vec::new())
     } else {
-        apply_declaration_insertions(lines, &insertions)
+        (apply_declaration_insertions(lines, &insertions), insertions)
     }
 }
 
@@ -972,12 +1063,14 @@ fn align_symbol(
     profile: &LanguageProfile,
     scope: AlignmentScope,
     range: LineRange,
+    scan: &ScanResult,
     lines: &[Line],
-) -> SymbolPass {
-    let positions = locate_symbol(symbol, profile, lines);
+) -> (SymbolPass, Vec<DeclarationInsertion>) {
+    let positions = locate_symbol(symbol, profile, scan, lines);
     let scope_groups = group_indices(lines, scope, range);
     let mut changed: Vec<usize> = Vec::new();
     let mut current = lines.to_vec();
+    let mut insertions: Vec<DeclarationInsertion> = Vec::new();
 
     for group in &scope_groups {
         let holders: Vec<usize> = group
@@ -996,12 +1089,17 @@ fn align_symbol(
         current = prefixed.0;
         add_changed(&mut changed, &padded.1);
         add_changed(&mut changed, &prefixed.1);
+        insertions.extend(padded.2);
+        insertions.extend(prefixed.2);
     }
 
-    SymbolPass {
-        lines: current,
-        changed,
-    }
+    (
+        SymbolPass {
+            lines: current,
+            changed,
+        },
+        insertions,
+    )
 }
 
 /// Whether a line joins the column of a group.
@@ -1035,12 +1133,14 @@ fn align_group(
     profile: &LanguageProfile,
     scope: AlignmentScope,
     range: LineRange,
+    scan: &ScanResult,
     lines: &[Line],
-) -> SymbolPass {
-    let positions = locate_group(group, profile, lines);
+) -> (SymbolPass, Vec<DeclarationInsertion>) {
+    let positions = locate_group(group, profile, scan, lines);
     let scope_groups = group_indices(lines, scope, range);
     let mut changed: Vec<usize> = Vec::new();
     let mut current = lines.to_vec();
+    let mut insertions: Vec<DeclarationInsertion> = Vec::new();
 
     for indices in &scope_groups {
         // The same predicate guards the target and the padding, because
@@ -1059,12 +1159,16 @@ fn align_group(
 
         current = padded.0;
         add_changed(&mut changed, &padded.1);
+        insertions.extend(padded.2);
     }
 
-    SymbolPass {
-        lines: current,
-        changed,
-    }
+    (
+        SymbolPass {
+            lines: current,
+            changed,
+        },
+        insertions,
+    )
 }
 
 /// Determines in which order the symbols are aligned.
@@ -1075,9 +1179,9 @@ fn order_by_first_occurrence(
     symbols: &[String],
     profile: &LanguageProfile,
     range: LineRange,
+    scan: &ScanResult,
     lines: &[Line],
 ) -> Vec<String> {
-    let scan = scan_source(&join_lines(lines), profile);
     let mut occurrences: Vec<(String, (usize, usize))> = Vec::new();
 
     for (index, line) in lines.iter().enumerate() {
@@ -1092,10 +1196,10 @@ fn order_by_first_occurrence(
         let positions = find_symbol_positions(
             line,
             &FindOptions {
-                regions: regions_at(&scan, index),
+                regions: regions_at(scan, index),
                 symbols,
                 operators: &profile.operators,
-                comment: comment_at(&scan, index),
+                comment: comment_at(scan, index),
             },
         );
 
@@ -1164,28 +1268,32 @@ struct Pipeline<'a> {
 }
 
 impl Pipeline<'_> {
-    /// Runs one alignment pass for every group, in the order they are given.
-    fn align_groups(&self, input: &[Line]) -> Vec<Line> {
-        self.groups.iter().fold(input.to_vec(), |current, group| {
-            align_group(group, self.profile, self.scope, self.range, &current).lines
-        })
-    }
-
     /// Runs one full sequence of declaration, group and symbol passes over
-    /// `input`.
-    fn run_passes(&self, symbols: &[String], input: &[Line]) -> Vec<Line> {
-        let declared = align_declarations(
+    /// `input` with the shared scan.
+    fn run_passes(&self, symbols: &[String], input: &[Line], scan: &mut ScanResult) -> Vec<Line> {
+        let (mut current, declaration_insertions) = align_declarations(
             self.profile,
             self.scope,
             self.range,
             self.options,
             self.groups,
             input,
+            scan,
         );
-        let mut current = self.align_groups(&declared);
+        shift_scan(scan, &declaration_insertions);
+
+        for group in self.groups {
+            let (pass, insertions) =
+                align_group(group, self.profile, self.scope, self.range, scan, &current);
+            shift_scan(scan, &insertions);
+            current = pass.lines;
+        }
 
         for symbol in symbols {
-            current = align_symbol(symbol, self.profile, self.scope, self.range, &current).lines;
+            let (pass, insertions) =
+                align_symbol(symbol, self.profile, self.scope, self.range, scan, &current);
+            shift_scan(scan, &insertions);
+            current = pass.lines;
         }
 
         current
@@ -1194,11 +1302,17 @@ impl Pipeline<'_> {
     /// Repeats [`Self::run_passes`] until the output stops changing.
     ///
     /// Returns `None` when no fixpoint is reached within `limit` runs.
-    fn to_fixpoint(&self, symbols: &[String], input: &[Line], limit: usize) -> Option<Vec<Line>> {
+    fn to_fixpoint(
+        &self,
+        symbols: &[String],
+        input: &[Line],
+        limit: usize,
+        scan: &mut ScanResult,
+    ) -> Option<Vec<Line>> {
         let mut current = input.to_vec();
 
         for _ in 0..limit {
-            let next = self.run_passes(symbols, &current);
+            let next = self.run_passes(symbols, &current, scan);
 
             if same_lines(&next, &current) {
                 return Some(next);
@@ -1252,14 +1366,16 @@ pub fn align(code: &str, options: &AlignOptions) -> AlignResult {
         };
     }
 
-    if groups_conflict(&lines, &groups, &profile, scope, range) {
+    let initial_scan = scan_source(&join_lines(&lines), &profile);
+
+    if groups_conflict(&lines, &groups, &profile, scope, range, &initial_scan) {
         return AlignResult {
             code: code.to_owned(),
             changes: 0,
         };
     }
 
-    let ordered = order_by_first_occurrence(&symbols, &profile, range, &lines);
+    let ordered = order_by_first_occurrence(&symbols, &profile, range, &initial_scan, &lines);
     let pipeline = Pipeline {
         profile: &profile,
         scope,
@@ -1267,8 +1383,9 @@ pub fn align(code: &str, options: &AlignOptions) -> AlignResult {
         options,
         groups: &groups,
     };
+    let mut scan = initial_scan.clone();
 
-    if let Some(stable) = pipeline.to_fixpoint(&ordered, &lines, FIXPOINT_LIMIT) {
+    if let Some(stable) = pipeline.to_fixpoint(&ordered, &lines, FIXPOINT_LIMIT, &mut scan) {
         let changes = changed_against(&lines, &stable);
 
         return AlignResult {
@@ -1278,7 +1395,9 @@ pub fn align(code: &str, options: &AlignOptions) -> AlignResult {
     }
 
     let leading = if ordered.len() > 1 {
-        pipeline.to_fixpoint(&ordered[..1], &lines, FIXPOINT_LIMIT)
+        let mut leading_scan = initial_scan;
+
+        pipeline.to_fixpoint(&ordered[..1], &lines, FIXPOINT_LIMIT, &mut leading_scan)
     } else {
         None
     };
