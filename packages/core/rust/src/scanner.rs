@@ -722,7 +722,7 @@ fn perl_operator_length(line: &Line, index: usize) -> Option<usize> {
     PERL_OPERATORS
         .iter()
         .copied()
-        .find(|operator| line.starts_with(index, operator))
+        .find(|&operator| line.starts_with(index, operator))
         .map(char_count)
 }
 
@@ -810,7 +810,7 @@ fn perl_open_matches(open: &str, operators: &[&str]) -> bool {
     let Some(operator) = operators
         .iter()
         .copied()
-        .find(|operator| open.starts_with(*operator))
+        .find(|&operator| open.starts_with(operator))
     else {
         return false;
     };
