@@ -85,13 +85,23 @@ fn covered_by(coverage: &[usize], start: usize, end: usize) -> usize {
 /// skipped — only multi character operators can invalidate a match.
 fn operator_coverage(line: &Line, regions: &[CodeRegion], operators: &[String]) -> Vec<usize> {
     let mut coverage = vec![0_usize; line.len()];
-    let multi_char_operators: Vec<(&str, usize)> = operators
-        .iter()
-        .map(|operator| (operator.as_str(), char_count(operator)))
-        .filter(|(_, length)| *length > 1)
-        .collect();
+    let mut buckets: [Vec<(&str, usize)>; 128] = std::array::from_fn(|_| Vec::new());
 
-    if multi_char_operators.is_empty() {
+    for operator in operators {
+        let length = char_count(operator);
+
+        if length <= 1 {
+            continue;
+        }
+
+        if let Some(first) = operator.as_bytes().first()
+            && (*first as usize) < buckets.len()
+        {
+            buckets[*first as usize].push((operator.as_str(), length));
+        }
+    }
+
+    if buckets.iter().all(Vec::is_empty) {
         return coverage;
     }
 
@@ -103,11 +113,14 @@ fn operator_coverage(line: &Line, regions: &[CodeRegion], operators: &[String]) 
                 break;
             };
 
-            for &(operator, length) in &multi_char_operators {
-                if !operator.starts_with(character)
-                    || index + length > region.end
-                    || !line.starts_with(index, operator)
-                {
+            let candidates: &[(&str, usize)] = if (character as u32) < buckets.len() as u32 {
+                buckets[character as usize].as_slice()
+            } else {
+                &[]
+            };
+
+            for &(operator, length) in candidates {
+                if index + length > region.end || !line.starts_with(index, operator) {
                     continue;
                 }
 
@@ -155,14 +168,10 @@ pub fn find_symbol_positions(line: &Line, options: &FindOptions<'_>) -> Vec<(Str
     let mut index = 0;
 
     while index < line.len() {
-        let mut matched: Option<(&str, usize)> = None;
-
-        for &(candidate, width) in &candidates {
-            if !candidate.is_empty() && line.starts_with(index, candidate) {
-                matched = Some((candidate, width));
-                break;
-            }
-        }
+        let matched = candidates
+            .iter()
+            .copied()
+            .find(|(candidate, _)| !candidate.is_empty() && line.starts_with(index, candidate));
 
         let Some((symbol, width)) = matched else {
             index += 1;

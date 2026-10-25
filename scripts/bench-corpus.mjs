@@ -21,7 +21,7 @@ const workloads = [
         language: 'typescript',
         symbols: ['='],
         declarations: false,
-        build: (index) => `const value${String(index).padStart(5, '0')} = ${index % 97};`,
+        build: (index) => `const value${String(index).padStart(5, '0')}${'x'.repeat(index % 7)} = ${index % 97};`,
     },
     {
         name: 'declarations',
@@ -40,14 +40,21 @@ const workloads = [
         symbols: ['='],
         declarations: false,
         groups: [['MY_STATE1', 'MY_STATE2']],
-        build: (index) => `state = ${index % 2 === 0 ? 'MY_STATE1' : 'MY_STATE2'};`,
+        build: (index) => `state${'x'.repeat(index % 5)} = ${index % 2 === 0 ? 'MY_STATE1' : 'MY_STATE2'};`,
     },
     {
         name: 'strings',
         language: 'typescript',
         symbols: ['=', ':'],
         declarations: false,
-        build: (index) => `const label${String(index).padStart(5, '0')} = "key = value stays inside the string";`,
+        build: (index) => `const label${String(index).padStart(5, '0')}${'x'.repeat(index % 5)} = "key = value stays inside the string";`,
+    },
+    {
+        name: 'objects',
+        language: 'typescript',
+        symbols: ['=', ':'],
+        declarations: false,
+        build: (index) => `const item${String(index).padStart(5, '0')}${'x'.repeat(index % 4)} = { name: "entry", value: ${index % 71} };`,
     },
 ];
 

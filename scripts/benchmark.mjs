@@ -176,10 +176,10 @@ from \`benchmarks/manifest.json\`.
 
 ## Method
 
-- Corpora: 4 workloads × 3 sizes (1,000 / 5,000 / 20,000 lines), generated
+- Corpora: 5 workloads × 3 sizes (1,000 / 5,000 / 20,000 lines), generated
   deterministically by \`scripts/bench-corpus.mjs\`.
 - Workloads: plain assignments, C# declaration columns, a configured token
-  group, and a string-heavy corpus.
+  group, a string-heavy corpus, and an object-literal corpus with two symbols.
 - Each harness performs 2 warm-up runs and 7 measured runs; the table reports
   the **median**.
 - \`TS\` is the TypeScript reference core (\`packages/core-ts/dist\`), executed by
@@ -190,6 +190,16 @@ from \`benchmarks/manifest.json\`.
   \`wasm32-unknown-unknown\` and called through the inline-base64 TypeScript
   wrapper (UTF-8 encode/decode + one wasm boundary per call).
 - \`native ML/s\` and \`TS ML/s\` are thousands of lines per second.
+- A \`native vs TS\` value below \`1×\` means the Rust native run was slower.
+- The Rust baseline keeps the TypeScript pass structure and five-iteration
+  fixpoint. The finder uses the same first-character operator bucket as the
+  TypeScript reference (a lookup-table micro-optimization, not an algorithm
+  change).
+- On this Windows host the native binary is built with the
+  \`x86_64-pc-windows-gnu\` toolchain because no MSVC linker is installed. The
+  wasm module uses 32-bit \`usize\`, so its column and coverage tables are half
+  the size of the native x86_64 tables; that is why the wasm path can be faster
+  than native on allocation-heavy corpora.
 ${label === 'optimized' ? '- The optimized report uses the same corpora and harnesses as report 1, so the\n  delta is the algorithm change rather than a different measurement setup.\n' : '- This is the **unoptimized baseline**: the Rust core is a faithful port of the\n  TypeScript pipeline (re-scan per symbol pass, fixpoint loop).\n'}
 
 ## Environment

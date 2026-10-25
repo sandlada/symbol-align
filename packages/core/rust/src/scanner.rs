@@ -723,7 +723,7 @@ fn perl_operator_length(line: &Line, index: usize) -> Option<usize> {
         .iter()
         .copied()
         .find(|operator| line.starts_with(index, operator))
-        .map(str::len)
+        .map(char_count)
 }
 
 /// Perl quote-like operator delimiter that opens at `index`, or `None`.
@@ -1264,11 +1264,9 @@ fn heredoc_name_after(
 
     let mut cursor = index + char_count(marker);
 
-    if allow_triple_dash {
-        if line.char_at(cursor) == Some('-') {
-            cursor += 1;
-        }
-    } else if matches!(line.char_at(cursor), Some('-') | Some('~')) {
+    if (allow_triple_dash && line.char_at(cursor) == Some('-'))
+        || (!allow_triple_dash && matches!(line.char_at(cursor), Some('-') | Some('~')))
+    {
         cursor += 1;
     }
 
@@ -1302,10 +1300,10 @@ fn is_heredoc_terminator(line: &Line, terminator: &str) -> bool {
 
 /// Whether `profile` nests its `open`/`close` block comment pair.
 fn is_nesting_block_comment(profile: &LanguageProfile, open: &str, close: &str) -> bool {
-    (profile.id == "haskell" && open == "{-" && close == "-}")
-        || (profile.id == "julia" && open == "#=" && close == "=#")
-        || ((profile.id == "swift" || profile.id == "rust") && open == "/*" && close == "*/")
-        || (profile.id == "fsharp" && open == "(*" && close == "*)")
+    profile.id == "haskell" && open == "{-" && close == "-}"
+        || profile.id == "julia" && open == "#=" && close == "=#"
+        || (profile.id == "swift" || profile.id == "rust") && open == "/*" && close == "*/"
+        || profile.id == "fsharp" && open == "(*" && close == "*)"
 }
 
 /// Length of the F# star value that starts at `index`, or `0`.
@@ -1383,7 +1381,7 @@ fn match_python_f_string(line: &Line, index: usize) -> Option<StringDelimiter> {
         open,
         close: quote.to_owned(),
         escape,
-        multiline: quote.len() == 3,
+        multiline: char_count(quote) == 3,
     })
 }
 
@@ -1421,44 +1419,18 @@ fn match_scala_interpolated(line: &Line, index: usize) -> Option<StringDelimiter
 
 /// Longest string delimiter that opens at `index`, or `None`.
 fn match_string(line: &Line, index: usize, profile: &LanguageProfile) -> Option<StringDelimiter> {
-    if profile.id == "python" {
-        if let Some(f_string) = match_python_f_string(line, index) {
-            return Some(f_string);
-        }
-    }
+    let special = match profile.id.as_str() {
+        "python" => match_python_f_string(line, index),
+        "scala" => match_scala_interpolated(line, index),
+        "nim" => match_nim_fmt_string(line, index),
+        "perl" => match_perl_quote(line, index).or_else(|| match_bare_slash(line, index)),
+        "elixir" => match_elixir_sigil(line, index),
+        "ruby" | "crystal" => match_percent_string(line, index, profile),
+        _ => None,
+    };
 
-    if profile.id == "scala" {
-        if let Some(interpolated) = match_scala_interpolated(line, index) {
-            return Some(interpolated);
-        }
-    }
-
-    if profile.id == "nim" {
-        if let Some(interpolated) = match_nim_fmt_string(line, index) {
-            return Some(interpolated);
-        }
-    }
-
-    if profile.id == "perl" {
-        if let Some(quote) = match_perl_quote(line, index) {
-            return Some(quote);
-        }
-
-        if let Some(bare) = match_bare_slash(line, index) {
-            return Some(bare);
-        }
-    }
-
-    if profile.id == "elixir" {
-        if let Some(sigil) = match_elixir_sigil(line, index) {
-            return Some(sigil);
-        }
-    }
-
-    if profile.id == "ruby" || profile.id == "crystal" {
-        if let Some(percent) = match_percent_string(line, index, profile) {
-            return Some(percent);
-        }
+    if let Some(delimiter) = special {
+        return Some(delimiter);
     }
 
     let mut best: Option<&StringDelimiter> = None;
@@ -1487,7 +1459,7 @@ fn match_string(line: &Line, index: usize, profile: &LanguageProfile) -> Option<
         return None;
     }
 
-    Some((*best).clone())
+    Some(StringDelimiter::clone(best))
 }
 
 /// Searches the closing delimiter of a string literal.
@@ -1832,9 +1804,7 @@ pub fn scan_source(code: &str, profile: &LanguageProfile) -> ScanResult {
         }
 
         while index < line_length {
-            if open_block.is_some() {
-                let mut block = open_block.take().expect("an open block comment exists");
-
+            if let Some(mut block) = open_block.take() {
                 if !block.nesting {
                     match line.find_from(index, &block.close) {
                         Some(found) => {
@@ -2112,12 +2082,10 @@ pub fn scan_source(code: &str, profile: &LanguageProfile) -> ScanResult {
                 {
                     let search = find_csharp_interpolated_close(&line, index, &delimiter, 0, false);
 
-                    match search.index {
-                        Some(found) => index = found + char_count(&delimiter.close),
-                        None => {
-                            break;
-                        }
-                    }
+                    let Some(found) = search.index else {
+                        break;
+                    };
+                    index = found + char_count(&delimiter.close);
 
                     continue;
                 }
@@ -2127,12 +2095,10 @@ pub fn scan_source(code: &str, profile: &LanguageProfile) -> ScanResult {
                 {
                     let search = find_dollar_brace_close(&line, index, &delimiter, 0, false);
 
-                    match search.index {
-                        Some(found) => index = found + char_count(&delimiter.close),
-                        None => {
-                            break;
-                        }
-                    }
+                    let Some(found) = search.index else {
+                        break;
+                    };
+                    index = found + char_count(&delimiter.close);
 
                     continue;
                 }
@@ -2140,12 +2106,10 @@ pub fn scan_source(code: &str, profile: &LanguageProfile) -> ScanResult {
                 if is_dollar_paren_string(&delimiter, profile) {
                     let search = find_dollar_paren_close(&line, index, &delimiter, 0, false);
 
-                    match search.index {
-                        Some(found) => index = found + char_count(&delimiter.close),
-                        None => {
-                            break;
-                        }
-                    }
+                    let Some(found) = search.index else {
+                        break;
+                    };
+                    index = found + char_count(&delimiter.close);
 
                     continue;
                 }
@@ -2153,12 +2117,10 @@ pub fn scan_source(code: &str, profile: &LanguageProfile) -> ScanResult {
                 if is_swift_string(&delimiter, profile) {
                     let search = find_swift_close(&line, index, &delimiter, 0, false);
 
-                    match search.index {
-                        Some(found) => index = found + char_count(&delimiter.close),
-                        None => {
-                            break;
-                        }
-                    }
+                    let Some(found) = search.index else {
+                        break;
+                    };
+                    index = found + char_count(&delimiter.close);
 
                     continue;
                 }
@@ -2169,24 +2131,20 @@ pub fn scan_source(code: &str, profile: &LanguageProfile) -> ScanResult {
                 {
                     let search = find_hash_brace_close(&line, index, &delimiter, 0, false);
 
-                    match search.index {
-                        Some(found) => index = found + char_count(&delimiter.close),
-                        None => {
-                            break;
-                        }
-                    }
+                    let Some(found) = search.index else {
+                        break;
+                    };
+                    index = found + char_count(&delimiter.close);
 
                     continue;
                 }
 
                 let search = find_closing(&line, index, &delimiter, false);
 
-                match search.index {
-                    Some(found) => index = found + char_count(&delimiter.close),
-                    None => {
-                        break;
-                    }
-                }
+                let Some(found) = search.index else {
+                    break;
+                };
+                index = found + char_count(&delimiter.close);
 
                 continue;
             }
@@ -2196,9 +2154,7 @@ pub fn scan_source(code: &str, profile: &LanguageProfile) -> ScanResult {
             }
 
             if is_heredoc_profile(profile) && pending_heredoc.is_none() {
-                if let Some(terminator) = match_heredoc_opener(&line, index) {
-                    pending_heredoc = Some(terminator);
-                }
+                pending_heredoc = match_heredoc_opener(&line, index);
             }
 
             index += 1;
