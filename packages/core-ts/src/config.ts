@@ -1,5 +1,5 @@
 /**
- * Project configuration for `@sandlada/symbol-align`.
+ * Project configuration for `@sandlada/symbol-align-ts`.
  *
  * A repository can drop a `symbol-align.config.json` file next to its sources
  * to control the symbols, the token groups, the language profile and the

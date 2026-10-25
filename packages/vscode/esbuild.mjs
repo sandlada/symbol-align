@@ -32,13 +32,13 @@ const reportError = (message) => {
  * the bundle can only be created after the core has been compiled.
  */
 const assertCoreIsBuilt = async () => {
-    const entry = await import.meta.resolve('@sandlada/symbol-align');
+    const entry = await import.meta.resolve('@sandlada/symbol-align-ts');
 
     if (existsSync(fileURLToPath(entry))) {
         return;
     }
 
-    throw new Error('The core library is not built — run "pnpm --filter @sandlada/symbol-align build" first.');
+    throw new Error('The core library is not built - run "pnpm --filter @sandlada/symbol-align-ts build" first.');
 };
 
 try {

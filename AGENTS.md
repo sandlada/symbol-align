@@ -1,9 +1,11 @@
-# @sandlada/symbol-align — Agent Guidelines
+# @sandlada/symbol-align-ts — Agent Guidelines
 
 ## Project Overview
 
-TypeScript + ESM **pnpm workspace** for the `@sandlada/symbol-align` package
-(core library + CLI), living in `packages/core`. Zero runtime dependencies.
+TypeScript + ESM **pnpm workspace** for the `symbol-align` product. The
+executable TypeScript reference implementation lives in `packages/core-ts`
+(published as `@sandlada/symbol-align-ts`); the Rust core is being added in
+`packages/core`. The TypeScript package has zero runtime dependencies.
 
 **What this project is:** a *code-snippet symbol-alignment formatter*. It pads
 punctuation symbols (`=`, `:`, `=>`, `->`, `//`, `#`, …) so that they line up
@@ -86,7 +88,7 @@ Concretely:
 ```
 .
 ├── packages/
-│   ├── core/                  # @sandlada/symbol-align — the published package
+│   ├── core-ts/               # @sandlada/symbol-align-ts — TypeScript reference implementation
 │   │   ├── src/
 │   │   │   ├── types.ts       # public type contract (LanguageProfile, AlignOptions, …)
 │   │   │   ├── language.ts     # language profiles: comments, strings, operators, default symbols
@@ -165,10 +167,10 @@ Concretely:
 The package has two entry points. The main entry point is free of Node.js
 builtins, so it can be bundled for the browser, a worker or any other
 JavaScript runtime. The helpers that touch the filesystem live in the
-`@sandlada/symbol-align/node` entry point.
+`@sandlada/symbol-align-ts/node` entry point.
 
 ```ts
-// @sandlada/symbol-align
+// @sandlada/symbol-align-ts
 align(code: string): (options?: AlignOptions) => AlignResult
 alignWith(options: AlignOptions): (code: string) => AlignResult
 alignSymbols(...symbols: string[]): (code: string) => AlignResult
@@ -179,7 +181,7 @@ findDeclarationCells(line: string): (options: DeclarationOptions) => readonly De
 parseConfig(raw: unknown): SymbolAlignConfig
 resolveConfig(config: SymbolAlignConfig): (filePath?: string) => AlignOptions
 
-// @sandlada/symbol-align/node
+// @sandlada/symbol-align-ts/node
 findConfigFile(startDir: string): string | undefined
 loadConfig(startDir: string): SymbolAlignConfig | undefined
 loadConfigFile(path: string): SymbolAlignConfig
@@ -281,7 +283,7 @@ worker or any other JavaScript runtime.
 - `cli.ts` and `config-fs.ts` are the **platform adapters**; they are the only
   modules that may import `node:` builtins
 - `cli.ts` and `config-fs.ts` are **not** reachable from `index.ts` — the
-  filesystem helpers are published as the `@sandlada/symbol-align/node`
+  filesystem helpers are published as the `@sandlada/symbol-align-ts/node`
   subpath export
 - `runtime.test.ts` guards the invariant: it walks the module graph of
   `index.ts` and fails when a Node.js builtin is imported
@@ -293,7 +295,7 @@ dependency other than the core** (Vite is the only external package in its
 manifest; TypeScript and Vitest come from the workspace root as dev tools) and
 deliberately uses no UI framework, no icon pack and no syntax highlighter.
 
-- The Vite alias resolves `@sandlada/symbol-align` to `../core/src/index.ts`,
+- The Vite alias resolves `@sandlada/symbol-align-ts` to `../core-ts/src/index.ts`,
   so the dev server doubles as a real-time test bench and the production bundle
   always contains the current core source
 - The language selector is generated from `allLanguages`; `samples.ts` is typed
@@ -314,7 +316,7 @@ deliberately uses no UI framework, no icon pack and no syntax highlighter.
 
 - Shared dependency versions live in the `catalog` section of `pnpm-workspace.yaml`
   and are referenced as `"catalog:"` from a package manifest
-- `packages/core` links `README.md`, `LICENSE`, `SECURITY.md` and
+- `packages/core-ts` links `README.md`, `LICENSE`, `SECURITY.md` and
   `CODE_OF_CONDUCT.md` back to the repository root copies
 - `npm-packlist` skips symlinked files, so `scripts/sync-docs.mjs` replaces the
   links with real copies in `prepack` and restores them in `postpack`
@@ -338,8 +340,8 @@ pnpm format         # format the workspace (Biome)
 pnpm format:check   # verify formatting without writing
 pnpm clean          # remove build output
 
-pnpm --filter @sandlada/symbol-align build   # build a single package
-pnpm --filter @sandlada/symbol-align dev     # run the CLI from source
+pnpm --filter @sandlada/symbol-align-ts build   # build a single package
+pnpm --filter @sandlada/symbol-align-ts dev     # run the CLI from source
 pnpm dev:playground                          # run the Vite playground (localhost:5173)
 pnpm --filter @sandlada/playground build     # static site in packages/playground/dist
 pnpm exec vitest run                          # run all projects from the root
@@ -347,9 +349,9 @@ pnpm exec vitest run                          # run all projects from the root
 
 ## Release Flow
 
-1. `pnpm --filter @sandlada/symbol-align version <major|minor|patch>`
+1. `pnpm --filter @sandlada/symbol-align-ts version <major|minor|patch>`
 2. `pnpm build`
 3. `pnpm test`
-4. `pnpm --filter @sandlada/symbol-align publish`
+4. `pnpm --filter @sandlada/symbol-align-ts publish`
 
 When modifying this project, maintain the existing conventions. If adding new symbols or behaviors, ensure tests cover both the finder and aligner layers.

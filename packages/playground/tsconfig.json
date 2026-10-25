@@ -15,7 +15,7 @@
         "noFallthroughCasesInSwitch": true,
         "forceConsistentCasingInFileNames": true,
         "paths": {
-            "@sandlada/symbol-align": ["../core/src/index.ts"]
+            "@sandlada/symbol-align-ts": ["../core-ts/src/index.ts"]
         }
     },
     "include": ["src"]

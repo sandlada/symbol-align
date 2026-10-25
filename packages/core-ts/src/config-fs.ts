@@ -1,5 +1,5 @@
 /**
- * Filesystem access for the project configuration of `@sandlada/symbol-align`.
+ * Filesystem access for the project configuration of `@sandlada/symbol-align-ts`.
  *
  * This is the platform adapter of the configuration — it is the only module of
  * the core package that touches `node:fs` and `node:path`. The pure parsing
@@ -7,7 +7,7 @@
  * point of the package stays free of Node.js builtins and can be bundled for
  * the browser, a worker or any other JavaScript runtime.
  *
- * Consumers that need the helpers reach them through the `@sandlada/symbol-align/node`
+ * Consumers that need the helpers reach them through the `@sandlada/symbol-align-ts/node`
  * entry point.
  */
 

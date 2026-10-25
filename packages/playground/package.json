@@ -14,7 +14,7 @@
         "test:watch": "vitest"
     },
     "dependencies": {
-        "@sandlada/symbol-align": "workspace:*"
+        "@sandlada/symbol-align-ts": "workspace:*"
     },
     "devDependencies": {
         "vite": "catalog:"

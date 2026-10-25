@@ -1,5 +1,5 @@
 /**
- * Public type contract for `@sandlada/symbol-align`.
+ * Public type contract for `@sandlada/symbol-align-ts`.
  *
  * The library is a **code-snippet symbol-alignment formatter**: it pads
  * punctuation symbols (`=`, `:`, `=>`, `->`, …) so that they line up

@@ -1,7 +1,7 @@
 {
-    "name": "@sandlada/symbol-align",
+    "name": "@sandlada/symbol-align-ts",
     "version": "0.1.0",
-    "description": "Code-snippet symbol-alignment formatter — lines up =, :, =>, //, # and more. CLI & API",
+    "description": "TypeScript reference implementation of the code-snippet symbol-alignment formatter - lines up =, :, =>, //, # and more. CLI & API",
     "type": "module",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",

@@ -1,5 +1,5 @@
 /**
- * Declaration locator for `@sandlada/symbol-align`.
+ * Declaration locator for `@sandlada/symbol-align-ts`.
  *
  * The locator turns one line of code into the visual cells of a declaration:
  *

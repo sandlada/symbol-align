@@ -1,5 +1,5 @@
 /**
- * Lexical scanner for `@sandlada/symbol-align`.
+ * Lexical scanner for `@sandlada/symbol-align-ts`.
  *
  * The scanner walks the source text exactly once and keeps its lexical state
  * across line boundaries, so multi-line strings and block comments are handled

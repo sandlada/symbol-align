@@ -1,4 +1,4 @@
-import { allLanguages } from '@sandlada/symbol-align';
+import { allLanguages } from '@sandlada/symbol-align-ts';
 import { describe, expect, it } from 'vitest';
 import type { AlignmentSettings } from './model.js';
 import {

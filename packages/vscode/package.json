@@ -106,7 +106,7 @@
         "package": "vsce package"
     },
     "devDependencies": {
-        "@sandlada/symbol-align": "workspace:*",
+        "@sandlada/symbol-align-ts": "workspace:*",
         "@types/node": "catalog:",
         "@types/vscode": "^1.95.0",
         "@vscode/vsce": "catalog:",

@@ -1,5 +1,5 @@
 /**
- * Symbol finder for `@sandlada/symbol-align`.
+ * Symbol finder for `@sandlada/symbol-align-ts`.
  *
  * The finder never parses code — it only looks at the code regions reported by
  * the scanner and locates the requested symbols inside them. A symbol is

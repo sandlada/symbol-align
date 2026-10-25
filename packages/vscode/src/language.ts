@@ -1,6 +1,6 @@
 /**
  * Mapping between the language ids of VS Code and the language profiles of
- * `@sandlada/symbol-align`.
+ * `@sandlada/symbol-align-ts`.
  *
  * The table is a plain string map on purpose. Every value is validated
  * against the core library at runtime, so a profile that the core does not
@@ -8,8 +8,8 @@
  * failing.
  */
 
-import type { LanguageId } from '@sandlada/symbol-align';
-import { isLanguageId } from '@sandlada/symbol-align';
+import type { LanguageId } from '@sandlada/symbol-align-ts';
+import { isLanguageId } from '@sandlada/symbol-align-ts';
 
 /** VS Code language id → language profile of the core library. */
 const languageTable: Readonly<Record<string, string>> = Object.freeze({

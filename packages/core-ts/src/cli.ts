@@ -1,5 +1,5 @@
 /**
- * Command line interface of `@sandlada/symbol-align`.
+ * Command line interface of `@sandlada/symbol-align-ts`.
  *
  * The module is free of side effects: importing it never touches the
  * process. Parsing, reading, aligning and writing are exposed as plain

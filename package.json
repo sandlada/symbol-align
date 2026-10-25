@@ -19,7 +19,7 @@
         "build": "pnpm -r build",
         "build:solution": "tsc --build",
         "clean": "pnpm -r clean",
-        "dev": "pnpm --filter @sandlada/symbol-align dev",
+        "dev": "pnpm --filter @sandlada/symbol-align-ts dev",
         "dev:playground": "pnpm --filter @sandlada/playground dev",
         "format": "biome format --write .",
         "format:check": "biome format .",

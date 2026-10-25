@@ -1,5 +1,5 @@
 /**
- * Language profiles for `@sandlada/symbol-align`.
+ * Language profiles for `@sandlada/symbol-align-ts`.
  *
  * A profile describes everything the scanner needs to know about a language:
  * comment markers, string delimiters and the operator tokens that must never

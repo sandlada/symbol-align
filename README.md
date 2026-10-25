@@ -47,18 +47,22 @@ This repository is a [pnpm](https://pnpm.io) workspace (`packages/*`).
 
 | Package                                                   | Description                            |
 | --------------------------------------------------------- | -------------------------------------- |
-| [`@sandlada/symbol-align`](packages/core)                 | Core library + CLI (published to npm)  |
+| [`@sandlada/symbol-align-ts`](packages/core-ts)           | TypeScript reference implementation + CLI |
 | [Symbol Align](packages/vscode)                            | VS Code extension                      |
 | [Playground](packages/playground)                          | Vite-powered live playground           |
+
+> The published package is moving to a Rust core in `packages/core`. Until the
+> migration lands, `packages/core-ts` is the executable TypeScript reference
+> implementation published as `@sandlada/symbol-align-ts`.
 
 ## Install
 
 ```bash
-pnpm add -D @sandlada/symbol-align
+pnpm add -D @sandlada/symbol-align-ts
 ```
 
 ```bash
-npm install -D @sandlada/symbol-align
+npm install -D @sandlada/symbol-align-ts
 ```
 
 ## What it does
@@ -134,7 +138,7 @@ The API is curried: the value you transform comes first, the configuration
 comes last.
 
 ```ts
-import { align } from '@sandlada/symbol-align';
+import { align } from '@sandlada/symbol-align-ts';
 
 const result = align(
     [
@@ -152,7 +156,7 @@ console.log(result.changes); // 0
 Build a reusable aligner once and apply it to many snippets:
 
 ```ts
-import { alignWith, alignSymbols, alignLanguage } from '@sandlada/symbol-align';
+import { alignWith, alignSymbols, alignLanguage } from '@sandlada/symbol-align-ts';
 
 const aligner = alignWith({ symbols: [':', '='], language: 'typescript' });
 aligner(snippet);
@@ -175,8 +179,8 @@ The package has two entry points:
 
 | Entry point                            | Contents                                              | Node.js builtins |
 | -------------------------------------- | ----------------------------------------------------- | ---------------- |
-| `@sandlada/symbol-align`               | The aligner, the language profiles, the configuration | no               |
-| `@sandlada/symbol-align/node`          | The helpers that read a configuration from disk       | yes              |
+| `@sandlada/symbol-align-ts`               | The aligner, the language profiles, the configuration | no               |
+| `@sandlada/symbol-align-ts/node`          | The helpers that read a configuration from disk       | yes              |
 
 The main entry point is free of Node.js builtins, so it can be bundled for the
 browser, a worker or any other JavaScript runtime. The helpers that touch the
@@ -641,7 +645,7 @@ The `0.1` release reworked the API. The full list of changes is in the
 
 ```diff
 - import { align } from '@sandlada/symbol-align';
-+ import { align } from '@sandlada/symbol-align';
++ import { align } from '@sandlada/symbol-align-ts';
 
 - const result = align(code, { symbols: ['=', ':'] });
 + const result = align(code)({ symbols: ['=', ':'] });
@@ -702,12 +706,12 @@ symbol-align --file input.ts --symbols '='   # overrides the configured symbols
 ```
 
 The same configuration is available to the API. The filesystem helpers live in
-the `@sandlada/symbol-align/node` entry point, so that the main entry point
+the `@sandlada/symbol-align-ts/node` entry point, so that the main entry point
 stays free of Node.js builtins and can be bundled for the browser:
 
 ```ts
-import { resolveConfig } from '@sandlada/symbol-align';
-import { loadConfig } from '@sandlada/symbol-align/node';
+import { resolveConfig } from '@sandlada/symbol-align-ts';
+import { loadConfig } from '@sandlada/symbol-align-ts/node';
 
 const config = loadConfig(process.cwd());
 const options = resolveConfig(config)('src/config.ts');
@@ -797,7 +801,7 @@ writing anything, so it can guard a repository:
 ```
 symbol-align/
 ├── packages/
-│   ├── core/               # @sandlada/symbol-align — the published package
+│   ├── core-ts/            # @sandlada/symbol-align-ts — TypeScript reference implementation
 │   │   ├── src/            # library + CLI sources
 │   │   └── package.json
 │   ├── vscode/             # Symbol Align — the VS Code extension
@@ -831,8 +835,8 @@ pnpm typecheck      # type-check every package including tests
 pnpm lint           # lint every package
 pnpm clean          # remove build output
 
-pnpm --filter @sandlada/symbol-align build   # build a single package
-pnpm --filter @sandlada/symbol-align dev     # run the CLI from source (tsx)
+pnpm --filter @sandlada/symbol-align-ts build # build a single package
+pnpm --filter @sandlada/symbol-align-ts dev   # run the CLI from source (tsx)
 pnpm dev:playground                          # run the Vite playground (localhost:5173)
 ```
 
@@ -842,10 +846,10 @@ Shared dependency versions are declared in the `catalog` section of
 ### Release
 
 ```bash
-pnpm --filter @sandlada/symbol-align version <major|minor|patch>
+pnpm --filter @sandlada/symbol-align-ts version <major|minor|patch>
 pnpm build
 pnpm test
-pnpm --filter @sandlada/symbol-align publish
+pnpm --filter @sandlada/symbol-align-ts publish
 ```
 
 ## License

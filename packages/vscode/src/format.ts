@@ -5,8 +5,8 @@
  * editor adapter lives in `extension.ts`.
  */
 
-import type { AlignGroup, AlignmentScope, AlignOptions, DeclarationAnchor, LanguageId, LineRange } from '@sandlada/symbol-align';
-import { align } from '@sandlada/symbol-align';
+import type { AlignGroup, AlignmentScope, AlignOptions, DeclarationAnchor, LanguageId, LineRange } from '@sandlada/symbol-align-ts';
+import { align } from '@sandlada/symbol-align-ts';
 
 import { resolveLanguage } from './language.js';
 
