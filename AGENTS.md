@@ -265,9 +265,10 @@ loadConfigFile(path: string): SymbolAlignConfig
   TypeScript reference implementation; the two must stay behaviourally
   identical, and the Vitest suite of `core-ts` is copied into `core` unchanged
   as the conformance contract. Never weaken a test to make the port pass.
-- The Rust core is a **faithful baseline port** of the TypeScript pipeline:
-  re-scan per symbol pass, five-iteration fixpoint, leading-symbol fallback.
-  Algorithmic changes are a separate, measured step (report2).
+- The Rust core started as a **faithful baseline port** of the TypeScript
+  pipeline (re-scan per symbol pass, five-iteration fixpoint, leading-symbol
+  fallback). The single-scan optimization is a separate, measured step:
+  `report2.md` compares it with the baseline in `report1.md`.
 - `Line` stores `Vec<char>` plus a UTF-16 column table. Internal positions are
   character indices; public positions are UTF-16 columns. The conversion lives
   at the JSON/wasm boundary (`json.rs`, `abi.ts`). This is what keeps `😀`
@@ -299,8 +300,13 @@ loadConfigFile(path: string): SymbolAlignConfig
 - Language specific behaviour (comment markers, string delimiters, operators)
   lives in `languages.json` / `language_data.rs` — never hard-code it in the
   scanner or the aligner
-- The aligner re-scans between symbol passes because earlier passes insert
-  spaces and shift the columns of later symbols
+- The aligner scans the source once per `align` call. Every declaration, group
+  and symbol pass reuses that scan: an insertion shifts the stored code regions
+  and line-comment columns in place, so the next pass sees the current line
+  text without re-running the lexer. Group conflict detection resolves all
+  members with one finder call per line.
+- The pass order and the five-iteration fixpoint are unchanged; only the scan
+  is shared.
 - `changes` counts **distinct** modified lines
 - CLI uses native `process.stdin` / `process.stdout` and `node:fs/promises` (no external arg parser)
 

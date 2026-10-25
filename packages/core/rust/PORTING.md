@@ -51,5 +51,8 @@ pub fn align(code: &str, options: &AlignOptions) -> AlignResult;
   word boundaries, code regions, declaration heuristics, group conflicts,
   prefix padding, scope/range behaviour and the five-iteration fixpoint with
   its leading-symbol fallback.
+- The alignment run shares one lexical scan. Insertions shift `CodeRegion`
+  ranges and `LineComment` columns in place; a new pass never re-scans the
+  source. `report2.md` records this optimization.
 - Do not run tests, `cargo check`, `cargo build` or Vitest. Write the code and
   return; the orchestrator compiles and runs the conformance suite once.
