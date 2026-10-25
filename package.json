@@ -23,7 +23,7 @@
         "bench:optimized": "node scripts/benchmark.mjs --label optimized --report report2.md",
         "clean": "pnpm -r clean",
         "dev": "pnpm --filter @sandlada/symbol-align dev",
-        "dev:playground": "pnpm --filter @sandlada/playground dev",
+        "dev:playground": "pnpm --filter @sandlada/symbol-align build:wasm && pnpm --filter @sandlada/playground dev",
         "format": "biome format --write .",
         "format:check": "biome format .",
         "lint": "biome lint .",

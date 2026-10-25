@@ -36,6 +36,7 @@
         "build:wasm": "node scripts/build-wasm.mjs",
         "clean": "node -e \"const fs=require('node:fs'); for (const path of ['dist','rust/target','src/generated/wasm-binary.ts']) fs.rmSync(path,{recursive:true,force:true})\"",
         "dev": "tsx src/bin.ts",
+        "predev": "pnpm run build:wasm",
         "generate:languages": "node scripts/generate-languages.mjs",
         "pretest": "pnpm run build:wasm",
         "test": "vitest run",
