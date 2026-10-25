@@ -29,3 +29,7 @@ superpower*
 
 # Generated benchmark corpora and results
 benchmarks/
+
+# Generated performance reports
+report1.md
+report2.md
