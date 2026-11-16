@@ -1,0 +1,35 @@
+# Cloudflare Workers Static Assets headers for the deployed site.
+# Long-lived immutable caching for the hashed Vite assets, revalidating HTML.
+#
+# `script-src` must allow 'wasm-unsafe-eval': the page instantiates the wasm
+# core, and a browser blocks WebAssembly compilation without it. The page
+# renders but never aligns when that directive is missing.
+
+/*
+    X-Content-Type-Options: nosniff
+    X-Frame-Options: DENY
+    Referrer-Policy: strict-origin-when-cross-origin
+    Permissions-Policy: camera=(), geolocation=(), microphone=()
+    Strict-Transport-Security: max-age=31536000; includeSubDomains
+    Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; font-src 'self'
+
+/assets/*
+    Cache-Control: public, max-age=31536000, immutable
+
+/index.html
+    Cache-Control: public, max-age=0, must-revalidate
+
+/robots.txt
+    Cache-Control: public, max-age=3600
+
+/sitemap.xml
+    Cache-Control: public, max-age=3600
+
+/*.png
+    Cache-Control: public, max-age=604800
+
+/*.svg
+    Cache-Control: public, max-age=604800
+
+/*.webmanifest
+    Cache-Control: public, max-age=86400

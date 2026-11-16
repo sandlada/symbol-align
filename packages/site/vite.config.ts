@@ -3,16 +3,18 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 
 /**
- * The playground consumes the core source directly.
+ * The site consumes the core source directly.
  *
- * That keeps the site a real-time test bench: a change in `packages/core/src`
+ * That keeps the page a real-time test bench: a change in `packages/core/src`
  * is picked up by the dev server with HMR and is bundled into the production
  * build without an intermediate `tsc` run.
  */
 const coreEntry = fileURLToPath(new URL('../core/src/index.ts', import.meta.url));
 
 export default defineConfig({
-    base: './',
+    // The site is served from the domain root, so the canonical URL, the
+    // sitemap and the asset URLs all share one absolute base.
+    base: '/',
     resolve: {
         alias: {
             '@sandlada/symbol-align': coreEntry,

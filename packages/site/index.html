@@ -5,75 +5,109 @@
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="color-scheme" content="light dark" />
 
-        <title>Symbol Align Playground — Live code alignment for 57 languages</title>
+        <title>Symbol Align — align code symbols into columns in your browser</title>
         <meta
             name="description"
-            content="A free in-browser playground for @sandlada/symbol-align. Align =, :, => and comments into clean columns across 57 language profiles. Live output, no uploads."
+            content="Free in-browser playground for @sandlada/symbol-align: line up =, :, =>, -> and trailing comments across 57 language profiles. No uploads, no reformatting."
         />
         <meta
             name="keywords"
-            content="symbol align, code alignment, align equals signs, align colons, align arrows, code formatter, C# alignment, TypeScript alignment, Python alignment, snippet alignment, developer tool"
+            content="symbol align, code alignment, align equals signs, align colons, align arrows, align comments, code formatter, C# alignment, TypeScript alignment, Python alignment, snippet alignment, developer tool"
         />
         <meta name="author" content="sandlada" />
-        <meta name="application-name" content="Symbol Align Playground" />
-        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+        <meta name="application-name" content="Symbol Align" />
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+        <link rel="canonical" href="https://symbol-align.sandlada.com/" />
         <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f5f3" />
         <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#101214" />
 
-        <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-        <link rel="manifest" href="./manifest.webmanifest" />
-        <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
         <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="Symbol Align Playground" />
+        <meta property="og:site_name" content="Symbol Align" />
         <meta property="og:locale" content="en_US" />
-        <meta property="og:title" content="Symbol Align Playground — Make the code line up" />
+        <meta property="og:url" content="https://symbol-align.sandlada.com/" />
+        <meta property="og:title" content="Symbol Align — make the code line up" />
         <meta
             property="og:description"
             content="Paste a snippet, pick a language and watch =, :, => and comments settle into columns. Runs the real symbol-align core in your browser. No uploads."
         />
-        <meta property="og:image" content="./og.png" />
+        <meta property="og:image" content="https://symbol-align.sandlada.com/og.png" />
+        <meta property="og:image:secure_url" content="https://symbol-align.sandlada.com/og.png" />
         <meta property="og:image:type" content="image/png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="Symbol Align Playground: a code snippet before and after its equals signs are aligned into a column." />
+        <meta property="og:image:alt" content="Symbol Align: a code snippet before and after its equals signs are aligned into a column." />
 
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Symbol Align Playground — Make the code line up" />
+        <meta name="twitter:title" content="Symbol Align — make the code line up" />
         <meta
             name="twitter:description"
             content="A live, in-browser playground for @sandlada/symbol-align. Align symbols into clean columns across 57 language profiles."
         />
-        <meta name="twitter:image" content="./og.png" />
+        <meta name="twitter:image" content="https://symbol-align.sandlada.com/og.png" />
+        <meta name="twitter:image:alt" content="Symbol Align: a code snippet before and after its equals signs are aligned into a column." />
 
         <script type="application/ld+json">
             {
                 "@context": "https://schema.org",
-                "@type": "WebApplication",
-                "name": "Symbol Align Playground",
-                "description": "A free in-browser playground for @sandlada/symbol-align. It aligns punctuation symbols such as =, :, => and -> into clean vertical columns across 57 language profiles.",
-                "applicationCategory": "DeveloperApplication",
-                "operatingSystem": "Any",
-                "browserRequirements": "Requires JavaScript and a modern web browser.",
-                "isAccessibleForFree": true,
-                "offers": {
-                    "@type": "Offer",
-                    "price": "0",
-                    "priceCurrency": "USD"
-                },
-                "featureList": [
-                    "Live alignment while typing",
-                    "57 language profiles",
-                    "Toggle and add alignment symbols",
-                    "Declaration column alignment",
-                    "Custom token groups",
-                    "Block, indent and file alignment scopes",
-                    "Copy-ready aligned output"
-                ],
-                "author": {
-                    "@type": "Organization",
-                    "name": "sandlada"
-                }
+                "@graph": [
+                    {
+                        "@type": "WebSite",
+                        "@id": "https://symbol-align.sandlada.com/#website",
+                        "url": "https://symbol-align.sandlada.com/",
+                        "name": "Symbol Align",
+                        "description": "Browser playground for the @sandlada/symbol-align code snippet formatter, covering 57 language profiles.",
+                        "inLanguage": "en",
+                        "publisher": {
+                            "@id": "https://symbol-align.sandlada.com/#publisher"
+                        }
+                    },
+                    {
+                        "@type": "Organization",
+                        "@id": "https://symbol-align.sandlada.com/#publisher",
+                        "name": "sandlada",
+                        "url": "https://sandlada.com/"
+                    },
+                    {
+                        "@type": "WebApplication",
+                        "@id": "https://symbol-align.sandlada.com/#application",
+                        "url": "https://symbol-align.sandlada.com/",
+                        "name": "Symbol Align",
+                        "description": "A free in-browser playground for @sandlada/symbol-align. It aligns punctuation symbols such as =, :, => and -> into clean vertical columns across 57 language profiles.",
+                        "screenshot": "https://symbol-align.sandlada.com/og.png",
+                        "applicationCategory": "DeveloperApplication",
+                        "applicationSubCategory": "Code formatter",
+                        "operatingSystem": "Any",
+                        "browserRequirements": "Requires JavaScript and a modern web browser.",
+                        "inLanguage": "en",
+                        "isAccessibleForFree": true,
+                        "offers": {
+                            "@type": "Offer",
+                            "price": "0",
+                            "priceCurrency": "USD"
+                        },
+                        "featureList": [
+                            "Live alignment while typing",
+                            "57 language profiles",
+                            "Toggle and add alignment symbols",
+                            "Declaration column alignment",
+                            "Custom token groups",
+                            "Block, indent and file alignment scopes",
+                            "Copy-ready aligned output"
+                        ],
+                        "isPartOf": {
+                            "@id": "https://symbol-align.sandlada.com/#website"
+                        },
+                        "sameAs": ["https://github.com/sandlada/symbol-align"],
+                        "author": {
+                            "@type": "Organization",
+                            "name": "sandlada"
+                        }
+                    }
+                ]
             }
         </script>
 
@@ -81,6 +115,10 @@
             {
                 "@context": "https://schema.org",
                 "@type": "FAQPage",
+                "@id": "https://symbol-align.sandlada.com/#faq",
+                "isPartOf": {
+                    "@id": "https://symbol-align.sandlada.com/#website"
+                },
                 "mainEntity": [
                     {
                         "@type": "Question",
@@ -142,7 +180,7 @@
 
         <header class="site-header">
             <div class="shell header-inner">
-                <a class="brand" href="#top" aria-label="Symbol Align Playground, back to top">
+                <a class="brand" href="#top" aria-label="Symbol Align, back to top">
                     <svg class="brand-mark" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
                         <rect x="1" y="1" width="26" height="26" rx="3" />
                         <path d="M7 9h14M7 14h8M7 19h11" />
@@ -155,6 +193,7 @@
 
                 <nav class="site-nav" aria-label="Page sections">
                     <a href="#how-it-works">How it works</a>
+                    <a href="#recipes">Recipes</a>
                     <a href="#languages">Languages</a>
                     <a href="#faq">FAQ</a>
                 </nav>
@@ -374,6 +413,66 @@
                 </div>
             </section>
 
+            <section class="content-section shell" id="recipes" aria-labelledby="recipes-title">
+                <div class="section-head">
+                    <h2 id="recipes-title">Four alignments that earn their keep.</h2>
+                    <p>
+                        Equals signs, trailing comments, declaration columns and match arms cover almost every snippet that reaches this page. Each pair below is the literal output of the core — the test suite re-runs the aligner over
+                        this markup, so an example can never drift from the real behaviour.
+                    </p>
+                </div>
+
+                <div class="recipe-grid">
+                    <figure class="recipe" data-language="javascript" data-symbols="=">
+                        <figcaption>
+                            <h3>Equals signs</h3>
+                            <p>JavaScript · symbols: <code>=</code></p>
+                        </figcaption>
+                        <pre class="recipe-code" data-part="source"><code>const name = 'ada';
+const greeting = 'hello';
+const retries = 3;</code></pre>
+                        <pre class="recipe-code recipe-code-aligned" data-part="aligned"><code>const name     = 'ada';
+const greeting = 'hello';
+const retries  = 3;</code></pre>
+                    </figure>
+
+                    <figure class="recipe" data-language="javascript" data-symbols="//">
+                        <figcaption>
+                            <h3>Trailing comments</h3>
+                            <p>JavaScript · symbols: <code>//</code></p>
+                        </figcaption>
+                        <pre class="recipe-code" data-part="source"><code>const port = 5173; // dev server
+const host = 'localhost'; // bind address</code></pre>
+                        <pre class="recipe-code recipe-code-aligned" data-part="aligned"><code>const port = 5173;        // dev server
+const host = 'localhost'; // bind address</code></pre>
+                    </figure>
+
+                    <figure class="recipe" data-language="csharp" data-symbols="=">
+                        <figcaption>
+                            <h3>Declaration columns</h3>
+                            <p>C# · declaration columns on, symbols: <code>=</code></p>
+                        </figcaption>
+                        <pre class="recipe-code" data-part="source"><code>public string Name = "ada";
+public int Id = 1;</code></pre>
+                        <pre class="recipe-code recipe-code-aligned" data-part="aligned"><code>public string Name = "ada";
+public int    Id   = 1;</code></pre>
+                    </figure>
+
+                    <figure class="recipe" data-language="rust" data-symbols="=>">
+                        <figcaption>
+                            <h3>Match arms</h3>
+                            <p>Rust · symbols: <code>=&gt;</code></p>
+                        </figcaption>
+                        <pre class="recipe-code" data-part="source"><code>0 => "zero",
+10 => "ten",
+_ => "many",</code></pre>
+                        <pre class="recipe-code recipe-code-aligned" data-part="aligned"><code>0  =&gt; "zero",
+10 =&gt; "ten",
+_  =&gt; "many",</code></pre>
+                    </figure>
+                </div>
+            </section>
+
             <section class="content-section shell" id="languages" aria-labelledby="languages-title">
                 <div class="section-head">
                     <h2 id="languages-title">57 language profiles. One grammar of whitespace.</h2>
@@ -492,7 +591,7 @@
         </main>
 
         <footer class="site-footer shell">
-            <p>Symbol Align Playground. MIT licensed. Built on @sandlada/symbol-align.</p>
+            <p>Symbol Align. MIT licensed. Built on @sandlada/symbol-align.</p>
             <p>No tracking. No uploads. No runtime dependencies beyond the core.</p>
         </footer>
     </body>

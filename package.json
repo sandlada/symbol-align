@@ -23,7 +23,8 @@
         "bench:optimized": "node scripts/benchmark.mjs --label optimized --report report2.md",
         "clean": "pnpm -r clean",
         "dev": "pnpm --filter @sandlada/symbol-align dev",
-        "dev:playground": "pnpm --filter @sandlada/symbol-align build:wasm && pnpm --filter @sandlada/playground dev",
+        "dev:site": "pnpm --filter @sandlada/symbol-align build:wasm && pnpm --filter @sandlada/site dev",
+        "deploy:site": "wrangler deploy",
         "format": "biome format --write .",
         "format:check": "biome format .",
         "lint": "biome lint .",
@@ -36,7 +37,8 @@
         "@types/node": "catalog:",
         "tsx": "catalog:",
         "typescript": "catalog:",
-        "vitest": "catalog:"
+        "vitest": "catalog:",
+        "wrangler": "catalog:"
     },
     "engines": {
         "node": ">=24",

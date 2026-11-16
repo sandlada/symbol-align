@@ -5,6 +5,13 @@ output
 *.log
 .DS_Store
 
+# Wrangler local state
+.wrangler
+.dev.vars
+
+# Playwright MCP artefacts
+.playwright-mcp
+
 # TypeScript incremental build info
 *.tsbuildinfo
 

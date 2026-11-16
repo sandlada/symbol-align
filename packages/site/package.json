@@ -1,12 +1,14 @@
 {
-    "name": "@sandlada/playground",
+    "name": "@sandlada/site",
     "version": "0.0.0",
     "private": true,
     "type": "module",
-    "description": "Live, zero-runtime-dependency playground for @sandlada/symbol-align",
+    "description": "Deployable site and live playground for @sandlada/symbol-align",
     "scripts": {
         "dev": "vite",
         "build": "vite build",
+        "build:deploy": "pnpm run build:wasm && vite build",
+        "build:wasm": "pnpm --filter @sandlada/symbol-align build:wasm",
         "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
         "preview": "vite preview",
         "typecheck": "tsc --noEmit -p tsconfig.json",

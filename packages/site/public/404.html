@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="color-scheme" content="light dark" />
+        <meta name="robots" content="noindex" />
+        <title>Page not found — Symbol Align</title>
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <style>
+            :root {
+                color-scheme: light dark;
+                --bg: #f6f5f3;
+                --ink: #171614;
+                --ink-secondary: #5c5a57;
+                --accent: #0f6cbd;
+                --line: #dedbd7;
+            }
+
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --bg: #101214;
+                    --ink: #f3f2f1;
+                    --ink-secondary: #c7c4c0;
+                    --accent: #479ef5;
+                    --line: #2c2f32;
+                }
+            }
+
+            body {
+                display: grid;
+                place-items: center;
+                min-height: 100vh;
+                margin: 0;
+                padding: 32px;
+                background: var(--bg);
+                color: var(--ink);
+                font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+                line-height: 1.6;
+            }
+
+            main {
+                max-width: 44ch;
+            }
+
+            p:first-child {
+                color: var(--accent);
+                font-family: "Cascadia Code", Consolas, monospace;
+                font-size: 13px;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+            }
+
+            h1 {
+                margin: 8px 0 12px;
+                font-size: clamp(1.8rem, 5vw, 2.6rem);
+                letter-spacing: -0.03em;
+                line-height: 1.1;
+            }
+
+            p {
+                color: var(--ink-secondary);
+            }
+
+            a {
+                display: inline-block;
+                margin-top: 18px;
+                padding-bottom: 2px;
+                border-bottom: 1px solid var(--line);
+                color: var(--accent);
+                font-weight: 600;
+                text-decoration: none;
+            }
+
+            a:hover {
+                border-bottom-color: var(--accent);
+            }
+        </style>
+    </head>
+
+    <body>
+        <main>
+            <p>404</p>
+            <h1>This page does not exist.</h1>
+            <p>The symbol-alignment playground is a single page. Everything it does lives on the home page.</p>
+            <a href="/">Back to Symbol Align</a>
+        </main>
+    </body>
+</html>

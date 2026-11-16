@@ -28,7 +28,7 @@ const realWorldLoaders: Partial<Record<LanguageId, () => Promise<string>>> = {
  *
  * The popular programming languages use real, long source files from their
  * ecosystems; the remaining entries are short starters that show the profile's
- * syntax. The real files and their licenses live in `packages/playground/samples`.
+ * syntax. The real files and their licenses live in `packages/site/samples`.
  *
  * The map is exhaustive: when a new `LanguageId` is added to the core, this
  * object no longer satisfies its type and the playground stops compiling until

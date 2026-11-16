@@ -32,9 +32,10 @@ extension) can be added later without restructuring the repository.
   runtime independent and also runs in browsers and workers
 - **Package manager:** pnpm (workspace + dependency `catalog`)
 - **Test:** Vitest 5 (the conformance suite is shared with the TypeScript core)
-- **Build:** `cargo` for the wasm module, `tsc` for the wrapper, Vite for the playground
+- **Build:** `cargo` for the wasm module, `tsc` for the wrapper, Vite for the site
 - **Lint/format:** Biome 2 (`@biomejs/biome`); Rust is formatted with `cargo fmt`
-- **Dev runner:** `tsx` for the CLI, Vite for the playground
+- **Dev runner:** `tsx` for the CLI, Vite for the site
+- **Deploy:** `wrangler` for Cloudflare Workers Static Assets (`wrangler.jsonc`)
 
 ## Engineering Rules
 
@@ -132,9 +133,9 @@ Concretely:
 │   │   │   └── language.ts     # VS Code language id → library profile
 │   │   ├── package.json       # Extension manifest
 │   │   └── esbuild.mjs        # Bundles the extension
-│   └── playground/            # Vite-powered live playground (private, not published)
+│   └── site/                  # Deployed site + live playground (private, not published)
 │       ├── index.html         # SEO shell + static content + playground markup
-│       ├── public/            # favicon, OG artwork, manifest, robots.txt
+│       ├── public/            # icons, OG artwork, manifest, robots, sitemap, 404, headers
 │       ├── samples/           # vendored real-world sources + licenses
 │       ├── src/
 │       │   ├── main.ts        # DOM wiring and live updates
@@ -142,16 +143,18 @@ Concretely:
 │       │   ├── highlight.ts   # safe inserted-space highlighting
 │       │   ├── samples.ts     # exhaustive LanguageId → starter snippet map
 │       │   ├── styles.css     # Fluent-inspired responsive light/dark design
-│       │   └── *.test.ts      # Vitest coverage for the pure layers
+│       │   └── *.test.ts      # Vitest coverage for the pure layers and the SEO shell
 │       ├── vite.config.ts     # aliases the core source for real-time testing
 │       └── vitest.config.ts
 ├── scripts/
+│   ├── cloudflare-build.sh    # Workers Builds build (Rust install + wasm + site)
 │   └── sync-docs.mjs          # Materializes / restores the linked doc files
 ├── .github/
 │   └── workflows/
 │       └── ci.yml             # Lint, format check, typecheck, build and test
 ├── biome.json                 # Biome configuration (lint + format)
 ├── pnpm-workspace.yaml        # Workspace packages + dependency catalog
+├── wrangler.jsonc             # Cloudflare Workers Static Assets for packages/site
 ├── tsconfig.base.json         # Shared compiler options
 ├── tsconfig.json              # Solution file (project references)
 ├── vitest.config.ts           # Root test config (projects: packages/*)
@@ -328,12 +331,13 @@ worker or any other JavaScript runtime.
 - `runtime.test.ts` guards the invariant: it walks the module graph of
   `index.ts` and fails when a Node.js builtin is imported
 
-## Playground
+## Site
 
-`packages/playground` is a private, Vite-only static site. It has **no runtime
-dependency other than the core** (Vite is the only external package in its
-manifest; TypeScript and Vitest come from the workspace root as dev tools) and
-deliberately uses no UI framework, no icon pack and no syntax highlighter.
+`packages/site` is a private, Vite-only static site, deployed to Cloudflare
+Workers Static Assets at <https://symbol-align.sandlada.com/>. It has **no
+runtime dependency other than the core** (Vite is the only external package in
+its manifest; TypeScript and Vitest come from the workspace root as dev tools)
+and deliberately uses no UI framework, no icon pack and no syntax highlighter.
 
 - The Vite alias resolves `@sandlada/symbol-align` to `../core/src/index.ts`,
   so the dev server doubles as a real-time test bench and the production bundle
@@ -342,7 +346,7 @@ deliberately uses no UI framework, no icon pack and no syntax highlighter.
   as `Record<LanguageId, string>`, so a new core profile fails the build until
   it gets a starter snippet
 - The popular programming languages load real, long source files from
-  `packages/playground/samples` through dynamic `?raw` imports; only the default
+  `packages/site/samples` through dynamic `?raw` imports; only the default
   C# file is in the initial bundle, the rest are split into per-language chunks
 - `main.ts` owns DOM effects; option/symbol logic and output highlighting stay
   in pure modules and are covered by Vitest
@@ -351,9 +355,34 @@ deliberately uses no UI framework, no icon pack and no syntax highlighter.
   `main.ts` maps them onto `AlignOptions`
 - The UI must stay free of card layouts: use full-bleed bands, hairlines and
   columns. Styles support light, dark and reduced-motion preferences
-- The site must keep zero external `href`s and must not use an import map
+- The site must reference no third-party resource: the only absolute `href` is
+  the canonical link, and there is no import map
 - SEO is part of the contract: keep the title, description, Open Graph data,
-  JSON-LD, semantic headings and crawlable language/FAQ content in sync
+  JSON-LD, semantic headings and crawlable language/FAQ content in sync.
+  `seo.test.ts` pins the canonical origin in `index.html`, `public/sitemap.xml`,
+  `public/robots.txt` and re-runs every documented before/after pair through
+  `align()`, so the marketing examples cannot drift from the core
+
+## Deployment
+
+- `wrangler.jsonc` in the repository root is the only deployment configuration:
+  `name: symbol-align-site`, `assets.directory: ./packages/site/dist`,
+  `assets.not_found_handling: 404-page` and the `symbol-align.sandlada.com`
+  custom domain
+- The site is published on Cloudflare Workers Static Assets, not Pages; Pages is
+  in maintenance mode and cannot declare a custom domain in Wrangler
+- Workers Builds connects the repository through the dashboard. The build
+  command is `bash scripts/cloudflare-build.sh` because the build image ships
+  Node.js and pnpm but no Rust toolchain, and
+  `packages/core/src/generated/wasm-binary.ts` is generated and gitignored
+- The build output is a plain static site with `base: '/'`; there is no server
+  component, no Function and no data leaving the browser
+- `public/_headers` owns the security and cache policy: immutable hashing for
+  `/assets/*`, revalidating HTML, no third-party origins in the CSP, and
+  `'wasm-unsafe-eval'` in `script-src` because the page instantiates the wasm
+  core (without it the page renders and never aligns)
+- Keep `public/og.png` and `public/og.svg` in sync: the metadata references the
+  PNG, the SVG is the editable source
 
 ## Workspace Conventions
 
@@ -392,9 +421,10 @@ pnpm bench          # write report1.md (baseline performance report)
 pnpm --filter @sandlada/symbol-align build      # build the Rust core + wrapper
 pnpm --filter @sandlada/symbol-align dev        # run the CLI from source
 pnpm --filter @sandlada/symbol-align-ts test    # run the TypeScript reference suite
-pnpm dev:playground                          # run the Vite playground (localhost:5173)
-pnpm --filter @sandlada/playground build     # static site in packages/playground/dist
-pnpm exec vitest run                          # run all projects from the root
+pnpm dev:site                                   # run the Vite site (localhost:5173)
+pnpm --filter @sandlada/site build:deploy       # wasm core + static site
+pnpm deploy:site                                # wrangler deploy (packages/site)
+pnpm exec vitest run                            # run all projects from the root
 
 cargo test --manifest-path packages/core/rust/Cargo.toml          # Rust unit tests
 cargo clippy --manifest-path packages/core/rust/Cargo.toml -- -D warnings

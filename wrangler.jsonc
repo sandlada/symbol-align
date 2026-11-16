@@ -1,0 +1,21 @@
+{
+    // Cloudflare Workers Static Assets configuration for the deployed site.
+    // `assets.directory` points at the Vite build output of packages/site; the
+    // Workers Builds settings that produce it are documented in
+    // packages/site/README.md.
+    "$schema": "./node_modules/wrangler/config-schema.json",
+    "name": "symbol-align-site",
+    "compatibility_date": "2026-11-16",
+    "assets": {
+        "directory": "./packages/site/dist",
+        "html_handling": "auto-trailing-slash",
+        "not_found_handling": "404-page"
+    },
+    "routes": [
+        {
+            "pattern": "symbol-align.sandlada.com",
+            "custom_domain": true
+        }
+    ],
+    "preview_urls": true
+}

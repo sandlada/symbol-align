@@ -50,7 +50,7 @@ This repository is a [pnpm](https://pnpm.io) workspace (`packages/*`).
 | [`@sandlada/symbol-align`](packages/core) | Rust core (wasm) + TypeScript API + CLI |
 | [`@sandlada/symbol-align-ts`](packages/core-ts) | TypeScript reference implementation (workspace only) |
 | [Symbol Align](packages/vscode) | VS Code extension (workspace only) |
-| [Playground](packages/playground) | Vite-powered live playground (workspace only) |
+| [Site](packages/site) | Deployed site + live playground (workspace only) |
 
 The shipped package is the Rust core in `packages/core`. It compiles to a
 single `wasm32-unknown-unknown` module that is inlined into the TypeScript
@@ -818,10 +818,17 @@ symbol-align/
 │   ├── vscode/             # Symbol Align — the VS Code extension
 │   │   ├── src/            # extension sources
 │   │   └── package.json
+│   └── site/               # the deployed site + live playground
+│       ├── index.html      # SEO shell, static content and playground markup
+│       ├── public/         # icons, social card, manifest, robots, sitemap, 404, headers
+│       ├── samples/        # vendored real-world sources + licenses
+│       └── src/            # DOM wiring, pure helpers, styles, tests
 ├── scripts/
+│   ├── cloudflare-build.sh # Workers Builds build (Rust install + wasm + site)
 │   └── sync-docs.mjs       # materializes / restores the linked doc files
 ├── biome.json              # lint + format configuration
 ├── pnpm-workspace.yaml     # workspace + shared dependency catalog
+├── wrangler.jsonc          # Cloudflare Worker that serves packages/site/dist
 ├── tsconfig.base.json      # shared compiler options
 └── package.json            # workspace root (private)
 ```
@@ -856,7 +863,7 @@ pnpm bench          # write report1.md (baseline performance report)
 pnpm --filter @sandlada/symbol-align build    # build the Rust core + wrapper
 pnpm --filter @sandlada/symbol-align dev      # run the CLI from source (tsx)
 pnpm --filter @sandlada/symbol-align-ts test  # run the TypeScript reference suite
-pnpm dev:playground                          # run the Vite playground (localhost:5173)
+pnpm dev:site                                 # run the Vite site (localhost:5173)
 ```
 
 The conformance suite of `packages/core` is a copy of the TypeScript reference
@@ -873,6 +880,24 @@ pnpm build
 pnpm test
 pnpm --filter @sandlada/symbol-align publish
 ```
+
+### Deploying the site
+
+`packages/site` is deployed to Cloudflare Workers Static Assets at
+<https://symbol-align.sandlada.com/>. `wrangler.jsonc` in the repository root
+declares the Worker name, the asset directory and the custom domain; the
+Cloudflare dashboard connects that Worker to this repository through Workers
+Builds, with `bash scripts/cloudflare-build.sh` as the build command (the build
+image has no Rust toolchain, so the script installs one and compiles the wasm
+core first).
+
+```bash
+pnpm --filter @sandlada/site build:deploy   # wasm core + static site
+pnpm deploy:site                            # wrangler deploy
+```
+
+See [`packages/site/README.md`](packages/site/README.md) for the one-time
+dashboard setup, the SEO contract and the asset pipeline.
 
 ## License
 

@@ -50,6 +50,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Verify the deployment configuration
+        run: pnpm exec wrangler deploy --dry-run
+
       - name: Typecheck
         run: pnpm typecheck
 
