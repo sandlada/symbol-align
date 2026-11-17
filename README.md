@@ -25,6 +25,7 @@ clean vertical columns.
 - [Usage](#usage)
   - [CLI](#cli)
   - [API](#api)
+  - [Errors](#errors)
 - [How it works](#how-it-works)
 - [Options](#options)
 - [Declarations](#declarations)
@@ -48,15 +49,15 @@ This repository is a [pnpm](https://pnpm.io) workspace (`packages/*`).
 | Package | Description |
 | --- | --- |
 | [`@sandlada/symbol-align`](packages/core) | Rust core (wasm) + TypeScript API + CLI |
-| [`@sandlada/symbol-align-ts`](packages/core-ts) | TypeScript reference implementation (workspace only) |
 | [Symbol Align](packages/vscode) | VS Code extension (workspace only) |
 | [Site](packages/site) | Deployed site + live playground (workspace only) |
 
 The shipped package is the Rust core in `packages/core`. It compiles to a
 single `wasm32-unknown-unknown` module that is inlined into the TypeScript
 wrapper, so the same package runs in Node.js, the browser, a worker and the
-VS Code extension host. `packages/core-ts` is the original TypeScript
-implementation and the behavioural reference of the conformance suite.
+VS Code extension host. It is the only implementation of the formatter in this
+repository, and its Vitest suite in `packages/core/src` is the behavioural
+contract.
 
 ## Install
 
@@ -192,6 +193,27 @@ The main entry point is free of Node.js builtins, so it can be bundled for the
 browser, a worker or any other JavaScript runtime. The helpers that touch the
 filesystem live in the `/node` entry point — see [Configuration](#configuration).
 
+### Errors
+
+Every failure inside the Rust core is reported as a `SymbolAlignError`. The
+error names the operation that failed and keeps the original error as its
+`cause`, so a caller can tell a broken environment from a broken snippet:
+
+```ts
+import { align, SymbolAlignError } from '@sandlada/symbol-align';
+
+try {
+    align(code)();
+} catch (error) {
+    if (error instanceof SymbolAlignError) {
+        console.error(`symbol-align failed during "${error.operation}"`, error.cause);
+    }
+}
+```
+
+The operations are `align`, `scan`, `findSymbols`, `findDeclarations`,
+`profiles` and `load`.
+
 ## How it works
 
 1. **Scan.** The snippet is scanned once with the rules of the language profile.
@@ -320,7 +342,8 @@ public static Map<String, List<Integer>> outlierName;
 ```
 
 In the API a value below `1` (or a non-finite value) means unlimited. The CLI
-and the VS Code setting require a positive integer.
+requires a positive integer, the VS Code setting accepts `0` for the same
+"unlimited" behaviour.
 
 ### No type dictionary
 
@@ -711,6 +734,10 @@ The command line always wins over the configuration:
 symbol-align --file input.ts --symbols '='   # overrides the configured symbols
 ```
 
+The VS Code extension reads the same file from the workspace folder of the
+document. A setting of the extension that the user set explicitly wins over the
+configuration file, every other setting falls back to it.
+
 The same configuration is available to the API. The filesystem helpers live in
 the `@sandlada/symbol-align/node` entry point, so that the main entry point
 stays free of Node.js builtins and can be bundled for the browser:
@@ -812,9 +839,6 @@ symbol-align/
 │   │   ├── src/            # TypeScript API wrapper and platform adapters
 │   │   ├── languages.json  # single source of truth for the 57 language profiles
 │   │   └── package.json
-│   ├── core-ts/            # @sandlada/symbol-align-ts — TypeScript reference implementation
-│   │   ├── src/            # library + CLI sources
-│   │   └── package.json
 │   ├── vscode/             # Symbol Align — the VS Code extension
 │   │   ├── src/            # extension sources
 │   │   └── package.json
@@ -862,12 +886,11 @@ pnpm bench          # write report1.md (baseline performance report)
 
 pnpm --filter @sandlada/symbol-align build    # build the Rust core + wrapper
 pnpm --filter @sandlada/symbol-align dev      # run the CLI from source (tsx)
-pnpm --filter @sandlada/symbol-align-ts test  # run the TypeScript reference suite
 pnpm dev:site                                 # run the Vite site (localhost:5173)
 ```
 
-The conformance suite of `packages/core` is a copy of the TypeScript reference
-suite and exercises the wasm build exactly like a published consumer would.
+The conformance suite of `packages/core` is the behavioural contract of the
+Rust core and exercises the wasm build exactly like a published consumer would.
 
 Shared dependency versions are declared in the `catalog` section of
 `pnpm-workspace.yaml` and referenced from a package with the `catalog:` protocol.

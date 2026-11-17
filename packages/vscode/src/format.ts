@@ -22,8 +22,8 @@ export interface FormatRequest {
     readonly groups?: readonly AlignGroup[];
     /** The language profile to use — `undefined` means "detect it from the language id". */
     readonly language?: LanguageId;
-    /** The grouping strategy. */
-    readonly scope: AlignmentScope;
+    /** The grouping strategy — `undefined` keeps the default of the core library. */
+    readonly scope?: AlignmentScope;
     /**
      * The lines that are aligned — `undefined` means "align the whole text".
      *
@@ -62,7 +62,7 @@ const toAlignOptions = (request: FormatRequest, language: LanguageId | undefined
     ...(request.declarations === undefined ? {} : { declarations: request.declarations }),
     ...(request.declarationAnchor === undefined ? {} : { declarationAnchor: request.declarationAnchor }),
     ...(request.maxDeclarationPad === undefined ? {} : { maxDeclarationPad: request.maxDeclarationPad }),
-    scope: request.scope,
+    scope: request.scope ?? 'block',
 });
 
 /**
@@ -106,6 +106,3 @@ export const selectionLineRange = (selection: SelectionLines): LineRange => ({
     start: selection.start.line,
     end: selection.end.character === 0 && selection.end.line > selection.start.line ? selection.end.line : selection.end.line + 1,
 });
-
-/** The lines of an aligned text that belong to the line range. */
-export const linesOfRange = (text: string, range: LineRange): string => text.split('\n').slice(range.start, range.end).join('\n');

@@ -40,3 +40,9 @@ benchmarks/
 # Generated performance reports
 report1.md
 report2.md
+
+# Packaged VS Code extension
+*.vsix
+
+# Temporary fixtures of the CLI tests
+.pipe-*

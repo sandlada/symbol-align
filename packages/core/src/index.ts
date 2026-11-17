@@ -1,4 +1,5 @@
 export { align, alignWith, alignSymbols, alignLanguage } from './aligner.js';
+export { SymbolAlignError } from './errors.js';
 export { allLanguages, detectLanguage, isLanguageId, languageProfile } from './language.js';
 export { findDeclarationCells } from './declarations.js';
 export { findSymbolPositions } from './finder.js';
@@ -6,6 +7,7 @@ export { scanSource } from './scanner.js';
 export { parseConfig, resolveConfig } from './config.js';
 export type { FindOptions } from './finder.js';
 export type { ConfigOverride, SymbolAlignConfig } from './config.js';
+export type { SymbolAlignOperation } from './errors.js';
 export type {
     AlignGroup,
     AlignOptions,

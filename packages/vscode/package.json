@@ -83,8 +83,8 @@
                 "symbolAlign.maxDeclarationPad": {
                     "type": "number",
                     "default": 12,
-                    "minimum": 1,
-                    "description": "Largest column difference that still joins a declaration column. A type outside the window keeps its column instead of pushing every name."
+                    "minimum": 0,
+                    "description": "Largest column difference that still joins a declaration column. A type outside the window keeps its column instead of pushing every name. 0 means no limit."
                 },
                 "symbolAlign.groups": {
                     "type": "array",

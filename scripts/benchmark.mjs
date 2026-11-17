@@ -1,6 +1,6 @@
 /**
- * Runs the TypeScript, wasm and native Rust benchmark harnesses and writes a
- * reproducible performance report.
+ * Runs the wasm and native Rust benchmark harnesses and writes a reproducible
+ * performance report.
  *
  * Usage:
  *   node scripts/benchmark.mjs --label baseline --report report1.md
@@ -88,11 +88,10 @@ const fixed = (value, decimals = 3) => Number(value).toFixed(decimals);
 const ratio = (baseline, optimized) => (optimized <= 0 ? 'n/a' : `${fixed(baseline / optimized, 2)}×`);
 
 /** The rows of the merged result table. */
-const merge = (typescript, wasm, native) => {
+const merge = (wasm, native) => {
     const byName = new Map();
 
-    for (const result of typescript) byName.set(result.name, { name: result.name, lines: result.lines, bytes: result.bytes, ts: result, wasm: undefined, native: undefined });
-    for (const result of wasm) byName.get(result.name).wasm = result;
+    for (const result of wasm) byName.set(result.name, { name: result.name, lines: result.lines, bytes: result.bytes, wasm: result, native: undefined });
     for (const result of native) byName.get(result.name).native = result;
 
     return [...byName.values()];
@@ -100,26 +99,24 @@ const merge = (typescript, wasm, native) => {
 
 /** Renders the markdown performance table. */
 const table = (rows) => {
-    const header = ['Corpus', 'Lines', 'KiB', 'TS ms', 'Rust native ms', 'Rust wasm ms', 'native vs TS', 'wasm vs TS', 'native ML/s', 'TS ML/s'];
+    const header = ['Corpus', 'Lines', 'KiB', 'Rust native ms', 'Rust wasm ms', 'wasm vs native', 'native ML/s', 'wasm ML/s'];
     const separator = header.map(() => '---');
     const body = rows.map((row) => {
         const lines = row.lines;
-        const ts = row.ts.medianMs;
         const native = row.native.medianMs;
         const wasm = row.wasm.medianMs;
         const megabytes = row.bytes / 1024;
 
-        return [row.name, String(lines), fixed(megabytes, 1), fixed(ts), fixed(native), fixed(wasm), ratio(ts, native), ratio(ts, wasm), fixed(lines / native, 0), fixed(lines / ts, 0)];
+        return [row.name, String(lines), fixed(megabytes, 1), fixed(native), fixed(wasm), ratio(native, wasm), fixed(lines / native, 0), fixed(lines / wasm, 0)];
     });
 
     return [header, separator, ...body].map((cells) => `| ${cells.join(' | ')} |`).join('\n');
 };
 
 /** Renders the raw JSON appendix. */
-const rawAppendix = (typescript, wasm, native) =>
+const rawAppendix = (wasm, native) =>
     JSON.stringify(
         {
-            typescript,
             wasm,
             native,
         },
@@ -148,25 +145,23 @@ const baselineComparison = (rows, baseline) => {
             return null;
         }
 
-        return `| ${row.name} | ${fixed(before.native.medianMs)} | ${fixed(row.native.medianMs)} | ${ratio(before.native.medianMs, row.native.medianMs)} | ${fixed(before.ts.medianMs)} | ${fixed(row.ts.medianMs)} |`;
+        return `| ${row.name} | ${fixed(before.native.medianMs)} | ${fixed(row.native.medianMs)} | ${ratio(before.native.medianMs, row.native.medianMs)} |`;
     });
 
-    return ['| Corpus | Rust before ms | Rust after ms | Rust gain | TS before ms | TS after ms |', '| --- | --- | --- | --- | --- | --- |', ...lines.filter((line) => line !== null)].join('\n');
+    return ['| Corpus | Rust before ms | Rust after ms | Rust gain |', '| --- | --- | --- | --- |', ...lines.filter((line) => line !== null)].join('\n');
 };
 
 const entries = writeCorpora(benchmarks);
 
 process.stdout.write(`Generated ${entries.length} corpora in ${benchmarks}\n`);
-process.stdout.write('Running the TypeScript harness...\n');
-const typescript = runNode(join('packages', 'core-ts', 'bench', 'run.mjs'), [manifestPath]);
 process.stdout.write('Running the wasm harness...\n');
 const wasm = runNode(join('packages', 'core', 'bench', 'run.mjs'), [manifestPath]);
 process.stdout.write('Building and running the native Rust harness...\n');
 buildNative();
 const native = JSON.parse(run(nativeBinary(), [manifestPath]));
-const rows = merge(typescript, wasm, native);
+const rows = merge(wasm, native);
 
-writeFileSync(join(benchmarks, `results-${label}.json`), `${JSON.stringify({ label, environment: environment(), merge: rows, typescript, wasm, native }, null, 4)}\n`, 'utf-8');
+writeFileSync(join(benchmarks, `results-${label}.json`), `${JSON.stringify({ label, environment: environment(), merge: rows, wasm, native }, null, 4)}\n`, 'utf-8');
 
 const report = `# Performance report ${label === 'optimized' ? '2 — optimized algorithm' : '1 — baseline'}
 
@@ -182,25 +177,24 @@ from \`benchmarks/manifest.json\`.
   group, a string-heavy corpus, and an object-literal corpus with two symbols.
 - Each harness performs 2 warm-up runs and 7 measured runs; the table reports
   the **median**.
-- \`TS\` is the TypeScript reference core (\`packages/core-ts/dist\`), executed by
-  Node.js.
 - \`Rust native\` is \`symbol_align_core::aligner::align\` called directly from a
   release build with \`lto = "fat"\`; this is the pure language-level comparison.
 - \`Rust wasm\` is the published npm path: the same Rust core compiled to
   \`wasm32-unknown-unknown\` and called through the inline-base64 TypeScript
   wrapper (UTF-8 encode/decode + one wasm boundary per call).
-- \`native ML/s\` and \`TS ML/s\` are thousands of lines per second.
-- A \`native vs TS\` value below \`1×\` means the Rust native run was slower.
-- The Rust baseline keeps the TypeScript pass structure and five-iteration
-  fixpoint. The finder uses the same first-character operator bucket as the
-  TypeScript reference (a lookup-table micro-optimization, not an algorithm
-  change).
+- \`native ML/s\` and \`wasm ML/s\` are thousands of lines per second.
+- A \`wasm vs native\` value below \`1×\` means the wasm run was slower.
+- The Rust core scans the source once per \`align\` call and shares that scan
+  with the declaration, the group and the symbol passes; the passes themselves
+  run in a fixpoint of at most five iterations.
+- The finder looks the operators up by their first character, which is a
+  lookup-table micro-optimization and not an algorithm change.
 - On this Windows host the native binary is built with the
   \`x86_64-pc-windows-gnu\` toolchain because no MSVC linker is installed. The
   wasm module uses 32-bit \`usize\`, so its column and coverage tables are half
   the size of the native x86_64 tables; that is why the wasm path can be faster
   than native on allocation-heavy corpora.
-${label === 'optimized' ? '- The optimized report uses the same corpora and harnesses as report 1, so the\n  delta is the algorithm change rather than a different measurement setup.\n' : '- This is the **unoptimized baseline**: the Rust core is a faithful port of the\n  TypeScript pipeline (re-scan per symbol pass, fixpoint loop).\n'}
+${label === 'optimized' ? '- This report uses the same corpora and harnesses as the baseline run, so the\n  delta is the algorithm change rather than a different measurement setup.\n' : '- This run is the reference of the workspace: a later run with `--label optimized`\n  compares itself against the stored result of this run.\n'}
 
 ## Environment
 
@@ -223,7 +217,7 @@ ${label === 'optimized' ? `## Gain over the baseline\n\n${baselineComparison(row
 ## Raw data
 
 \`\`\`json
-${rawAppendix(typescript, wasm, native)}
+${rawAppendix(wasm, native)}
 \`\`\`
 `;
 

@@ -1,158 +1,196 @@
 /**
  * The VS Code adapter of the extension.
  *
- * Everything that can be tested without an editor lives in `format.ts` and
- * `language.ts` — this module only wires the editor API to that logic.
+ * Everything that can be tested without an editor lives in `format.ts`,
+ * `edits.ts`, `config.ts`, `settings.ts` and `language.ts` — this module only
+ * wires the editor API to that logic.
  */
 
-import type { AlignmentScope, DeclarationAnchor, LanguageId, LineRange } from '@sandlada/symbol-align';
-import { isLanguageId } from '@sandlada/symbol-align';
+import { findConfigFile, loadConfigFile } from '@sandlada/symbol-align/node';
+import type { AlignOptions, LineRange, SymbolAlignConfig } from '@sandlada/symbol-align';
+import { dirname, isAbsolute, relative } from 'node:path';
 import * as vscode from 'vscode';
-import type { FormatResponse } from './format.js';
-import { formatText, linesOfRange, selectionLineRange } from './format.js';
-import { resolveLanguage } from './language.js';
-
-/** The settings of the extension as they are stored in the workspace. */
-interface SymbolAlignSettings {
-    /** Whether the document is aligned when it is formatted. */
-    readonly enabled: boolean;
-    /** The symbols to align — an empty list means "use the language defaults". */
-    readonly symbols: readonly string[];
-    /** Groups of alternative tokens that share one alignment column. */
-    readonly groups: readonly (readonly string[])[];
-    /** The configured language profile — `auto` detects it from the document. */
-    readonly language: string;
-    /** The grouping strategy. */
-    readonly scope: AlignmentScope;
-    /** Whether the declaration columns are aligned. */
-    readonly declarations: boolean;
-    /** Which edge of a declaration cell is aligned. */
-    readonly declarationAnchor: DeclarationAnchor;
-    /** Largest start-column difference that still joins a declaration column. */
-    readonly maxDeclarationPad: number;
-}
+import { resolveOptions, resolveProfile } from './config.js';
+import { documentReplacement, rangeReplacement } from './edits.js';
+import { selectionLineRange } from './format.js';
+import { readSettings, toExplicitSettings, type ExplicitSettings, type SymbolAlignSettings } from './settings.js';
 
 /** Every document of the workspace is a candidate for the alignment. */
-const documentSelector: vscode.DocumentSelector = [{ scheme: 'file', language: '*' }];
+const documentSelector: vscode.DocumentSelector = [{ scheme: 'file' }, { scheme: 'untitled' }];
 
-/**
- * Reads the grouping strategy from the configuration.
- *
- * An unknown value falls back to `block`, the default of the core library.
- */
-const readScope = (value: string): AlignmentScope => {
-    if (value === 'indent' || value === 'file') {
-        return value;
-    }
-
-    return 'block';
-};
-
-/**
- * Reads the declaration anchor from the configuration.
- *
- * An unknown value falls back to `start`, the default of the core library.
- */
-const readDeclarationAnchor = (value: string): DeclarationAnchor => {
-    if (value === 'end') {
-        return value;
-    }
-
-    return 'start';
-};
-
-/**
- * Reads the maximum declaration pad from the configuration.
- *
- * Anything but a positive integer falls back to `12`, the default of the core
- * library.
- */
-const readMaxDeclarationPad = (value: number): number => (Number.isInteger(value) && value >= 1 ? value : 12);
-
-/** Reads the settings of the extension. */
-const readSettings = (): SymbolAlignSettings => {
+/** Reads the settings of the extension from the workspace configuration. */
+const readWorkspaceSettings = (): SymbolAlignSettings => {
     const configuration = vscode.workspace.getConfiguration('symbolAlign');
 
-    return {
-        enabled: configuration.get<boolean>('enabled', true),
-        symbols: configuration.get<string[]>('symbols', []),
-        groups: configuration.get<readonly (readonly string[])[]>('groups', []),
-        language: configuration.get<string>('language', 'auto'),
-        scope: readScope(configuration.get<string>('scope', 'block')),
-        declarations: configuration.get<boolean>('declarations', true),
-        declarationAnchor: readDeclarationAnchor(configuration.get<string>('declarationAnchor', 'start')),
-        maxDeclarationPad: readMaxDeclarationPad(configuration.get<number>('maxDeclarationPad', 12)),
-    };
+    return readSettings({
+        enabled: configuration.get('enabled'),
+        symbols: configuration.get('symbols'),
+        groups: configuration.get('groups'),
+        language: configuration.get('language'),
+        scope: configuration.get('scope'),
+        declarations: configuration.get('declarations'),
+        declarationAnchor: configuration.get('declarationAnchor'),
+        maxDeclarationPad: configuration.get('maxDeclarationPad'),
+    });
 };
 
 /**
- * Resolves the language profile that is used for a document.
+ * Reads the settings that the user set explicitly.
  *
- * The configured profile wins, the language of the document is only used when
- * the configuration says `auto`.
+ * A setting that the user did not set must not win over the configuration file
+ * of the repository, so only the values of the workspace, of the workspace
+ * folder and of the user are taken into account.
  */
-const resolveTargetLanguage = (configured: string, languageId: string): LanguageId | undefined => {
-    if (configured !== 'auto') {
-        return isLanguageId(configured) ? configured : undefined;
-    }
+const readExplicitSettings = (configuration: vscode.WorkspaceConfiguration): ExplicitSettings => {
+    const explicit = <T>(key: string): T | undefined => {
+        const info = configuration.inspect<T>(key);
 
-    return resolveLanguage(languageId);
-};
+        return info?.workspaceFolderValue ?? info?.workspaceValue ?? info?.globalValue;
+    };
 
-/** The range that covers the whole document. */
-const fullRange = (document: vscode.TextDocument): vscode.Range => new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length));
-
-/** The range of the editor that covers the lines of a line range. */
-const lineRange = (document: vscode.TextDocument, range: LineRange): vscode.Range => {
-    const lastLine = Math.min(range.end, document.lineCount) - 1;
-
-    return new vscode.Range(new vscode.Position(range.start, 0), new vscode.Position(lastLine, document.lineAt(lastLine).text.length));
-};
-
-/** Aligns a text with the settings of the extension. */
-const alignText = (text: string, document: vscode.TextDocument, settings: SymbolAlignSettings, language: LanguageId, range?: LineRange): FormatResponse =>
-    formatText({
-        text,
-        languageId: document.languageId,
-        symbols: settings.symbols,
-        groups: settings.groups,
-        language,
-        scope: settings.scope,
-        declarations: settings.declarations,
-        declarationAnchor: settings.declarationAnchor,
-        maxDeclarationPad: settings.maxDeclarationPad,
-        ...(range === undefined ? {} : { range }),
+    return toExplicitSettings({
+        symbols: explicit<string[]>('symbols'),
+        groups: explicit<readonly (readonly string[])[]>('groups'),
+        language: explicit<string>('language'),
+        scope: explicit<string>('scope'),
+        declarations: explicit<boolean>('declarations'),
+        declarationAnchor: explicit<string>('declarationAnchor'),
+        maxDeclarationPad: explicit<number>('maxDeclarationPad'),
     });
+};
 
-/** Formats a document by lining its symbols up. */
-class SymbolAlignFormattingProvider implements vscode.DocumentFormattingEditProvider {
-    provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
-        const settings = readSettings();
-
-        if (!settings.enabled) {
-            return [];
-        }
-
-        const language = resolveTargetLanguage(settings.language, document.languageId);
-
-        if (language === undefined) {
-            return [];
-        }
-
-        const text = document.getText();
-        const result = alignText(text, document, settings, language);
-
-        if (result.text === text) {
-            return [];
-        }
-
-        return [vscode.TextEdit.replace(fullRange(document), result.text)];
+/**
+ * The configuration file that applies to a document.
+ *
+ * The file is looked up from the directory of the document upwards, but never
+ * outside of the workspace folder of the document. A document that is not part
+ * of a workspace has no configuration file.
+ */
+const workspaceConfig = (document: vscode.TextDocument): SymbolAlignConfig | undefined => {
+    if (document.uri.scheme !== 'file') {
+        return undefined;
     }
-}
+
+    const folder = vscode.workspace.getWorkspaceFolder(document.uri);
+
+    if (folder === undefined) {
+        return undefined;
+    }
+
+    const path = findConfigFile(dirname(document.uri.fsPath));
+
+    if (path === undefined) {
+        return undefined;
+    }
+
+    const inside = relative(folder.uri.fsPath, path);
+
+    if (inside.startsWith('..') || isAbsolute(inside)) {
+        return undefined;
+    }
+
+    return loadConfigFile(path);
+};
+
+/** The path of a document — `undefined` for a document that has no file. */
+const filePathOf = (document: vscode.TextDocument): string | undefined => (document.uri.scheme === 'file' ? document.uri.fsPath : undefined);
+
+/**
+ * The alignment options of a document.
+ *
+ * The configuration file of the repository is the base, the settings the user
+ * set explicitly win over it and the profile of the language completes them.
+ */
+const resolveDocumentOptions = (document: vscode.TextDocument, configuration: vscode.WorkspaceConfiguration): AlignOptions | undefined => {
+    const config = workspaceConfig(document);
+    const explicit = readExplicitSettings(configuration);
+    const language = resolveProfile(config, explicit, document.languageId);
+
+    if (language === undefined) {
+        return undefined;
+    }
+
+    return { ...resolveOptions(config, explicit, filePathOf(document)), language };
+};
+
+/** Reports a failure of the formatter to the user. */
+const reportFailure = (error: unknown): void => {
+    const reason = error instanceof Error ? error.message : String(error);
+
+    void vscode.window.showErrorMessage(`Symbol Align: ${reason}`);
+};
 
 /** Shows the message of an unsupported language. */
 const reportUnsupportedLanguage = (languageId: string): void => {
     void vscode.window.showErrorMessage(`Symbol Align: no language profile for "${languageId}".`);
+};
+
+/** Turns a replacement into a text edit. */
+const toTextEdit = (document: vscode.TextDocument, replacement: { readonly start: number; readonly end: number; readonly text: string }): vscode.TextEdit =>
+    vscode.TextEdit.replace(new vscode.Range(document.positionAt(replacement.start), document.positionAt(replacement.end)), replacement.text);
+
+/** The line range that covers an editor range. */
+const rangeLineRange = (range: vscode.Range): LineRange => ({
+    start: range.start.line,
+    end: range.end.character === 0 && range.end.line > range.start.line ? range.end.line : range.end.line + 1,
+});
+
+/**
+ * The formatter of the extension.
+ *
+ * It serves the whole document as well as a range of it, so *Format Document*
+ * and *Format Selection* both align the symbols.
+ */
+class SymbolAlignFormattingProvider implements vscode.DocumentFormattingEditProvider, vscode.DocumentRangeFormattingEditProvider {
+    provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
+        return this.edits(document);
+    }
+
+    provideDocumentRangeFormattingEdits(document: vscode.TextDocument, range: vscode.Range): vscode.TextEdit[] {
+        return this.edits(document, rangeLineRange(range));
+    }
+
+    /**
+     * The edits of a document.
+     *
+     * A document that is left untouched — an unknown language, a disabled
+     * formatter or a failure of the core — produces no edit at all, so the
+     * editor never shows an error of its own.
+     */
+    private edits(document: vscode.TextDocument, range?: LineRange): vscode.TextEdit[] {
+        try {
+            const configuration = vscode.workspace.getConfiguration('symbolAlign');
+
+            if (!readWorkspaceSettings().enabled) {
+                return [];
+            }
+
+            const options = resolveDocumentOptions(document, configuration);
+
+            if (options === undefined) {
+                return [];
+            }
+
+            const replacement = range === undefined ? documentReplacement(document, options) : rangeReplacement(document, options, range);
+
+            if (replacement === undefined) {
+                return [];
+            }
+
+            return [toTextEdit(document, replacement)];
+        } catch (error) {
+            reportFailure(error);
+
+            return [];
+        }
+    }
+}
+
+/** Applies a replacement to the document of the active editor. */
+const applyReplacement = async (document: vscode.TextDocument, replacement: { readonly start: number; readonly end: number; readonly text: string }): Promise<void> => {
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(document.uri, new vscode.Range(document.positionAt(replacement.start), document.positionAt(replacement.end)), replacement.text);
+    await vscode.workspace.applyEdit(edit);
 };
 
 /** Aligns the whole document of the active editor. */
@@ -165,32 +203,33 @@ const alignDocument = async (): Promise<void> => {
     }
 
     const document = editor.document;
-    const settings = readSettings();
-    const language = resolveTargetLanguage(settings.language, document.languageId);
 
-    if (language === undefined) {
-        reportUnsupportedLanguage(document.languageId);
-        return;
+    try {
+        const configuration = vscode.workspace.getConfiguration('symbolAlign');
+        const options = resolveDocumentOptions(document, configuration);
+
+        if (options === undefined) {
+            reportUnsupportedLanguage(document.languageId);
+            return;
+        }
+
+        const replacement = documentReplacement(document, options);
+
+        if (replacement === undefined) {
+            return;
+        }
+
+        await applyReplacement(document, replacement);
+    } catch (error) {
+        reportFailure(error);
     }
-
-    const range = fullRange(document);
-    const text = document.getText(range);
-    const result = alignText(text, document, settings, language);
-
-    if (result.text === text) {
-        return;
-    }
-
-    const edit = new vscode.WorkspaceEdit();
-    edit.replace(document.uri, range, result.text);
-    await vscode.workspace.applyEdit(edit);
 };
 
 /**
  * Aligns the selected lines of the active editor.
  *
- * The whole document is aligned — only the selected lines may change — so
- * that a string or a comment that reaches into the selection is recognised.
+ * The whole document is aligned — only the selected lines may change — so that
+ * a string or a comment that reaches into the selection is recognised.
  */
 const alignSelection = async (): Promise<void> => {
     const editor = vscode.window.activeTextEditor;
@@ -201,43 +240,41 @@ const alignSelection = async (): Promise<void> => {
     }
 
     const document = editor.document;
-    const settings = readSettings();
-    const language = resolveTargetLanguage(settings.language, document.languageId);
 
-    if (language === undefined) {
-        reportUnsupportedLanguage(document.languageId);
-        return;
+    try {
+        const configuration = vscode.workspace.getConfiguration('symbolAlign');
+        const options = resolveDocumentOptions(document, configuration);
+
+        if (options === undefined) {
+            reportUnsupportedLanguage(document.languageId);
+            return;
+        }
+
+        const lines = selectionLineRange(editor.selection);
+
+        if (lines.start >= lines.end) {
+            return;
+        }
+
+        const replacement = rangeReplacement(document, options, lines);
+
+        if (replacement === undefined) {
+            return;
+        }
+
+        await applyReplacement(document, replacement);
+    } catch (error) {
+        reportFailure(error);
     }
-
-    const lines = selectionLineRange(editor.selection);
-
-    if (lines.start >= lines.end) {
-        return;
-    }
-
-    const text = document.getText();
-    const result = alignText(text, document, settings, language, lines);
-
-    if (result.text === text) {
-        return;
-    }
-
-    const range = lineRange(document, lines);
-    const aligned = linesOfRange(result.text, lines);
-
-    if (aligned === document.getText(range)) {
-        return;
-    }
-
-    const edit = new vscode.WorkspaceEdit();
-    edit.replace(document.uri, range, aligned);
-    await vscode.workspace.applyEdit(edit);
 };
 
 /** Registers the formatter and the commands of the extension. */
 export const activate = (context: vscode.ExtensionContext): void => {
+    const provider = new SymbolAlignFormattingProvider();
+
     context.subscriptions.push(
-        vscode.languages.registerDocumentFormattingEditProvider(documentSelector, new SymbolAlignFormattingProvider()),
+        vscode.languages.registerDocumentFormattingEditProvider(documentSelector, provider),
+        vscode.languages.registerDocumentRangeFormattingEditProvider(documentSelector, provider),
         vscode.commands.registerCommand('symbolAlign.alignDocument', alignDocument),
         vscode.commands.registerCommand('symbolAlign.alignSelection', alignSelection),
     );

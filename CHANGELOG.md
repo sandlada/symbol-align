@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`SymbolAlignError`.** Every failure inside the core is reported as an error
+  that names the operation that failed — `align`, `scan`, `findSymbols`,
+  `findDeclarations`, `profiles` or `load` — and keeps the original error as
+  its `cause`. A trap of the wasm module, a panic of the Rust core, is
+  translated into that error instead of surfacing as an opaque
+  `WebAssembly.RuntimeError`.
+
+  ```ts
+  import { align, SymbolAlignError } from '@sandlada/symbol-align';
+
+  try {
+      align(code)();
+  } catch (error) {
+      if (error instanceof SymbolAlignError) {
+          console.error(`symbol-align failed during "${error.operation}"`, error.cause);
+      }
+  }
+  ```
+
+### Fixed
+
+- A payload of the core that is not valid JSON, or that does not have the
+  expected shape, is reported as a `SymbolAlignError` instead of a bare
+  `SyntaxError` or a `TypeError`.
+- **The CLI survives a closed pipe.** `symbol-align file.ts | head` closes the
+  pipe while the CLI is still writing. The CLI ends quietly now instead of
+  printing an unhandled `EPIPE` error.
+- **The CLI writes its whole output into a pipe.** The output is flushed before
+  the process ends, so the tail of a large result cannot get lost.
+
 ## [0.2.0] - 2026-10-25
 
 ### Added

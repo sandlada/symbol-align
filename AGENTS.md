@@ -4,10 +4,9 @@
 
 TypeScript + Rust **pnpm workspace** for the `symbol-align` product. The shipped
 package is the Rust core in `packages/core`: a `wasm32-unknown-unknown` module
-with a thin TypeScript API wrapper and the platform adapters. The original
-TypeScript implementation lives in `packages/core-ts` as
-`@sandlada/symbol-align-ts` and is the behavioural reference of the conformance
-suite.
+with a thin TypeScript API wrapper and the platform adapters. It is the only
+implementation in the repository, and the Vitest suite in `packages/core/src`
+is the behavioural contract.
 
 **What this project is:** a *code-snippet symbol-alignment formatter*. It pads
 punctuation symbols (`=`, `:`, `=>`, `->`, `//`, `#`, …) so that they line up
@@ -110,6 +109,8 @@ Concretely:
 │   │   │       └── abi.rs         # raw wasm ABI (alloc/dealloc/align/…)
 │   │   ├── src/
 │   │   │   ├── abi.ts         # inline-base64 wasm loader
+│   │   │   ├── boundary.ts    # wasm trap → SymbolAlignError translation
+│   │   │   ├── errors.ts      # SymbolAlignError of the public API
 │   │   │   ├── aligner.ts     # curried public API around the core
 │   │   │   ├── scanner.ts     # scanSource adapter
 │   │   │   ├── finder.ts      # findSymbolPositions adapter
@@ -118,20 +119,23 @@ Concretely:
 │   │   │   ├── config.ts      # symbol-align.config.json parsing (pure)
 │   │   │   ├── config-fs.ts   # configuration discovery/loading (Node.js)
 │   │   │   ├── cli.ts         # CLI implementation
+│   │   │   ├── pipe.ts        # closed pipe and output flush of the CLI
 │   │   │   ├── bin.ts         # executable entry point
 │   │   │   └── index.ts       # public API exports
 │   │   ├── languages.json     # single source of truth for the 57 profiles
 │   │   ├── schemas/           # JSON schema of symbol-align.config.json
 │   │   └── package.json
-│   ├── core-ts/               # @sandlada/symbol-align-ts — TypeScript reference implementation
-│   │   ├── src/               # library + CLI sources (the conformance reference)
-│   │   └── package.json
 │   ├── vscode/                # VS Code extension that drives the library
 │   │   ├── src/
-│   │   │   ├── extension.ts    # VS Code adapter (provider + commands)
+│   │   │   ├── extension.ts    # VS Code adapter (providers + commands)
+│   │   │   ├── config.ts       # configuration file + explicit settings
+│   │   │   ├── edits.ts        # pure edit computation (what changes in a document)
 │   │   │   ├── format.ts       # pure alignment logic
-│   │   │   └── language.ts     # VS Code language id → library profile
+│   │   │   ├── settings.ts     # normalisation of the workspace configuration
+│   │   │   ├── language.ts     # VS Code language id → library profile
+│   │   │   └── testing/vscode.ts # fake editor API for the adapter tests
 │   │   ├── package.json       # Extension manifest
+│   │   ├── CHANGELOG.md       # Changes of the extension
 │   │   └── esbuild.mjs        # Bundles the extension
 │   └── site/                  # Deployed site + live playground (private, not published)
 │       ├── index.html         # SEO shell + static content + playground markup
@@ -190,6 +194,7 @@ findSymbolPositions(line: string): (options: FindOptions) => ReadonlyMap<string,
 findDeclarationCells(line: string): (options: DeclarationOptions) => readonly DeclarationCell[] | null
 parseConfig(raw: unknown): SymbolAlignConfig
 resolveConfig(config: SymbolAlignConfig): (filePath?: string) => AlignOptions
+SymbolAlignError: Error & { readonly operation: SymbolAlignOperation }
 
 // @sandlada/symbol-align/node
 findConfigFile(startDir: string): string | undefined
@@ -210,6 +215,9 @@ loadConfigFile(path: string): SymbolAlignConfig
 - `DeclarationStyle`, `DeclarationAnchor`, `DeclarationCell` and `DeclarationOptions` — the declaration types of the locator and the profile
 - `AlignResult.code` — aligned code string
 - `AlignResult.changes` — number of distinct lines that were modified
+- `SymbolAlignError.operation` — the operation that failed (`align`, `scan`,
+  `findSymbols`, `findDeclarations`, `profiles` or `load`); the original error
+  is kept as its `cause`
 
 ## Important Behaviors
 
@@ -265,14 +273,17 @@ loadConfigFile(path: string): SymbolAlignConfig
 
 ## Implementation Notes
 
-- `packages/core` is the shipped Rust core. `packages/core-ts` is the
-  TypeScript reference implementation; the two must stay behaviourally
-  identical, and the Vitest suite of `core-ts` is copied into `core` unchanged
-  as the conformance contract. Never weaken a test to make the port pass.
-- The Rust core started as a **faithful baseline port** of the TypeScript
+- `packages/core` is the shipped Rust core and the only implementation in the
+  repository. The Vitest suite in `packages/core/src` is the behavioural
+  contract: it was copied unchanged from the TypeScript reference
+  implementation during the port and is kept as-is. Never weaken a test to
+  make the core pass.
+- The Rust core started as a **faithful baseline port** of the original
   pipeline (re-scan per symbol pass, five-iteration fixpoint, leading-symbol
-  fallback). The single-scan optimization is a separate, measured step:
-  `report2.md` compares it with the baseline in `report1.md`.
+  fallback). The single-scan optimization is merged: the core scans the source
+  once per `align` call and shares that scan with every pass. `pnpm bench`
+  writes the reference run to `report1.md`, `pnpm bench:optimized` compares a
+  run against it.
 - `Line` stores `Vec<char>` plus a UTF-16 column table. Internal positions are
   character indices; public positions are UTF-16 columns. The conversion lives
   at the JSON/wasm boundary (`json.rs`, `abi.ts`). This is what keeps `😀`
@@ -313,6 +324,39 @@ loadConfigFile(path: string): SymbolAlignConfig
   is shared.
 - `changes` counts **distinct** modified lines
 - CLI uses native `process.stdin` / `process.stdout` and `node:fs/promises` (no external arg parser)
+- `bin.ts` ends the process quietly when the reader of its output is gone
+  (`symbol-align file.ts | head`) and flushes the output before it ends — a pipe
+  is written asynchronously on Windows, so a process that terminates right after
+  a write can lose the tail of its output
+- Every call into the wasm module goes through `boundary.ts`: a trap of the Rust
+  code becomes a `SymbolAlignError` that names the operation, and a payload that
+  is not valid JSON becomes a `SymbolAlignError` as well. The adapters validate
+  the shape of the payload they receive instead of trusting it.
+
+## VS Code Extension
+
+The extension in `packages/vscode` is a thin adapter around the core library.
+
+- `extension.ts` is the only module that imports `vscode`; everything else is
+  pure and unit tested (`edits.ts`, `format.ts`, `settings.ts`, `language.ts`)
+- The extension registers a **document** formatter and a **range** formatter, so
+  *Format Document* and *Format Selection* both align the symbols
+- A range is aligned by scanning the whole document and replacing only the
+  lines of the range — a string or a comment that reaches into the range stays
+  untouched
+- The replaced range covers the carriage return of a CRLF document, so the line
+  endings of the file survive the edit
+- A setting with an unknown value falls back to the default of the core
+  library; `symbolAlign.maxDeclarationPad` accepts `0` for "unlimited"
+- A failure of the core is reported as a notification — the provider never
+  throws into the extension host
+- The extension reads the `symbol-align.config.json` of the workspace folder of
+  the document; a setting that the user set explicitly wins over the file
+- The unit tests alias `@sandlada/symbol-align` to the source of the core, so
+  they never run against a stale build
+- `src/testing/vscode.ts` is the fake editor API of the tests; the Vitest
+  config aliases `vscode` to it, so the adapter itself is covered. The fake is
+  a test double — it is never part of the bundle
 
 ## Runtime Independence
 
@@ -420,7 +464,6 @@ pnpm bench          # write report1.md (baseline performance report)
 
 pnpm --filter @sandlada/symbol-align build      # build the Rust core + wrapper
 pnpm --filter @sandlada/symbol-align dev        # run the CLI from source
-pnpm --filter @sandlada/symbol-align-ts test    # run the TypeScript reference suite
 pnpm dev:site                                   # run the Vite site (localhost:5173)
 pnpm --filter @sandlada/site build:deploy       # wasm core + static site
 pnpm deploy:site                                # wrangler deploy (packages/site)

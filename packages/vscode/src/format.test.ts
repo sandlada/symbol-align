@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatText, linesOfRange, selectionLineRange } from './format.js';
+import { formatText, selectionLineRange } from './format.js';
 
 describe('formatText', () => {
     it('aligns the equals signs of a typescript snippet', () => {
@@ -259,15 +259,5 @@ describe('selectionLineRange', () => {
 
     it('excludes a trailing line that only holds the caret', () => {
         expect(selectionLineRange({ start: { line: 0, character: 0 }, end: { line: 2, character: 0 } })).toEqual({ start: 0, end: 2 });
-    });
-});
-
-describe('linesOfRange', () => {
-    it('returns the lines of the range', () => {
-        expect(linesOfRange('a = 1\nbb = 2\nccc = 3', { start: 1, end: 3 })).toBe('bb = 2\nccc = 3');
-    });
-
-    it('returns an empty text for an empty range', () => {
-        expect(linesOfRange('a = 1\nbb = 2', { start: 1, end: 1 })).toBe('');
     });
 });

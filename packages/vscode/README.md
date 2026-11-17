@@ -19,12 +19,16 @@ code, and it never touches symbols that live inside a string or a comment.
 | `symbolAlign.alignDocument`    | Symbol Align: Align Document   | Aligns the whole document of the active editor. |
 | `symbolAlign.alignSelection`   | Symbol Align: Align Selection  | Aligns the lines that are selected.             |
 
-The extension also registers a document formatter, so *Format Document* aligns
-the file as well.
+The extension also registers a document formatter and a range formatter, so
+*Format Document* and *Format Selection* align the file as well.
 
-`Align Selection` only changes the selected lines, but the whole document is
-scanned. A string or a comment that reaches into the selection is therefore
-recognised and the symbols inside it are left alone.
+`Align Selection` and *Format Selection* only change the selected lines, but the
+whole document is scanned. A string or a comment that reaches into the selection
+is therefore recognised and the symbols inside it are left alone.
+
+Both commands work on saved files and on unsaved documents (`untitled`). A
+failure of the core is reported as a notification instead of an error of the
+extension host.
 
 ## Settings
 
@@ -36,8 +40,32 @@ recognised and the symbols inside it are left alone.
 | `symbolAlign.scope`             | `string`     | `"block"` | `"block"` aligns the lines of a blank-line separated block, `"indent"` keeps every nesting level on its own column, `"file"` aligns every line of the file. |
 | `symbolAlign.declarations`      | `boolean`    | `true`    | Align the declaration columns — the modifiers, the type and the name of a declaration.                                                                      |
 | `symbolAlign.declarationAnchor` | `string`     | `"start"` | `"start"` aligns the start of every declaration cell, `"end"` pads in front of the type so the type contents end on one column.                             |
-| `symbolAlign.maxDeclarationPad` | `number`     | `12`      | The largest column difference that still joins a declaration column. A type outside the window keeps its column.                                            |
+| `symbolAlign.maxDeclarationPad` | `number`     | `12`      | The largest column difference that still joins a declaration column. A type outside the window keeps its column. `0` means no limit.                      |
 | `symbolAlign.groups`            | `string[][]` | `[]`      | Groups of alternative tokens that share one column, e.g. `[["A", "B"]]`. Members are aligned before the symbols.                                            |
+
+A setting with an unknown value falls back to the default of the core library,
+so a broken setting never stops the formatter.
+
+## Configuration file
+
+A repository can configure the formatter with a `symbol-align.config.json` file,
+exactly like the CLI does. The extension looks for the nearest file from the
+document upwards, but never outside of the workspace folder of the document.
+
+```json
+{
+    "symbols": ["=", ":"],
+    "scope": "block",
+    "overrides": {
+        "**/*.test.ts": { "symbols": ["="] }
+    }
+}
+```
+
+A setting of the extension that the user set explicitly wins over the
+configuration file; every setting that the user did not set falls back to it.
+A configuration file that cannot be read or parsed is reported as a
+notification — the extension keeps working with the settings of the user.
 
 The `symbolAlign.enabled` setting only controls the formatter. The two commands
 always align, because they are an explicit request.
@@ -71,3 +99,21 @@ pnpm --filter symbol-align package           # package the extension with vsce
 
 The bundle is written to `dist/extension.js` and is loaded by VS Code as a
 CommonJS module.
+
+The sources are split so that everything except the editor adapter can be
+tested without an editor:
+
+| Module              | Contents                                                      |
+| ------------------- | ------------------------------------------------------------- |
+| `src/extension.ts`  | The editor adapter — providers, commands, notifications.      |
+| `src/edits.ts`      | The pure edit computation — what changes in a document.        |
+| `src/format.ts`     | The pure alignment logic of the core library.                 |
+| `src/config.ts`     | The configuration file and the explicit settings.             |
+| `src/settings.ts`   | The normalisation of the workspace configuration.              |
+| `src/language.ts`   | The mapping of a VS Code language id to a profile.            |
+
+`src/testing/vscode.ts` is a fake of the editor API, so the adapter itself is
+covered by the unit tests as well.
+
+The unit tests run against the source of the core library, so a change in
+`packages/core/src` is picked up without a build step.

@@ -13,7 +13,8 @@
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
         "paths": {
-            "@sandlada/symbol-align": ["../core/src/index.ts"]
+            "@sandlada/symbol-align": ["../core/src/index.ts"],
+            "@sandlada/symbol-align/node": ["../core/src/config-fs.ts"]
         }
     },
     "include": ["src"]

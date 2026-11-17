@@ -6,6 +6,8 @@
  * the browser, a worker or the VS Code extension host without an asset loader.
  */
 
+import { runBoundary } from './boundary.js';
+import { SymbolAlignError, type SymbolAlignOperation } from './errors.js';
 import { WASM_BASE64 } from './generated/wasm-binary.js';
 
 /** The subset of `WebAssembly.Memory` the boundary needs. */
@@ -83,15 +85,35 @@ const decodeBase64 = (text: string): Uint8Array => {
     return bytes;
 };
 
-const wasmApi = (globalThis as unknown as { readonly WebAssembly?: WasmApi }).WebAssembly;
+/**
+ * Instantiates the core module.
+ *
+ * A runtime without WebAssembly or a damaged payload is reported as a
+ * `SymbolAlignError`, so a caller can tell a broken environment from a broken
+ * snippet.
+ */
+const instantiate = (): WasmExports => {
+    const wasmApi = (globalThis as unknown as { readonly WebAssembly?: WasmApi }).WebAssembly;
 
-if (wasmApi === undefined) {
-    throw new Error('The current runtime does not provide WebAssembly.');
-}
+    if (wasmApi === undefined) {
+        throw new SymbolAlignError('load', 'The current runtime does not provide WebAssembly.');
+    }
 
-const module = new wasmApi.Module(decodeBase64(WASM_BASE64));
-const instance = new wasmApi.Instance(module);
-const core = instance.exports as WasmExports;
+    try {
+        const module = new wasmApi.Module(decodeBase64(WASM_BASE64));
+        const instance = new wasmApi.Instance(module);
+
+        return instance.exports as WasmExports;
+    } catch (error) {
+        if (error instanceof SymbolAlignError) {
+            throw error;
+        }
+
+        throw new SymbolAlignError('load', 'The wasm module of the core could not be instantiated.', { cause: error });
+    }
+};
+
+const core = instantiate();
 const encoder = new TextEncoder();
 const decoder = new TextDecoder('utf-8', { ignoreBOM: true });
 
@@ -99,9 +121,9 @@ const decoder = new TextDecoder('utf-8', { ignoreBOM: true });
 const outLengthPointer = core.alloc(4);
 
 /** Writes one UTF-8 string into wasm memory. */
-const writeText = (text: string): { readonly pointer: number; readonly length: number } => {
+const writeText = (operation: SymbolAlignOperation, text: string): { readonly pointer: number; readonly length: number } => {
     const bytes = encoder.encode(text);
-    const pointer = core.alloc(bytes.length);
+    const pointer = runBoundary(operation, () => core.alloc(bytes.length));
 
     if (bytes.length > 0) {
         new Uint8Array(core.memory.buffer, pointer, bytes.length).set(bytes);
@@ -124,21 +146,21 @@ const readBytes = (pointer: number, length: number): Uint8Array => {
 };
 
 /** Runs a call that returns a JSON string. */
-const callJson = (invoke: (outLength: number) => number): string => {
-    const pointer = invoke(outLengthPointer);
-    const length = readLength();
-    const bytes = readBytes(pointer, length);
+const callJson = (operation: SymbolAlignOperation, invoke: (outLength: number) => number): string => {
+    const pointer = runBoundary(operation, () => invoke(outLengthPointer));
+    const length = runBoundary(operation, () => readLength());
+    const bytes = runBoundary(operation, () => readBytes(pointer, length));
 
     return decoder.decode(bytes);
 };
 
 /** Runs a call with two text inputs and returns JSON. */
-const callWithTwoInputs = (first: string, second: string, invoke: (firstPointer: number, firstLength: number, secondPointer: number, secondLength: number, outLength: number) => number): string => {
-    const left = writeText(first);
-    const right = writeText(second);
+const callWithTwoInputs = (operation: SymbolAlignOperation, first: string, second: string, invoke: (firstPointer: number, firstLength: number, secondPointer: number, secondLength: number, outLength: number) => number): string => {
+    const left = writeText(operation, first);
+    const right = writeText(operation, second);
 
     try {
-        return callJson((outLength) => invoke(left.pointer, left.length, right.pointer, right.length, outLength));
+        return callJson(operation, (outLength) => invoke(left.pointer, left.length, right.pointer, right.length, outLength));
     } finally {
         core.dealloc(left.pointer, left.length);
         core.dealloc(right.pointer, right.length);
@@ -147,13 +169,13 @@ const callWithTwoInputs = (first: string, second: string, invoke: (firstPointer:
 
 /** Aligns `code` with the JSON encoded options payload. */
 export const alignCode = (code: string, optionsJson: string): WasmAlignResult => {
-    const codeInput = writeText(code);
-    const optionsInput = writeText(optionsJson);
+    const codeInput = writeText('align', code);
+    const optionsInput = writeText('align', optionsJson);
 
     try {
-        const pointer = core.align(codeInput.pointer, codeInput.length, optionsInput.pointer, optionsInput.length, outLengthPointer);
-        const length = readLength();
-        const bytes = new Uint8Array(core.memory.buffer, pointer, length);
+        const pointer = runBoundary('align', () => core.align(codeInput.pointer, codeInput.length, optionsInput.pointer, optionsInput.length, outLengthPointer));
+        const length = runBoundary('align', () => readLength());
+        const bytes = runBoundary('align', () => new Uint8Array(core.memory.buffer, pointer, length));
         const changes = new DataView(bytes.buffer, bytes.byteOffset, 4).getUint32(0, true);
         const aligned = decoder.decode(bytes.subarray(4));
 
@@ -168,15 +190,15 @@ export const alignCode = (code: string, optionsJson: string): WasmAlignResult =>
 
 /** Scans `code` with the JSON encoded language profile. */
 export const scanCode = (code: string, profileJson: string): string =>
-    callWithTwoInputs(code, profileJson, (codePointer, codeLength, profilePointer, profileLength, outLength) => core.scan(codePointer, codeLength, profilePointer, profileLength, outLength));
+    callWithTwoInputs('scan', code, profileJson, (codePointer, codeLength, profilePointer, profileLength, outLength) => core.scan(codePointer, codeLength, profilePointer, profileLength, outLength));
 
 /** Finds symbol positions on one line. */
 export const findSymbols = (line: string, optionsJson: string): string =>
-    callWithTwoInputs(line, optionsJson, (linePointer, lineLength, optionsPointer, optionsLength, outLength) => core.find_symbols(linePointer, lineLength, optionsPointer, optionsLength, outLength));
+    callWithTwoInputs('findSymbols', line, optionsJson, (linePointer, lineLength, optionsPointer, optionsLength, outLength) => core.find_symbols(linePointer, lineLength, optionsPointer, optionsLength, outLength));
 
 /** Locates declaration cells on one line. */
 export const findDeclarations = (line: string, optionsJson: string): string =>
-    callWithTwoInputs(line, optionsJson, (linePointer, lineLength, optionsPointer, optionsLength, outLength) => core.find_declarations(linePointer, lineLength, optionsPointer, optionsLength, outLength));
+    callWithTwoInputs('findDeclarations', line, optionsJson, (linePointer, lineLength, optionsPointer, optionsLength, outLength) => core.find_declarations(linePointer, lineLength, optionsPointer, optionsLength, outLength));
 
 /** Returns every language profile as JSON. */
-export const readProfiles = (): string => callJson((outLength) => core.profiles(outLength));
+export const readProfiles = (): string => callJson('profiles', (outLength) => core.profiles(outLength));
