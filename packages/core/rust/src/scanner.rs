@@ -1,6 +1,5 @@
-//! Lexical scanner of the core. See the TypeScript reference implementation in
-//! `packages/core-ts/src/scanner.ts` for the exact rules; this module is a
-//! faithful port.
+//! Lexical scanner of the core. It was ported from the original TypeScript
+//! implementation and keeps its rules unchanged.
 //!
 //! The scanner walks the source exactly once and keeps its lexical state across
 //! line boundaries, so multi-line strings and block comments are handled

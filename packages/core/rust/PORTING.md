@@ -1,8 +1,10 @@
 # Porting contract
 
-The Rust crate is a faithful port of the TypeScript reference implementation in
-`packages/core-ts/src`. Behaviour parity is the acceptance criterion: the
-copied Vitest suite must pass unchanged against the wasm build.
+The Rust crate is the only implementation of the formatter in this repository.
+The behavioural contract is the Vitest suite in `packages/core/src`: it was
+copied unchanged from the TypeScript reference implementation during the port
+and must keep passing unchanged against the wasm build. Never weaken an
+assertion to make the core pass.
 
 ## String model
 

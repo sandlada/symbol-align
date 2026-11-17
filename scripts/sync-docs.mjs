@@ -2,9 +2,8 @@
  * Keeps the documentation files of the published package in sync with the
  * repository root.
  *
- * Only `packages/core` is published. The reference implementation, the VS Code
- * extension and the site are workspace-only packages, so a pack must
- * never touch their documentation files.
+ * Only `packages/core` is published. The VS Code extension and the site are
+ * workspace-only packages, so a pack must never touch their documentation files.
  *
  * The published package links `README.md`, `CHANGELOG.md`, `LICENSE`,
  * `SECURITY.md` and `CODE_OF_CONDUCT.md` back to the root copies so that a

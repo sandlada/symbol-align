@@ -1,9 +1,9 @@
 //! Vertical alignment engine of the core.
 //!
-//! This module is a faithful port of `packages/core-ts/src/aligner.ts`. The
-//! pipeline is kept one-to-one with the reference implementation: the
-//! declaration pass first, then every configured group in the order it was
-//! given, then every symbol, repeated until the output stops changing.
+//! This module was ported from the original TypeScript implementation. The
+//! pipeline is kept one-to-one with that reference: the declaration pass
+//! first, then every configured group in the order it was given, then every
+//! symbol, repeated until the output stops changing.
 //!
 //! # Positions and columns
 //!
