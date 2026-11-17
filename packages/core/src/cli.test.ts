@@ -771,6 +771,18 @@ describe('runCli', () => {
         expect(streams.stderrText()).toBe('Error: Unknown option: --nope\n');
     });
 
+    it('reports a file that cannot be read with the path the user typed', async () => {
+        await withTempDir(async () => {
+            const streams = createStreams();
+
+            const code = await runCli(['node', 'cli.js', '--file', 'missing.ts'], streams);
+
+            expect(code).toBe(1);
+            expect(streams.stdoutText()).toBe('');
+            expect(streams.stderrText()).toContain('Error: cannot read missing.ts:');
+        });
+    });
+
     it('forwards the language profile to the aligner', async () => {
         const streams = createStreams('# note = ignored\na = 1\nbb = 2');
 

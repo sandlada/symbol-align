@@ -632,6 +632,21 @@ const validateArgs = (args: CliArgs): void => {
     }
 };
 
+/**
+ * Reads one input file.
+ *
+ * A file that cannot be read is reported with the path the user typed, so the
+ * message stays readable even though the path is resolved against the working
+ * directory.
+ */
+const readInput = async (path: string): Promise<string> => {
+    try {
+        return await readFile(validatePath(path), 'utf-8');
+    } catch (error) {
+        throw new Error(`cannot read ${path}: ${errorMessage(error)}`);
+    }
+};
+
 /** Reads the inputs of the run — the standard input or the given files. */
 const readInputs =
     (args: CliArgs) =>
@@ -640,7 +655,7 @@ const readInputs =
             return [{ path: undefined, code: await streams.stdin() }];
         }
 
-        return Promise.all(args.files.map(async (path) => ({ path, code: await readFile(validatePath(path), 'utf-8') })));
+        return Promise.all(args.files.map(async (path) => ({ path, code: await readInput(path) })));
     };
 
 /** Aligns every input of the run. */
@@ -660,7 +675,9 @@ const writeInPlace = (result: CliResult): Promise<void> => {
         throw new Error('--write requires --file');
     }
 
-    return writeFile(validatePath(result.path), result.aligned, 'utf-8');
+    return writeFile(validatePath(result.path), result.aligned, 'utf-8').catch((error: unknown) => {
+        throw new Error(`cannot write ${result.path}: ${errorMessage(error)}`);
+    });
 };
 
 /** The aligned content of every result, separated by a newline. */

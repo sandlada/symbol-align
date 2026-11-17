@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   printing an unhandled `EPIPE` error.
 - **The CLI writes its whole output into a pipe.** The output is flushed before
   the process ends, so the tail of a large result cannot get lost.
+- **The CLI names the file it cannot read.** A file that does not exist is
+  reported with the path the user typed instead of the resolved one.
 
 ## [0.2.0] - 2026-10-25
 
